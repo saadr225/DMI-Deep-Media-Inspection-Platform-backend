@@ -8,6 +8,8 @@ django = "*"
 djangorestframework = "*"
 markdown = "*"
 django-filter = "*"
+python-dotenv = "*"
+psycopg2 = "*"
 
 [dev-packages]
 
