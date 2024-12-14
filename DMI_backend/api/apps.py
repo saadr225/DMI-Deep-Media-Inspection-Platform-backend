@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class DmiCoreServicesConfig(AppConfig):
+class ApiConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'DMI_core_services'
+    name = 'api'
