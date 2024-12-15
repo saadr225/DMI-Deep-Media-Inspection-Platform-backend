@@ -10,6 +10,9 @@ markdown = "*"
 django-filter = "*"
 python-dotenv = "*"
 psycopg2 = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
 
 [dev-packages]
 

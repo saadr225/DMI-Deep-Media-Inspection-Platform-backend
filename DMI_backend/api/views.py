@@ -1,7 +1,7 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 
 
 # Create your views here.
 def home(request):
-    return HttpResponse(request, "<h1>Home</h1>")
+    return JsonResponse({"message": "Hello, World!"})
