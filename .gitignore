@@ -87,3 +87,9 @@ local_settings.py
 
 .env
 db.sqlite3
+
+### Media ###
+DMI_backend/media/temp/temp_crops/*
+DMI_backend/media/temp/temp_frames/*
+DMI_backend/media/submissions/*
+

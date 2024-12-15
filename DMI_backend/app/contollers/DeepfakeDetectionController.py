@@ -5,19 +5,18 @@ import torch.nn as nn
 import torch.nn.functional as tnf
 import torchvision.models as models
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Dataset, random_split
 from PIL import Image, ImageChops
 import os, shutil
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
-from torchmetrics import Accuracy, Precision, Recall, F1Score, ConfusionMatrix
 from ultralytics import YOLO
 import hashlib
 from natsort import natsorted
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
+from django.conf import settings
 
 
 class MediaProcessor:
@@ -27,7 +26,7 @@ class MediaProcessor:
 
     def __init__(
         self,
-        model_path="yolov8n.pt",
+        model_path=f"{settings.ML_MODELS_DIR}/yolov8n.pt",
         threshold=0.5,
         log_level=0,
         FRAMES_FILE_FORMAT="jpg",
@@ -752,4 +751,3 @@ class DeepfakeDetectionPipeline:
 
         with open(output_path, "w") as f:
             json.dump(results, f, sort_keys=True, indent=4)
-
