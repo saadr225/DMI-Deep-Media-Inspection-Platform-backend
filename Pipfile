@@ -13,6 +13,7 @@ psycopg2 = "*"
 torch = "*"
 torchvision = "*"
 torchaudio = "*"
+djangorestframework-simplejwt = "*"
 
 [dev-packages]
 
