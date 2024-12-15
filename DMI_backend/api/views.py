@@ -12,8 +12,8 @@ import os
 pipeline = DeepfakeDetectionPipeline(
     frame_model_path=f"{settings.ML_MODELS_DIR}/acc99.76_test-2.1_FRAMES_deepfake_detector_resnext50.pth",
     crop_model_path=f"{settings.ML_MODELS_DIR}/acc99.53_test-2.1_CROPS_deepfake_detector_resnext50.pth",
-    frames_dir="../media/temp/temp_frames/",
-    crops_dir="../media/temp/temp_crops/",
+    frames_dir=f"{settings.MEDIA_ROOT}/temp/temp_frames/",
+    crops_dir=f"{settings.MEDIA_ROOT}/temp/temp_crops/",
     threshold=0.4,
     log_level=0,
     FRAMES_FILE_FORMAT="png",
