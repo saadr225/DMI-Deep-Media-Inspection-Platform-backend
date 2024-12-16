@@ -556,7 +556,7 @@ class DeepfakeDetectionPipeline:
             "frame_analysis": None,
             "crop_analyses": [],
             "final_verdict": None,
-            "frame_path": image_path,
+            "frame_path": self.convert_to_public_url(image_path),
             "crop_paths": [],
             "ela_path": None,
             "gradcam_path": None,
@@ -567,7 +567,7 @@ class DeepfakeDetectionPipeline:
             image_path, type="frame"
         )
         results["frame_analysis"] = {"prediction": frame_pred, "confidence": frame_conf}
-        results["gradcam_path"] = gradcam_path
+        results["gradcam_path"] = self.convert_to_public_url(gradcam_path)
 
         # Get crops for this frame
         frame_index = 0 if "_" not in frame_id else int(frame_id.split("_")[-1])
@@ -587,7 +587,7 @@ class DeepfakeDetectionPipeline:
                     "confidence": crop_conf,
                 }
             )
-            results["crop_paths"].append(crop_path)
+            results["crop_paths"].append(self.convert_to_public_url(crop_path))
 
         # Determine final verdict
         if len(results["crop_analyses"]) > 0:
@@ -605,9 +605,24 @@ class DeepfakeDetectionPipeline:
             results["final_verdict"] = frame_pred
 
         # Perform ELA analysis
-        results["ela_path"] = self.perform_ela_analysis(image_path)
+        results["ela_path"] = self.convert_to_public_url(
+            self.perform_ela_analysis(image_path)
+        )
 
         return results
+
+    def convert_to_public_url(self, file_path):
+        """
+        Convert a file path to a public URL.
+
+        Args:
+            file_path (str): The file path to convert.
+
+        Returns:
+            str: The public URL.
+        """
+        relative_path = os.path.relpath(file_path, settings.MEDIA_ROOT)
+        return f"{settings.HOST_URL}{settings.MEDIA_URL}{relative_path.replace(os.sep, '/')}"
 
     def perform_ela_analysis(self, image_path):
         """
@@ -688,7 +703,7 @@ class DeepfakeDetectionPipeline:
         )
 
         results = {
-            "media_path": media_path,
+            "media_path": self.convert_to_public_url(media_path),
             "media_type": media_type,
             "file_id": file_id,
             "frame_results": [],
@@ -699,7 +714,7 @@ class DeepfakeDetectionPipeline:
                 self.frames_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}"
             )
             frame_results = self.analyze_frame_with_crops(media_path, f"{file_id}_0")
-            results["media_path"] = media_path
+            results["media_path"] = self.convert_to_public_url(media_path)
             results["frame_results"].append(frame_results)
 
         elif media_type == "Video":
@@ -710,7 +725,6 @@ class DeepfakeDetectionPipeline:
             ]
             frames = natsorted(frames)
             for frame_index, frame_path in enumerate(frames):
-                # print("ID/PATH: ",frame_index, frame_path)
                 frame_results = self.analyze_frame_with_crops(
                     frame_path, f"{file_id}_{frame_index}"
                 )

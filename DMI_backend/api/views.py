@@ -105,7 +105,8 @@ def process_deepfake_media(request):
             # Save file
             fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/submissions/")
             filename = fs.save(
-                f"uid{user.id}-{time.time()}-{media_file.name}", media_file
+                f"uid{user.id}-{time.strftime('%Y-%m-%d_%H-%M-%S')}-{int(time.time() * 1000) % 1000}-{media_file.name}",
+                media_file,
             )
             file_path = os.path.join(f"{settings.MEDIA_ROOT}/submissions/", filename)
 
