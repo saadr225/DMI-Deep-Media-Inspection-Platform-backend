@@ -1,53 +1,33 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-
-
-class User(AbstractUser):
-    email = models.EmailField(unique=True)
-    username = models.CharField(max_length=30, unique=True)
-    first_name = models.CharField(max_length=30, blank=True)
-    last_name = models.CharField(max_length=30, blank=True)
-    bio = models.TextField(max_length=500, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    groups = models.ManyToManyField(
-        "auth.Group",
-        related_name="api_user_set",
-        blank=True,
-        help_text="The groups this user belongs to. A user will get all permissions granted to each of their groups.",
-        verbose_name="groups",
-    )
-    user_permissions = models.ManyToManyField(
-        "auth.Permission",
-        related_name="api_user_set",
-        blank=True,
-        help_text="Specific permissions for this user.",
-        verbose_name="user permissions",
-    )
-
-    def __str__(self):
-        return self.username
+from django.contrib.auth.models import User
+from app.models import UserData
 
 
 class MediaUpload(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    file = models.FileField(upload_to=f"{settings.MEDIA_ROOT}/submissions/")
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    file = models.FileField(
+        upload_to=f"{settings.MEDIA_ROOT}/submissions/", max_length=512
+    )
+    file_type = models.CharField(max_length=32, default="Video")
     upload_date = models.DateTimeField(auto_now_add=True)
-    description = models.TextField(blank=True)
+    # description = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.file.name}"
+        return f"{self.user.username} - {self.file.name} - {self.upload_date}"
 
 
-class DetectionResult(models.Model):
-    media = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
-    is_deepfake = models.BooleanField()
-    confidence_score = models.FloatField()
-    detection_date = models.DateTimeField(auto_now_add=True)
+class DeepfakeDetectionResult(models.Model):
+    media_upload = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
+    is_deepfake = models.BooleanField(blank=True)
+    confidence_score = models.FloatField(blank=True)
+    frames_analyzed = models.IntegerField(blank=True)
+    fake_frames = models.IntegerField(blank=True)
+    analysis_date = models.DateTimeField(auto_now_add=True)
+    analysis_report = models.JSONField(blank=True)
 
     def __str__(self):
-        return f"{self.media.file.name} - {'Deepfake' if self.is_deepfake else 'Real'}"
+        return f"{self.media.file.name} - {self.analysis_date}"
 
 
 # class CommunityFeedback(models.Model):

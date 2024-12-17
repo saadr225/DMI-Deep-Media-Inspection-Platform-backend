@@ -3,8 +3,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 from django.http import JsonResponse
-from django.contrib.auth.models import User
 
+from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
@@ -12,8 +12,10 @@ from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, TokenError
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
+from app.models import UserData
 from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
 from .serializers import FileUploadSerializer, UserSerializer, LoginSerializer
+from .models import MediaUpload, DeepfakeDetectionResult
 
 import os
 
@@ -30,18 +32,36 @@ pipeline = DeepfakeDetectionPipeline(
 
 # Views
 
+from django.http import JsonResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework import status
+from django.contrib.auth.models import User
+from .models import UserData
+from .serializers import UserSerializer
+
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def signup(request):
-    serializer = UserSerializer(data=request.data)
-    if serializer.is_valid():
+    user_serializer = UserSerializer(data=request.data)
+    if user_serializer.is_valid():
         try:
-            serializer.save()
-            return JsonResponse(serializer.data, status=status.HTTP_201_CREATED)
+            user = user_serializer.save()
+            user_data = UserData.objects.create(user=user)
+
+            user_response = user_serializer.data
+            user_data_response = {
+                "user": user_response,
+                "user_data": {
+                    "is_verified": user_data.is_verified,
+                },
+            }
+
+            return JsonResponse(user_data_response, status=status.HTTP_201_CREATED)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return JsonResponse(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
@@ -89,48 +109,6 @@ def logout(request):
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-@parser_classes([MultiPartParser, FormParser, FileUploadParser])
-def process_deepfake_media(request):
-    serializer = FileUploadSerializer(data=request.data)
-
-    if serializer.is_valid():
-        try:
-            validated_data = serializer.validated_data
-            media_file = validated_data["file"]
-            user = request.user
-
-            # Save file
-            fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/submissions/")
-            filename = fs.save(
-                f"uid{user.id}-{time.strftime('%Y-%m-%d_%H-%M-%S')}-{int(time.time() * 1000) % 1000}-{media_file.name}",
-                media_file,
-            )
-            file_path = os.path.join(f"{settings.MEDIA_ROOT}/submissions/", filename)
-
-            # Process media
-            results = pipeline.process_media(
-                media_path=file_path,
-                frame_rate=2,
-            )
-
-            return JsonResponse(results, status=status.HTTP_200_OK)
-
-        except TokenError as e:
-            return JsonResponse(
-                {"error": "Token is invalid or expired."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        except Exception as e:
-            return JsonResponse(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    else:
-        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def refresh_token(request):
@@ -155,3 +133,73 @@ def refresh_token(request):
         )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser, FileUploadParser])
+def process_deepfake_media(request):
+    file_upload_serializer = FileUploadSerializer(data=request.data)
+
+    if file_upload_serializer.is_valid():
+        try:
+            validated_data = file_upload_serializer.validated_data
+            media_file = validated_data["file"]
+            user = request.user
+
+            # Save file
+            fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/submissions/")
+            filename = fs.save(
+                f"uid{user.id}-{time.strftime('%Y-%m-%d_%H-%M-%S')}-{int(time.time() * 1000) % 1000}-{media_file.name}",
+                media_file,
+            )
+            file_path = os.path.join(f"{settings.MEDIA_ROOT}/submissions/", filename)
+
+            media_upload = MediaUpload.objects.create(
+                user=UserData.objects.get(user=user),
+                file=file_path,
+                file_type=pipeline.media_processor.check_media_type(file_path),
+            )
+
+            # Process media
+            results = pipeline.process_media(
+                media_path=file_path,
+                frame_rate=2,
+            )
+            deepfake_result = DeepfakeDetectionResult.objects.create(
+                media_upload=media_upload,
+                is_deepfake=results["statistics"]["is_deepfake"],
+                confidence_score=results["statistics"]["confidence"],
+                frames_analyzed=results["statistics"]["total_frames"],
+                fake_frames=results["statistics"]["fake_frames"],
+                analysis_report=results,
+            )
+
+            result_data = {
+                "id": deepfake_result.id,
+                "media_upload": deepfake_result.media_upload.id,
+                "is_deepfake": deepfake_result.is_deepfake,
+                "confidence_score": deepfake_result.confidence_score,
+                "frames_analyzed": deepfake_result.frames_analyzed,
+                "fake_frames": deepfake_result.fake_frames,
+                "analysis_report": deepfake_result.analysis_report,
+            }
+
+            return JsonResponse(result_data, status=status.HTTP_200_OK)
+
+            # DeepfakeDetectionResult.objects.create(media_upload=media_upload,is_deepfake= ).save()
+            return JsonResponse(results, status=status.HTTP_200_OK)
+
+        except TokenError as e:
+            return JsonResponse(
+                {"error": "Token is invalid or expired."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except Exception as e:
+            return JsonResponse(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    else:
+        return JsonResponse(
+            file_upload_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+        )

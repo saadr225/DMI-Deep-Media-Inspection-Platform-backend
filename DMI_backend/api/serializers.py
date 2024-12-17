@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+
+
+# from django.contrib.auth import authenticate
 
 
 class FileUploadSerializer(serializers.Serializer):
@@ -11,7 +13,7 @@ class FileUploadSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "first_name", "last_name", "password")
+        fields = ("id", "username", "email", "password")
         extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):
@@ -19,8 +21,8 @@ class UserSerializer(serializers.ModelSerializer):
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
-            first_name=validated_data.get("first_name", ""),
-            last_name=validated_data.get("last_name", ""),
+            # first_name=validated_data.get("first_name", ""), first_name and last_name are ignored for now
+            # last_name=validated_data.get("last_name", ""),
         )
         return user
 
