@@ -3,6 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 from django.http import JsonResponse
+from django.contrib.auth import authenticate
 
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes, parser_classes
@@ -69,16 +70,36 @@ def signup(request):
 def login(request):
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.validated_data
-        refresh = RefreshToken.for_user(user)
-        access = refresh.access_token
-        return JsonResponse(
-            {
-                "refresh": str(refresh),
-                "access": str(access),
-            },
-            status=status.HTTP_200_OK,
-        )
+        validated_data = serializer.validated_data
+        is_email = validated_data["is_email"]
+        password = validated_data["password"]
+
+        if is_email:
+            try:
+                user_obj = User.objects.get(email=validated_data["email"])
+                username = user_obj.username
+            except User.DoesNotExist:
+                return JsonResponse(
+                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            username = validated_data["username"]
+
+        user = authenticate(username=username, password=password)
+        if user:
+            refresh = RefreshToken.for_user(user)
+            access = refresh.access_token
+            return JsonResponse(
+                {
+                    "refresh": str(refresh),
+                    "access": str(access),
+                },
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return JsonResponse(
+                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+            )
     return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

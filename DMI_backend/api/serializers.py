@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
 
 
 # from django.contrib.auth import authenticate
@@ -28,11 +27,29 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField()
+    email = serializers.EmailField(required=False, allow_blank=True)
+    username = serializers.CharField(required=False, allow_blank=True)
+    password = serializers.CharField(required=True)
+    is_email = serializers.BooleanField(required=True)
 
     def validate(self, data):
-        user = authenticate(**data)
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError("Invalid credentials")
+        email = data.get("email")
+        username = data.get("username")
+        password = data.get("password")
+        is_email = data.get("is_email")
+
+        if is_email is None:
+            raise serializers.ValidationError("The 'is_email' flag is required.")
+
+        if is_email and not email:
+            raise serializers.ValidationError(
+                "Email is required when is_email is True."
+            )
+        if not is_email and not username:
+            raise serializers.ValidationError(
+                "Username is required when is_email is False."
+            )
+        if not password:
+            raise serializers.ValidationError("Password is required.")
+
+        return data

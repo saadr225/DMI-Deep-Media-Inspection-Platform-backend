@@ -14,6 +14,7 @@ torch = "*"
 torchvision = "*"
 torchaudio = "*"
 djangorestframework-simplejwt = "*"
+django-cors-headers = "*"
 
 [dev-packages]
 
