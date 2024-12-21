@@ -193,9 +193,7 @@ def logout(request):
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    serializer = ChangePasswordSerializer(
-        data=request.data, context={"request": request}
-    )
+    serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
         user = request.user
         if not user.check_password(serializer.validated_data["old_password"]):
@@ -326,6 +324,7 @@ def process_deepfake_media(request):
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
+
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
