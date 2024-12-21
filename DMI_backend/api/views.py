@@ -1,3 +1,5 @@
+# DMI_backend/api/views.py
+
 import time
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.storage import FileSystemStorage
@@ -15,9 +17,17 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 from app.models import UserData
 from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
-from .serializers import FileUploadSerializer, UserSerializer, LoginSerializer
+from .serializers import (
+    FileUploadSerializer,
+    UserSerializer,
+    LoginSerializer,
+    ChangePasswordSerializer,
+)
 from .models import MediaUpload, DeepfakeDetectionResult
+from .response_codes import get_response_code, RESPONSE_CODES
+from rest_framework_simplejwt.views import TokenRefreshView
 
+from datetime import datetime, timezone
 import os
 
 # Initialize DeepfakeDetectionPipeline
@@ -31,16 +41,6 @@ pipeline = DeepfakeDetectionPipeline(
     FRAMES_FILE_FORMAT="png",
 )
 
-# Views
-
-from django.http import JsonResponse
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework import status
-from django.contrib.auth.models import User
-from .models import UserData
-from .serializers import UserSerializer
-
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -50,7 +50,6 @@ def signup(request):
         try:
             user = user_serializer.save()
             user_data = UserData.objects.create(user=user)
-
             user_response = user_serializer.data
             user_data_response = {
                 "user": user_response,
@@ -59,10 +58,22 @@ def signup(request):
                 },
             }
 
-            return JsonResponse(user_data_response, status=status.HTTP_201_CREATED)
+            return JsonResponse(
+                {
+                    **get_response_code("USER_CREATION_SUCCESS"),
+                    "data": user_data_response,
+                },
+                status=status.HTTP_201_CREATED,
+            )
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    return JsonResponse(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse(
+                {**get_response_code("USER_CREATION_ERROR"), "error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    return JsonResponse(
+        {**get_response_code("USER_CREATION_ERROR"), "error": user_serializer.errors},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 @api_view(["POST"])
@@ -75,32 +86,78 @@ def login(request):
         password = validated_data["password"]
 
         if is_email:
+            email = validated_data.get("email")
+            if not email:
+                return JsonResponse(
+                    {
+                        **get_response_code("INVALID_CREDENTIALS"),
+                        "error": "Email is required when is_email is True.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             try:
-                user_obj = User.objects.get(email=validated_data["email"])
+                user_obj = User.objects.get(email=email)
                 username = user_obj.username
             except User.DoesNotExist:
                 return JsonResponse(
-                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                    get_response_code("INVALID_CREDENTIALS"),
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
-            username = validated_data["username"]
+            username = validated_data.get("username")
+            if not username:
+                return JsonResponse(
+                    {
+                        **get_response_code("INVALID_CREDENTIALS"),
+                        "error": "Username is required when is_email is False.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         user = authenticate(username=username, password=password)
         if user:
-            refresh = RefreshToken.for_user(user)
-            access = refresh.access_token
-            return JsonResponse(
-                {
-                    "refresh": str(refresh),
-                    "access": str(access),
-                },
-                status=status.HTTP_200_OK,
-            )
+            try:
+                user_data = UserData.objects.get(user=user)
+                user_response = UserSerializer(user).data
+                user_data_response = {
+                    "user": user_response,
+                    "user_data": {
+                        "is_verified": user_data.is_verified,
+                    },
+                }
+
+                refresh = RefreshToken.for_user(user)
+                access = refresh.access_token
+
+                # Get token expiry times
+                refresh_expiry = datetime.fromtimestamp(refresh["exp"], timezone.utc)
+                access_expiry = datetime.fromtimestamp(access["exp"], timezone.utc)
+
+                return JsonResponse(
+                    {
+                        **get_response_code("SUCCESS"),
+                        "refresh": str(refresh),
+                        "access": str(access),
+                        "refresh_expiry": refresh_expiry.isoformat(),
+                        "access_expiry": access_expiry.isoformat(),
+                        "authenticated_user": user_data_response,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            except UserData.DoesNotExist:
+                return JsonResponse(
+                    get_response_code("USER_DATA_NOT_FOUND"),
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         else:
             return JsonResponse(
-                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                get_response_code("INVALID_CREDENTIALS"),
+                status=status.HTTP_400_BAD_REQUEST,
             )
-    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return JsonResponse(
+        {**get_response_code("INVALID_CREDENTIALS"), "error": serializer.errors},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
 
 
 @api_view(["POST"])
@@ -110,24 +167,53 @@ def logout(request):
         refresh_token = request.data.get("refresh")
         if not refresh_token:
             return JsonResponse(
-                {"error": "Refresh token is required."},
+                get_response_code("REFRESH_TOKEN_REQUIRED"),
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         token = RefreshToken(refresh_token)
         token.blacklist()
         return JsonResponse(
-            {"message": "Successfully logged out."},
+            get_response_code("LOGOUT_SUCCESS"),
             status=status.HTTP_205_RESET_CONTENT,
         )
 
     except TokenError as e:
         return JsonResponse(
-            {"error": "Token is invalid or expired."},
+            get_response_code("TOKEN_INVALID_OR_EXPIRED"),
             status=status.HTTP_401_UNAUTHORIZED,
         )
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse(
+            {**get_response_code("FILE_UPLOAD_ERROR"), "error": str(e)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    serializer = ChangePasswordSerializer(
+        data=request.data, context={"request": request}
+    )
+    if serializer.is_valid():
+        user = request.user
+        if not user.check_password(serializer.validated_data["old_password"]):
+            return JsonResponse(
+                get_response_code("OLD_PASSWORD_INCORRECT"),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.set_password(serializer.validated_data["new_password"])
+        user.save()
+        return JsonResponse(
+            get_response_code("PASSWORD_CHANGE_SUCCESS"),
+            status=status.HTTP_200_OK,
+        )
+    else:
+        return JsonResponse(
+            {**get_response_code("FILE_UPLOAD_ERROR"), "error": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 @api_view(["POST"])
@@ -137,23 +223,34 @@ def refresh_token(request):
         refresh_token = request.data.get("refresh")
         if not refresh_token:
             return JsonResponse(
-                {"error": "Refresh token is required."},
+                get_response_code("REFRESH_TOKEN_REQUIRED"),
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         token = RefreshToken(refresh_token)
         access_token = token.access_token
+
+        # Get access token expiry time
+        access_expiry = datetime.fromtimestamp(access_token["exp"], timezone.utc)
+
         return JsonResponse(
-            {"access": str(access_token)},
+            {
+                **get_response_code("SUCCESS"),
+                "access": str(access_token),
+                "access_expiry": access_expiry.isoformat(),
+            },
             status=status.HTTP_200_OK,
         )
     except TokenError as e:
         return JsonResponse(
-            {"error": "Token is invalid or expired."},
+            get_response_code("TOKEN_INVALID_OR_EXPIRED"),
             status=status.HTTP_401_UNAUTHORIZED,
         )
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return JsonResponse(
+            {**get_response_code("FILE_UPLOAD_ERROR"), "error": str(e)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 @api_view(["POST"])
@@ -206,21 +303,31 @@ def process_deepfake_media(request):
                 "analysis_report": deepfake_result.analysis_report,
             }
 
-            return JsonResponse(result_data, status=status.HTTP_200_OK)
-
-            # DeepfakeDetectionResult.objects.create(media_upload=media_upload,is_deepfake= ).save()
-            return JsonResponse(results, status=status.HTTP_200_OK)
+            return JsonResponse(
+                {**get_response_code("SUCCESS"), "data": result_data},
+                status=status.HTTP_200_OK,
+            )
 
         except TokenError as e:
             return JsonResponse(
-                {"error": "Token is invalid or expired."},
+                get_response_code("TOKEN_INVALID_OR_EXPIRED"),
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         except Exception as e:
             return JsonResponse(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {**get_response_code("MEDIA_PROCESSING_ERROR"), "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
     else:
         return JsonResponse(
-            file_upload_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            {
+                **get_response_code("FILE_UPLOAD_ERROR"),
+                "error": file_upload_serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
         )
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_response_codes(request):
+    return JsonResponse(RESPONSE_CODES, status=status.HTTP_200_OK)
