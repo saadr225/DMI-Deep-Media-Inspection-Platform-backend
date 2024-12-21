@@ -199,6 +199,15 @@ def logout(request):
 def change_password(request):
     serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
+        validated_data = serializer.validated_data
+        if validated_data["new_password"] != validated_data["new_password_repeat"]:
+            return JsonResponse(
+                {
+                    **get_response_code("PASSWORDS_DONT_MATCH"),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         user = request.user
         if not user.check_password(serializer.validated_data["old_password"]):
             return JsonResponse(
@@ -248,7 +257,7 @@ def forgot_password(request):
         send_mail(
             "Password Reset Request",
             f"Please use the following link to reset your password: {reset_url}",
-            "no-reply@example.com",
+            settings.EMAIL_HOST_USER,
             [email],
             fail_silently=False,
         )

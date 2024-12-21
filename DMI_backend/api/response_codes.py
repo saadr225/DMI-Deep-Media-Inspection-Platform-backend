@@ -10,7 +10,7 @@ RESPONSE_CODES = {
     "INVALID_CREDENTIALS": {"code": "E01", "message": "Invalid credentials."},
     "TOKEN_INVALID_OR_EXPIRED": {"code": "E02", "message": "Token is invalid or expired."},
     "REFRESH_TOKEN_REQUIRED": {"code": "E03", "message": "Refresh token is required."},
-    "USER_DATA_NOT_FOUND": {"code": "E04", "message": "User data not found."},
+    "USER_NOT_FOUND": {"code": "E04", "message": "User not found."},
     "OLD_PASSWORD_INCORRECT": {"code": "E05", "message": "Old password is not correct."},
     "PASSWORD_CHANGE_ERROR": {"code": "E06", "message": "Error changing password."},
     "EMAIL_CHANGE_ERROR": {"code": "E07", "message": "Error changing email."},
@@ -22,10 +22,12 @@ RESPONSE_CODES = {
     "NEW_PASSWORD_REQUIRED": {"code": "E13", "message": "New password is required."},
     "RESET_TOKEN_NOT_FOUND": {"code": "E14", "message": "Reset token not found."},
     "EMAIL_ALREADY_IN_USE": {"code": "E15", "message": "This email is already in use."},
-    "USER_NOT_FOUND": {"code": "E16", "message": "User with this email does not exist."},
+    "USER_WITH_EMAIL_NOT_FOUND": {"code": "E16", "message": "User with this email does not exist."},
     "FORGOT_PASSWORD_ERROR": {"code": "E17", "message": "Error sending forgot password email."},
-    "REFRESH_TOKEN_INVALID": {"code": "E17", "message": "Invalid refresh token."},
-    "GENERAL_ERROR": {"code": "E18", "message": "An error occurred."},
+    "REFRESH_TOKEN_INVALID": {"code": "E18", "message": "Invalid refresh token."},
+    "GENERAL_ERROR": {"code": "E19", "message": "An error occurred."},
+    "PASSWORDS_DONT_MATCH": {"code": "E20", "message": "Passwords do not match."},
+    "USER_DATA_NOT_FOUND": {"code": "E21", "message": "User data not found."},
 }
 
 
