@@ -10,3 +10,12 @@ class UserData(models.Model):
 
     def __str__(self):
         return self.user.username
+
+
+class PasswordResetToken(models.Model):
+    user_data = models.OneToOneField(UserData, on_delete=models.CASCADE)
+    reset_token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.reset_token}"

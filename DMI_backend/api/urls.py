@@ -5,6 +5,9 @@ from .views import (
     logout,
     process_deepfake_media,
     refresh_token,
+    change_email,
+    forgot_password,
+    reset_password,
     change_password,
     get_response_codes,
 )
@@ -16,6 +19,9 @@ urlpatterns = [
     path("user/login/", login, name="login"),
     path("user/logout/", logout, name="logout"),
     path("user/change_password/", change_password, name="change_password"),
+    path("user/change_email/", change_email, name="change_email"),
+    path("user/forgot_password/", forgot_password, name="forgot_password"),
+    path("user/reset_password/<str:token>/", reset_password, name="reset_password"),
     # token related endpoints
     path("auth/refresh_token/", refresh_token, name="refresh_token"),
     # media processing endpoints

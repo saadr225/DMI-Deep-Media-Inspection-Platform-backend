@@ -1,34 +1,38 @@
 # DMI_backend/api/views.py
-
+import os
 import time
-from django.views.decorators.csrf import csrf_exempt
-from django.core.files.storage import FileSystemStorage
+from datetime import datetime, timezone
+
 from django.conf import settings
-from django.http import JsonResponse
 from django.contrib.auth import authenticate
-
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
-from rest_framework.decorators import api_view, permission_classes, parser_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser
-from rest_framework_simplejwt.tokens import RefreshToken, AccessToken, TokenError
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from django.core.files.storage import FileSystemStorage
+from django.core.mail import send_mail
+from django.http import JsonResponse
+from django.utils.crypto import get_random_string
+from django.views.decorators.csrf import csrf_exempt
 
-from app.models import UserData
-from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
-from .serializers import (
-    FileUploadSerializer,
-    UserSerializer,
-    LoginSerializer,
-    ChangePasswordSerializer,
-)
-from .models import MediaUpload, DeepfakeDetectionResult
-from .response_codes import get_response_code, RESPONSE_CODES
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.parsers import FileUploadParser, FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from datetime import datetime, timezone
-import os
+from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
+from app.models import PasswordResetToken, UserData
+from .models import DeepfakeDetectionResult, MediaUpload
+from .response_codes import RESPONSE_CODES, get_response_code
+from .serializers import (
+    ChangeEmailSerializer,
+    ChangePasswordSerializer,
+    FileUploadSerializer,
+    ForgotPasswordSerializer,
+    LoginSerializer,
+    UserSerializer,
+)
 
 # Initialize DeepfakeDetectionPipeline
 pipeline = DeepfakeDetectionPipeline(
@@ -90,7 +94,7 @@ def login(request):
             if not email:
                 return JsonResponse(
                     {
-                        **get_response_code("INVALID_CREDENTIALS"),
+                        **get_response_code("EMAIL_REQUIRED"),
                         "error": "Email is required when is_email is True.",
                     },
                     status=status.HTTP_400_BAD_REQUEST,
@@ -108,7 +112,7 @@ def login(request):
             if not username:
                 return JsonResponse(
                     {
-                        **get_response_code("INVALID_CREDENTIALS"),
+                        **get_response_code("USERNAME_REQUIRED"),
                         "error": "Username is required when is_email is False.",
                     },
                     status=status.HTTP_400_BAD_REQUEST,
@@ -185,7 +189,7 @@ def logout(request):
         )
     except Exception as e:
         return JsonResponse(
-            {**get_response_code("FILE_UPLOAD_ERROR"), "error": str(e)},
+            {**get_response_code("GENERAL_ERROR"), "error": str(e)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -209,7 +213,109 @@ def change_password(request):
         )
     else:
         return JsonResponse(
-            {**get_response_code("FILE_UPLOAD_ERROR"), "error": serializer.errors},
+            {**get_response_code("PASSWORD_CHANGE_ERROR"), "error": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    serializer = ForgotPasswordSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data["email"]
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse(
+                get_response_code("USER_NOT_FOUND"),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ensure UserData exists for the user
+        user_data, created = UserData.objects.get_or_create(user=user)
+
+        # Generate a random password reset token
+        reset_token = get_random_string(length=64)
+
+        # Save the token to the PasswordResetToken model
+        PasswordResetToken.objects.update_or_create(
+            user_data=user_data, defaults={"reset_token": reset_token}
+        )
+
+        # Send email with the reset token
+        reset_url = f"{settings.HOST_URL}/reset_password/{reset_token}/"
+        send_mail(
+            "Password Reset Request",
+            f"Please use the following link to reset your password: {reset_url}",
+            "no-reply@example.com",
+            [email],
+            fail_silently=False,
+        )
+
+        return JsonResponse(
+            get_response_code("SUCCESS"),
+            status=status.HTTP_200_OK,
+        )
+    else:
+        return JsonResponse(
+            {**get_response_code("FORGOT_PASSWORD_ERROR"), "error": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reset_password(request, token):
+    try:
+        reset_token = PasswordResetToken.objects.get(reset_token=token)
+    except PasswordResetToken.DoesNotExist:
+        return JsonResponse(
+            get_response_code("RESET_TOKEN_NOT_FOUND"),
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    new_password = request.data.get("new_password")
+    if not new_password:
+        return JsonResponse(
+            {**get_response_code("NEW_PASSWORD_REQUIRED"), "error": "New password is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user = reset_token.user
+    user.password = make_password(new_password)
+    user.save()
+
+    # Delete the used token
+    reset_token.delete()
+
+    return JsonResponse(
+        get_response_code("PASSWORD_CHANGE_SUCCESS"),
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def change_email(request):
+    serializer = ChangeEmailSerializer(data=request.data)
+    if serializer.is_valid():
+        user = request.user
+        new_email = serializer.validated_data["new_email"]
+        if User.objects.filter(email=new_email).exists():
+            return JsonResponse(
+                get_response_code("EMAIL_ALREADY_IN_USE"),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.email = new_email
+        user.save()
+        return JsonResponse(
+            get_response_code("EMAIL_CHANGE_SUCCESS"),
+            status=status.HTTP_200_OK,
+        )
+    else:
+        return JsonResponse(
+            {**get_response_code("EMAIL_CHANGE_ERROR"), "error": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -246,7 +352,7 @@ def refresh_token(request):
         )
     except Exception as e:
         return JsonResponse(
-            {**get_response_code("FILE_UPLOAD_ERROR"), "error": str(e)},
+            {**get_response_code("GENERAL_ERROR"), "error": str(e)},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

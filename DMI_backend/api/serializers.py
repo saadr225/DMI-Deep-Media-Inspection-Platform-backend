@@ -43,38 +43,49 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("The 'is_email' flag is required.")
 
         if is_email and not email:
-            raise serializers.ValidationError(
-                "Email is required when is_email is True."
-            )
+            raise serializers.ValidationError("Email is required when is_email is True.")
         if not is_email and not username:
-            raise serializers.ValidationError(
-                "Username is required when is_email is False."
-            )
+            raise serializers.ValidationError("Username is required when is_email is False.")
         if not password:
             raise serializers.ValidationError("Password is required.")
 
         return data
 
+
+class ChangeEmailSerializer(serializers.Serializer):
+    new_email = serializers.EmailField(required=True)
+
+    def validate_new_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already in use.")
+        return value
+
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email does not exist.")
+        return value
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True, required=True)
     new_password = serializers.CharField(
-        write_only=True, required=True, validators=[validate_password]
-    )
+        write_only=True, required=True
+    )  # , validators=[validate_password]
     new_password_repeat = serializers.CharField(write_only=True, required=True)
 
     def validate(self, attrs):
         if attrs["new_password"] != attrs["new_password_repeat"]:
-            raise serializers.ValidationError(
-                {"new_password": "New password fields didn't match."}
-            )
+            raise serializers.ValidationError({"new_password": "New password fields didn't match."})
         return attrs
 
     def validate_old_password(self, value):
         user = self.context["request"].user
         if not user.check_password(value):
-            raise serializers.ValidationError(
-                {"old_password": "Old password is not correct"}
-            )
+            raise serializers.ValidationError({"old_password": "Old password is not correct"})
         return value
 
     def update(self, instance, validated_data):
