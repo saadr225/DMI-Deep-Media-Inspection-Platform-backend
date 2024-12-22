@@ -442,6 +442,28 @@ def process_deepfake_media(request):
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_user_info(request):
+    user = request.user
+    user_data = UserData.objects.get(user=user)
+    user_response = UserSerializer(user).data
+    user_data_response = {
+        "user": user_response,
+        "user_data": {
+            "is_verified": user_data.is_verified,
+        },
+    }
+
+    return JsonResponse(
+        {
+            **get_response_code("SUCCESS"),
+            "data": user_data_response,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
 @permission_classes([AllowAny])
 def get_response_codes(request):
     return JsonResponse(RESPONSE_CODES, status=status.HTTP_200_OK)
