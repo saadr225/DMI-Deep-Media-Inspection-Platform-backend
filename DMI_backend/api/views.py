@@ -253,11 +253,13 @@ def forgot_password(request):
         )
 
         # Send email with the reset token
-        reset_url = f"{settings.HOST_URL}/reset_password/{reset_token}/"
+        reset_url = f"http://{settings.FRONTEND_HOST_URL}/reset_password/{reset_token}/"
+
+        # reset_url = f"{settings.HOST_URL}/api/user/reset_password/{reset_token}/"
         send_mail(
-            "Password Reset Request",
+            f"Password Reset Request for {user.username}",
             f"Please use the following link to reset your password: {reset_url}",
-            settings.EMAIL_HOST_USER,
+            settings.DEFAULT_FROM_EMAIL,
             [email],
             fail_silently=False,
         )
@@ -299,7 +301,9 @@ def reset_password(request, token):
     reset_token.delete()
 
     return JsonResponse(
-        get_response_code("PASSWORD_CHANGE_SUCCESS"),
+        {
+            **get_response_code("PASSWORD_CHANGE_SUCCESS"),
+        },
         status=status.HTTP_200_OK,
     )
 

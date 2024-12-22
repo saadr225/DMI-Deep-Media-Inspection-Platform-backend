@@ -15,6 +15,7 @@ torchvision = "*"
 torchaudio = "*"
 djangorestframework-simplejwt = "*"
 django-cors-headers = "*"
+django-anymail = "*"
 
 [dev-packages]
 
