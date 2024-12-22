@@ -33,7 +33,7 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 HOST_URL = "http://localhost:8000"
-FRONTEND_HOST_URL = "http://localhost:3030"
+FRONTEND_HOST_URL = "http://localhost:3000"
 # Application definition
 
 INSTALLED_APPS = [
