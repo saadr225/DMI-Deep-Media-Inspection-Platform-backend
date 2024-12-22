@@ -293,7 +293,8 @@ def reset_password(request, token):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    user = reset_token.user
+    user_data = reset_token.user_data
+    user = user_data.user
     user.password = make_password(new_password)
     user.save()
 
