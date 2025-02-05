@@ -6,9 +6,9 @@ from app.models import UserData
 
 class MediaUpload(models.Model):
     user = models.ForeignKey(UserData, on_delete=models.CASCADE)
-    file = models.FileField(
-        upload_to=f"{settings.MEDIA_ROOT}/submissions/", max_length=512
-    )
+    # file = models.FileField(upload_to=f"{settings.MEDIA_ROOT}/submissions", max_length=512)
+    file = models.FileField(upload_to=f"submissions/", max_length=512)
+
     file_type = models.CharField(max_length=32, default="Video")
     upload_date = models.DateTimeField(auto_now_add=True)
     # description = models.TextField(blank=True)
