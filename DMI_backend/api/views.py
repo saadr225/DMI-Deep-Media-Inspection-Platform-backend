@@ -21,7 +21,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from DMI_backend.app.contollers.AIGeneratedMediaDetectionController import AIGeneratedMediaDetection
+from app.contollers.AIGeneratedMediaDetectionController import AIGeneratedMediaDetection
 from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
 from app.models import PasswordResetToken, UserData
 from .models import AIGeneratedMediaResult, DeepfakeDetectionResult, MediaUpload
