@@ -1,0 +1,6 @@
+# Use git lfs for models and large files
+acc98.30_test-2.1_AI_image_detector_resnext101_32x8d.pth filter=lfs diff=lfs merge=lfs -text
+acc99.53_test-2.1_CROPS_deepfake_detector_resnext50.pth filter=lfs diff=lfs merge=lfs -text
+acc99.76_test-2.1_FRAMES_deepfake_detector_resnext50.pth filter=lfs diff=lfs merge=lfs -text
+yolov8n.pt filter=lfs diff=lfs merge=lfs -text
+DMI_backend/ML_Models/*.pth filter=lfs diff=lfs merge=lfs -text
