@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    process_ai_generated_media,
     signup,
     login,
     logout,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("auth/refresh_token/", refresh_token, name="refresh_token"),
     # media processing endpoints
     path("process/df/", process_deepfake_media, name="process_deepfake"),
+    path("process/ai/", process_ai_generated_media, name="process_ai_generated_media"),
     # response codes endpoint
     path("docs/response_codes/", get_response_codes, name="get_response_codes"),
 ]

@@ -17,6 +17,7 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from django.conf import settings
+from typing import List, Optional, Dict, Tuple, Union
 
 
 class MediaProcessor:
@@ -26,11 +27,11 @@ class MediaProcessor:
 
     def __init__(
         self,
-        model_path=f"{settings.ML_MODELS_DIR}/yolov8n.pt",
-        threshold=0.5,
-        log_level=0,
-        FRAMES_FILE_FORMAT="jpg",
-    ):
+        model_path: str = f"{settings.ML_MODELS_DIR}/yolov8n.pt",
+        threshold: float = 0.5,
+        log_level: int = 0,
+        FRAMES_FILE_FORMAT: str = "jpg",
+    ) -> None:
         """
         Initialize the FaceDetector.
 
@@ -50,7 +51,9 @@ class MediaProcessor:
             "\nWarning: naming scheme: \nImage: {file_content_hash}_{file_name_hash}_{frame_index=0}_{crop_index}.{extension}\nVideo: {file_content_hash}_{file_name_hash}_{frame_index}_{crop_index}.{extension}\n"
         )
 
-    def detect_face(self, frame):
+    def detect_face(
+        self, frame: np.ndarray
+    ) -> Tuple[Optional[Dict[int, Dict[str, Union[Tuple[int, int], float]]]], bool]:
         """
         Detect faces in a given frame.
 
@@ -76,9 +79,7 @@ class MediaProcessor:
             face_detected = False
 
             # Filter and save boxes for persons (class ID 0)
-            for index, (box, score, object_class) in enumerate(
-                zip(boxes, scores, classes)
-            ):
+            for index, (box, score, object_class) in enumerate(zip(boxes, scores, classes)):
                 if object_class == 0 and score > self.threshold:
                     x1, y1, x2, y2 = map(int, box)
                     detected_faces[index] = {
@@ -99,8 +100,14 @@ class MediaProcessor:
             return None, False
 
     def generate_crops(
-        self, frame, output_dir, frame_index, detected_faces, frame_id, show_crops=False
-    ):
+        self,
+        frame: np.ndarray,
+        output_dir: str,
+        frame_index: int,
+        detected_faces: Dict[int, Dict[str, Union[Tuple[int, int], float]]],
+        frame_id: str,
+        show_crops: bool = False,
+    ) -> None:
         """
         Generate and save face crops from a frame.
 
@@ -117,18 +124,12 @@ class MediaProcessor:
             bottom_right = face_data["bottom_right"]
 
             # Crop the face from the frame
-            face_crop = frame[
-                top_left[1] : bottom_right[1], top_left[0] : bottom_right[0]
-            ]
+            face_crop = frame[top_left[1] : bottom_right[1], top_left[0] : bottom_right[0]]
 
             if show_crops:
                 # Resize and display the face crop (for debugging)
-                face_crop_resized = cv2.resize(
-                    face_crop, (224, 224), interpolation=cv2.INTER_CUBIC
-                )
-                cv2.imshow(
-                    f"Face {face_idx} from Frame {frame_index}", face_crop_resized
-                )
+                face_crop_resized = cv2.resize(face_crop, (224, 224), interpolation=cv2.INTER_CUBIC)
+                cv2.imshow(f"Face {face_idx} from Frame {frame_index}", face_crop_resized)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
@@ -143,12 +144,12 @@ class MediaProcessor:
                 if self.log_level >= 2:
                     print(f"Skipping crop {output_face_path}: already exists")
                 continue
-            if self.log_level>=2:
+            if self.log_level >= 2:
                 print("Crop saved at: ", output_face_path)
             # Save the face crop
             cv2.imwrite(output_face_path, face_crop)
 
-    def check_media_type(self, file_path):
+    def check_media_type(self, file_path: str) -> str:
         """
         Check the type of media file.
 
@@ -183,7 +184,9 @@ class MediaProcessor:
         else:
             return "Not a supported image or video format"
 
-    def process_image(self, image_path, output_dir, frame_id, generate_crops_flag):
+    def process_image(
+        self, image_path: str, output_dir: str, frame_id: str, generate_crops_flag: bool
+    ) -> None:
         """
         Process a single image and extract face crops.
 
@@ -226,8 +229,13 @@ class MediaProcessor:
             print(f"Error processing image {image_path}: {e}")
 
     def process_video(
-        self, video_path, output_dir, frame_id, frame_rate, generate_crops_flag
-    ):
+        self,
+        video_path: str,
+        output_dir: str,
+        frame_id: str,
+        frame_rate: int,
+        generate_crops_flag: bool,
+    ) -> None:
         """
         Process a video and extract face crops from frames.
 
@@ -271,9 +279,7 @@ class MediaProcessor:
                             # Check if the frame already exists
                             if os.path.exists(output_face_path):
                                 if self.log_level >= 1:
-                                    print(
-                                        f"Skipping frame {output_face_path}: already exists"
-                                    )
+                                    print(f"Skipping frame {output_face_path}: already exists")
                             else:
                                 # Save the frame
                                 cv2.imwrite(output_face_path, frame)
@@ -290,7 +296,7 @@ class MediaProcessor:
                 f"Frames with detected faces saved: {saved_frame_count}/{frame_count} from {video_path}"
             )
 
-    def generate_6_digit_hash(self, input_string):
+    def generate_6_digit_hash(self, input_string: str) -> str:
         # Create a hash object
         hash_object = hashlib.sha256(input_string.encode())
         # Get the hexadecimal digest of the hash
@@ -301,23 +307,23 @@ class MediaProcessor:
         hash_6_digit = str(hash_int).zfill(6)
         return hash_6_digit
 
-    def hash_file_content(self, file_path):
+    def hash_file_content(self, file_path: str) -> str:
         with open(file_path, "rb") as f:
             file_content = f.read()
         return self.generate_6_digit_hash(file_content.decode("latin1"))
 
-    def hash_file_name(self, file_path):
+    def hash_file_name(self, file_path: str) -> str:
         file_name = os.path.basename(file_path)
         return self.generate_6_digit_hash(file_name)
 
-    def generate_combined_hash(self, file_path):
+    def generate_combined_hash(self, file_path: str) -> str:
         file_content_hash = self.hash_file_content(file_path)
         file_name_hash = self.hash_file_name(file_path)
         return f"{file_content_hash}_{file_name_hash}"
 
     def process_media_file(
-        self, media_path, output_dir, generate_crops_flag, frame_rate=2
-    ):
+        self, media_path: str, output_dir: str, generate_crops_flag: bool, frame_rate: int = 2
+    ) -> None:
         """
         Process a media file (image or video) and extract face crops.
 
@@ -351,14 +357,14 @@ class MediaProcessor:
 class DeepfakeDetectionPipeline:
     def __init__(
         self,
-        frame_model_path,
-        crop_model_path,
-        frames_dir,
-        crops_dir,
-        threshold=0.4,
-        log_level=0,
-        FRAMES_FILE_FORMAT="jpg",
-    ):
+        frame_model_path: str,
+        crop_model_path: str,
+        frames_dir: str,
+        crops_dir: str,
+        threshold: float = 0.4,
+        log_level: int = 0,
+        FRAMES_FILE_FORMAT: str = "jpg",
+    ) -> None:
         """
         Initialize the pipeline with both frame and crop models.
 
@@ -382,9 +388,7 @@ class DeepfakeDetectionPipeline:
             [
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]
         )
 
@@ -401,7 +405,7 @@ class DeepfakeDetectionPipeline:
             FRAMES_FILE_FORMAT=self.FRAMES_FILE_FORMAT,
         )
 
-    def get_crops_for_frame(self, file_id, frame_index, crops_dir):
+    def get_crops_for_frame(self, file_id: str, frame_index: int, crops_dir: str) -> List[str]:
         """
         Get all crops belonging to a specific frame using the naming scheme.
 
@@ -423,7 +427,7 @@ class DeepfakeDetectionPipeline:
 
         return natsorted(relevant_crops)  # Sort to ensure consistent ordering
 
-    def load_image_preprocessed(self, image_path, show_image=False):
+    def load_image_preprocessed(self, image_path: str, show_image: bool = False) -> torch.Tensor:
         if show_image:
             cv_img = cv2.imread(image_path)
 
@@ -440,9 +444,7 @@ class DeepfakeDetectionPipeline:
         #  Define the transformations (should be the same as used in training)
         transform = transforms.Compose(
             [
-                transforms.Resize(
-                    (224, 224)
-                ),  # Resize the image to the input size of the model
+                transforms.Resize((224, 224)),  # Resize the image to the input size of the model
                 transforms.ToTensor(),  # Convert image to tensor
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -461,7 +463,7 @@ class DeepfakeDetectionPipeline:
 
         return image
 
-    def process_frame(self, image_path, type="frame"):
+    def process_frame(self, image_path: str, type: str = "frame") -> Tuple[str, float, Optional[str]]:
         """
         Process a single frame through frame-level model with integrated GradCAM for frames only.
 
@@ -540,7 +542,9 @@ class DeepfakeDetectionPipeline:
             gradcam_path if type == "frame" else None,
         )
 
-    def analyze_frame_with_crops(self, image_path, frame_id):
+    def analyze_frame_with_crops(
+        self, image_path: str, frame_id: str
+    ) -> Dict[str, Union[str, List[Dict[str, Union[int, str, float]]], Optional[str]]]:
         """
         Analyze a frame both at frame-level and crop-level.
 
@@ -563,9 +567,7 @@ class DeepfakeDetectionPipeline:
         }
 
         # Frame-level analysis with GradCAM
-        frame_pred, frame_conf, gradcam_path = self.process_frame(
-            image_path, type="frame"
-        )
+        frame_pred, frame_conf, gradcam_path = self.process_frame(image_path, type="frame")
         results["frame_analysis"] = {"prediction": frame_pred, "confidence": frame_conf}
         results["gradcam_path"] = self.convert_to_public_url(gradcam_path)
 
@@ -605,13 +607,11 @@ class DeepfakeDetectionPipeline:
             results["final_verdict"] = frame_pred
 
         # Perform ELA analysis
-        results["ela_path"] = self.convert_to_public_url(
-            self.perform_ela_analysis(image_path)
-        )
+        results["ela_path"] = self.convert_to_public_url(self.perform_ela_analysis(image_path))
 
         return results
 
-    def convert_to_public_url(self, file_path):
+    def convert_to_public_url(self, file_path: str) -> str:
         """
         Convert a file path to a public URL.
 
@@ -624,7 +624,7 @@ class DeepfakeDetectionPipeline:
         relative_path = os.path.relpath(file_path, settings.MEDIA_ROOT)
         return f"{settings.HOST_URL}{settings.MEDIA_URL}{relative_path.replace(os.sep, '/')}"
 
-    def perform_ela_analysis(self, image_path):
+    def perform_ela_analysis(self, image_path: str) -> str:
         """
         Perform Error Level Analysis (ELA) on the image.
 
@@ -646,9 +646,7 @@ class DeepfakeDetectionPipeline:
 
         # Open image using PIL
         original_image = Image.open(image_path)
-        temp_compressed = os.path.join(
-            os.path.dirname(image_path), "temp_compressed.jpg"
-        )
+        temp_compressed = os.path.join(os.path.dirname(image_path), "temp_compressed.jpg")
 
         # Save compressed version
         quality = 95
@@ -660,9 +658,7 @@ class DeepfakeDetectionPipeline:
         ela_image = ImageChops.difference(original_image, compressed_image)
 
         # Apply noise boost and scaling
-        ela_scaled = ela_image.point(
-            lambda x: np.sign(x) * (np.abs(x) ** 1.5 * scale_multiplier)
-        )
+        ela_scaled = ela_image.point(lambda x: np.sign(x) * (np.abs(x) ** 1.5 * scale_multiplier))
 
         # Save ELA image
         ela_scaled.save(ela_image_path)
@@ -673,7 +669,14 @@ class DeepfakeDetectionPipeline:
 
         return ela_image_path
 
-    def process_media(self, media_path, frame_rate=2):
+    def process_media(self, media_path: str, frame_rate: int = 2) -> Dict[
+        str,
+        Union[
+            str,
+            List[Dict[str, Union[str, List[Dict[str, Union[int, str, float]]], Optional[str]]]],
+            Dict[str, Union[int, float, bool]],
+        ],
+    ]:
         """
         Process a media file (image or video) through the pipeline.
 
@@ -710,9 +713,7 @@ class DeepfakeDetectionPipeline:
         }
 
         if media_type == "Image":
-            media_path = os.path.join(
-                self.frames_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}"
-            )
+            media_path = os.path.join(self.frames_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}")
             frame_results = self.analyze_frame_with_crops(media_path, f"{file_id}_0")
             results["media_path"] = self.convert_to_public_url(media_path)
             results["frame_results"].append(frame_results)
@@ -725,9 +726,7 @@ class DeepfakeDetectionPipeline:
             ]
             frames = natsorted(frames)
             for frame_index, frame_path in enumerate(frames):
-                frame_results = self.analyze_frame_with_crops(
-                    frame_path, f"{file_id}_{frame_index}"
-                )
+                frame_results = self.analyze_frame_with_crops(frame_path, f"{file_id}_{frame_index}")
                 results["frame_results"].append(frame_results)
 
         # Calculate overall statistics
@@ -735,7 +734,12 @@ class DeepfakeDetectionPipeline:
 
         return results
 
-    def _calculate_statistics(self, frame_results):
+    def _calculate_statistics(
+        self,
+        frame_results: List[
+            Dict[str, Union[str, List[Dict[str, Union[int, str, float]]], Optional[str]]]
+        ],
+    ) -> Dict[str, Union[int, float, bool]]:
         """Calculate overall statistics from frame results."""
         total_frames = len(frame_results)
         if total_frames == 0:
@@ -758,8 +762,7 @@ class DeepfakeDetectionPipeline:
 
         total_crops = sum(len(f["crop_analyses"]) for f in frame_results)
         fake_crops = sum(
-            sum(1 for crop in f["crop_analyses"] if crop["prediction"] == "fake")
-            for f in frame_results
+            sum(1 for crop in f["crop_analyses"] if crop["prediction"] == "fake") for f in frame_results
         )
 
         is_deepfake = fake_frames > real_frames
@@ -772,9 +775,7 @@ class DeepfakeDetectionPipeline:
             "fake_frames_percentage": (fake_frames / total_frames * 100),
             "total_crops": total_crops,
             "fake_crops": fake_crops,
-            "fake_crops_percentage": (
-                (fake_crops / total_crops * 100) if total_crops > 0 else 0
-            ),
+            "fake_crops_percentage": ((fake_crops / total_crops * 100) if total_crops > 0 else 0),
         }
 
     # def _save_results(self, results, output_dir):

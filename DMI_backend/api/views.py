@@ -21,9 +21,10 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
+from DMI_backend.app.contollers.AIGeneratedMediaDetectionController import AIGeneratedMediaDetection
 from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
 from app.models import PasswordResetToken, UserData
-from .models import DeepfakeDetectionResult, MediaUpload
+from .models import AIGeneratedMediaResult, DeepfakeDetectionResult, MediaUpload
 from .response_codes import RESPONSE_CODES, get_response_code
 from .serializers import (
     ChangeEmailSerializer,
@@ -35,7 +36,8 @@ from .serializers import (
 )
 
 # Initialize DeepfakeDetectionPipeline
-pipeline = DeepfakeDetectionPipeline(
+print("Initializing DeepfakeDetectionPipeline...")
+deepfake_detection_pipeline = DeepfakeDetectionPipeline(
     frame_model_path=f"{settings.ML_MODELS_DIR}/acc99.76_test-2.1_FRAMES_deepfake_detector_resnext50.pth",
     crop_model_path=f"{settings.ML_MODELS_DIR}/acc99.53_test-2.1_CROPS_deepfake_detector_resnext50.pth",
     frames_dir=f"{settings.MEDIA_ROOT}/temp/temp_frames/",
@@ -44,6 +46,18 @@ pipeline = DeepfakeDetectionPipeline(
     log_level=0,
     FRAMES_FILE_FORMAT="png",
 )
+print("DeepfakeDetectionPipeline initialized")
+
+# Initialize AIGeneratedMediaDetection
+print("Initializing AIGeneratedMediaDetection...")
+ai_generated_media_detection_pipeline = AIGeneratedMediaDetection(
+    model_path=f"{settings.ML_MODELS_DIR}/acc98.30_test-2.1_AI_image_detector_resnext101_32x8d.pth",
+    synthetic_media_dir=f"{settings.MEDIA_ROOT}/temp/temp_synthetic_media/",
+    threshold=0.5,
+    log_level=0,
+    FRAMES_FILE_FORMAT="png",
+)
+print("AIGeneratedMediaDetection initialized")
 
 
 @api_view(["POST"])
@@ -394,11 +408,11 @@ def process_deepfake_media(request):
             media_upload = MediaUpload.objects.create(
                 user=UserData.objects.get(user=user),
                 file=file_path,
-                file_type=pipeline.media_processor.check_media_type(file_path),
+                file_type=deepfake_detection_pipeline.media_processor.check_media_type(file_path),
             )
 
             # Process media
-            results = pipeline.process_media(
+            results = deepfake_detection_pipeline.process_media(
                 media_path=file_path,
                 frame_rate=2,
             )
@@ -419,6 +433,83 @@ def process_deepfake_media(request):
                 "frames_analyzed": deepfake_result.frames_analyzed,
                 "fake_frames": deepfake_result.fake_frames,
                 "analysis_report": deepfake_result.analysis_report,
+            }
+
+            return JsonResponse(
+                {**get_response_code("SUCCESS"), "data": result_data},
+                status=status.HTTP_200_OK,
+            )
+
+        except TokenError as e:
+            return JsonResponse(
+                get_response_code("TOKEN_INVALID_OR_EXPIRED"),
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except Exception as e:
+            return JsonResponse(
+                {**get_response_code("MEDIA_PROCESSING_ERROR"), "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+    else:
+        return JsonResponse(
+            {
+                **get_response_code("FILE_UPLOAD_ERROR"),
+                "error": file_upload_serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser, FileUploadParser])
+def process_ai_generated_media(request):
+    file_upload_serializer = FileUploadSerializer(data=request.data)
+
+    if file_upload_serializer.is_valid():
+        try:
+            validated_data = file_upload_serializer.validated_data
+            media_file = validated_data["file"]
+            user = request.user
+
+            # Save file
+            fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/submissions/")
+            filename = fs.save(
+                f"uid{user.id}-{time.strftime('%Y-%m-%d_%H-%M-%S')}-{int(time.time() * 1000) % 1000}-{media_file.name}",
+                media_file,
+            )
+            file_path = os.path.join(f"{settings.MEDIA_ROOT}/submissions/", filename)
+
+            media_upload = MediaUpload.objects.create(
+                user=UserData.objects.get(user=user),
+                file=file_path,
+                file_type="image",  # AI generated media only supports images
+            )
+
+            # Process media
+            results = ai_generated_media_detection_pipeline.process_image(file_path)
+
+            is_generated = results["prediction"] == "fake"
+
+            ai_generated_result = AIGeneratedMediaResult.objects.create(
+                media_upload=media_upload,
+                is_generated=is_generated,
+                confidence_score=results["confidence"],
+                analysis_report={
+                    "file_id": results["file_id"],
+                    "image_path": results["image_path"],
+                    "gradcam_path": results["gradcam_path"],
+                    "prediction": results["prediction"],
+                    "confidence": results["confidence"],
+                },
+            )
+
+            result_data = {
+                "id": ai_generated_result.id,
+                "media_upload": ai_generated_result.media_upload.id,
+                "is_generated": ai_generated_result.is_generated,
+                "confidence_score": ai_generated_result.confidence_score,
+                "analysis_report": ai_generated_result.analysis_report,
             }
 
             return JsonResponse(

@@ -30,6 +30,14 @@ class DeepfakeDetectionResult(models.Model):
         return f"{self.media.file.name} - {self.analysis_date}"
 
 
+class AIGeneratedMediaResult(models.Model):
+    media_upload = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
+    is_generated = models.BooleanField()
+    confidence_score = models.FloatField()
+    analysis_report = models.JSONField()
+    analysis_date = models.DateTimeField(auto_now_add=True)
+
+
 # class CommunityFeedback(models.Model):
 #     media = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
 #     user = models.ForeignKey(User, on_delete=models.CASCADE)
