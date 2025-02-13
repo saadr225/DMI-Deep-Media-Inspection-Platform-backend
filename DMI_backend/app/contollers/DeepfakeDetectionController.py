@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as tnf
 import torchvision.models as models
 import torchvision.transforms as transforms
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageEnhance
 import os, shutil
 import matplotlib.pyplot as plt
 import numpy as np
@@ -186,7 +186,7 @@ class MediaProcessor:
 
     def process_image(
         self, image_path: str, output_dir: str, frame_id: str, generate_crops_flag: bool
-    ) -> None:
+    ) -> bool:
         """
         Process a single image and extract face crops.
 
@@ -222,9 +222,14 @@ class MediaProcessor:
                     print("Frame saved at: ", output_face_path)
                     # Save the frame
                     cv2.imwrite(output_face_path, frame)
+
             else:
+                # ADD RETURN ERROR LOGIC HERE FOR NO FACE DETECTED
+
                 if self.log_level >= 1:
                     print(f"No face detected in image {image_path}")
+            return face_found
+
         except Exception as e:
             print(f"Error processing image {image_path}: {e}")
 
@@ -235,7 +240,7 @@ class MediaProcessor:
         frame_id: str,
         frame_rate: int,
         generate_crops_flag: bool,
-    ) -> None:
+    ) -> bool:
         """
         Process a video and extract face crops from frames.
 
@@ -250,7 +255,7 @@ class MediaProcessor:
         frame_interval = int(fps / frame_rate)
         frame_count = 0
         saved_frame_count = 0
-
+        frame_with_face_count = 0
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -259,6 +264,7 @@ class MediaProcessor:
                 try:
                     detected_faces, face_found = self.detect_face(frame)
                     if face_found:
+                        frame_with_face_count += 1
                         if self.log_level >= 2:
                             print(f"Face(s) detected in frame {frame_count}")
                         if generate_crops_flag:
@@ -287,6 +293,7 @@ class MediaProcessor:
                     else:
                         if self.log_level >= 2:
                             print(f"No face detected in frame {frame_count}")
+
                 except Exception as e:
                     print(f"Error processing frame {frame_count}: {e}")
             frame_count += 1
@@ -295,6 +302,7 @@ class MediaProcessor:
             print(
                 f"Frames with detected faces saved: {saved_frame_count}/{frame_count} from {video_path}"
             )
+        return frame_with_face_count > 0  # return True if face is detected in the video
 
     def generate_6_digit_hash(self, input_string: str) -> str:
         # Create a hash object
@@ -323,7 +331,7 @@ class MediaProcessor:
 
     def process_media_file(
         self, media_path: str, output_dir: str, generate_crops_flag: bool, frame_rate: int = 2
-    ) -> None:
+    ) -> bool:
         """
         Process a media file (image or video) and extract face crops.
 
@@ -336,20 +344,22 @@ class MediaProcessor:
         media_type = self.check_media_type(media_path)
 
         if media_type == "Image":
-            self.process_image(
+            face_found = self.process_image(
                 media_path,
                 output_dir,
                 frame_id=self.generate_combined_hash(media_path),
                 generate_crops_flag=generate_crops_flag,
             )
+            return face_found
         elif media_type == "Video":
-            self.process_video(
+            face_found = self.process_video(
                 media_path,
                 output_dir,
                 frame_id=self.generate_combined_hash(media_path),
                 frame_rate=frame_rate,
                 generate_crops_flag=generate_crops_flag,
             )
+            return face_found
         else:
             print(f"Unsupported media type: {media_type}")
 
@@ -624,6 +634,46 @@ class DeepfakeDetectionPipeline:
         relative_path = os.path.relpath(file_path, settings.MEDIA_ROOT)
         return f"{settings.HOST_URL}{settings.MEDIA_URL}{relative_path.replace(os.sep, '/')}"
 
+    # def perform_ela_analysis(self, image_path: str) -> str:
+    #     """
+    #     Perform Error Level Analysis (ELA) on the image using the new practical logic.
+
+    #     Args:
+    #         image_path (str): Path to the image file
+
+    #     Returns:
+    #         str: Path to the ELA image
+    #     """
+    #     ela_image_path = image_path.replace(
+    #         f".{self.FRAMES_FILE_FORMAT}", f"_ela.{self.FRAMES_FILE_FORMAT}"
+    #     )
+    #     quality = 90  # quality parameter for JPEG compression
+    #     temp_filename = os.path.join(os.path.dirname(image_path), "temp_file_name.jpg")
+
+    #     # Open the original image and convert to RGB
+    #     original_image = Image.open(image_path).convert("RGB")
+    #     # Save as JPEG with defined quality
+    #     original_image.save(temp_filename, "JPEG", quality=quality)
+    #     temp_image = Image.open(temp_filename)
+
+    #     # Calculate ELA: difference between original and compressed image
+    #     ela_image = ImageChops.difference(original_image, temp_image)
+    #     extrema = ela_image.getextrema()
+    #     max_diff = sum([ex[1] for ex in extrema]) / 3
+    #     if max_diff == 0:
+    #         max_diff = 1
+    #     scale = 255.0 / max_diff
+    #     ela_image = ImageEnhance.Brightness(ela_image).enhance(scale)
+
+    #     # Save the ELA image to the target path
+    #     ela_image.save(ela_image_path)
+
+    #     # Clean up the temporary file
+    #     if os.path.exists(temp_filename):
+    #         os.remove(temp_filename)
+
+    #     return ela_image_path
+
     def perform_ela_analysis(self, image_path: str) -> str:
         """
         Perform Error Level Analysis (ELA) on the image.
@@ -649,7 +699,7 @@ class DeepfakeDetectionPipeline:
         temp_compressed = os.path.join(os.path.dirname(image_path), "temp_compressed.jpg")
 
         # Save compressed version
-        quality = 95
+        quality = 90
         scale_multiplier = 50
         original_image.save(temp_compressed, "JPEG", quality=quality)
         compressed_image = Image.open(temp_compressed)
@@ -669,14 +719,17 @@ class DeepfakeDetectionPipeline:
 
         return ela_image_path
 
-    def process_media(self, media_path: str, frame_rate: int = 2) -> Dict[
-        str,
-        Union[
+    def process_media(self, media_path: str, frame_rate: int = 2) -> (
+        Dict[
             str,
-            List[Dict[str, Union[str, List[Dict[str, Union[int, str, float]]], Optional[str]]]],
-            Dict[str, Union[int, float, bool]],
-        ],
-    ]:
+            Union[
+                str,
+                List[Dict[str, Union[str, List[Dict[str, Union[int, str, float]]], Optional[str]]]],
+                Dict[str, Union[int, float, bool]],
+            ],
+        ]
+        | bool
+    ):
         """
         Process a media file (image or video) through the pipeline.
 
@@ -692,47 +745,53 @@ class DeepfakeDetectionPipeline:
         # Generate file identifier using MediaProcessor's hash functions
         file_id = self.media_processor.generate_combined_hash(media_path)
 
+        face_found = False
+
         # Process media file for frames using MediaProcessor
-        self.media_processor.process_media_file(
+        face_found = self.media_processor.process_media_file(
             media_path,
             self.frames_dir,
             generate_crops_flag=False,
             frame_rate=frame_rate,
         )
+        if face_found:
+            # Process media file for crops using MediaProcessor
+            self.media_processor.process_media_file(
+                media_path, self.crops_dir, generate_crops_flag=True, frame_rate=frame_rate
+            )
 
-        # Process media file for crops using MediaProcessor
-        self.media_processor.process_media_file(
-            media_path, self.crops_dir, generate_crops_flag=True, frame_rate=frame_rate
-        )
+            results = {
+                "media_path": self.convert_to_public_url(media_path),
+                "media_type": media_type,
+                "file_id": file_id,
+                "frame_results": [],
+            }
 
-        results = {
-            "media_path": self.convert_to_public_url(media_path),
-            "media_type": media_type,
-            "file_id": file_id,
-            "frame_results": [],
-        }
-
-        if media_type == "Image":
-            media_path = os.path.join(self.frames_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}")
-            frame_results = self.analyze_frame_with_crops(media_path, f"{file_id}_0")
-            results["media_path"] = self.convert_to_public_url(media_path)
-            results["frame_results"].append(frame_results)
-
-        elif media_type == "Video":
-            frames = [
-                os.path.join(self.frames_dir, f)
-                for f in os.listdir(self.frames_dir)
-                if (f.startswith(file_id) and ("ela" not in f and "gradcam" not in f))
-            ]
-            frames = natsorted(frames)
-            for frame_index, frame_path in enumerate(frames):
-                frame_results = self.analyze_frame_with_crops(frame_path, f"{file_id}_{frame_index}")
+            if media_type == "Image":
+                media_path = os.path.join(self.frames_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}")
+                frame_results = self.analyze_frame_with_crops(media_path, f"{file_id}_0")
+                results["media_path"] = self.convert_to_public_url(media_path)
                 results["frame_results"].append(frame_results)
 
-        # Calculate overall statistics
-        results["statistics"] = self._calculate_statistics(results["frame_results"])
+            elif media_type == "Video":
+                frames = [
+                    os.path.join(self.frames_dir, f)
+                    for f in os.listdir(self.frames_dir)
+                    if (f.startswith(file_id) and ("ela" not in f and "gradcam" not in f))
+                ]
+                frames = natsorted(frames)
+                for frame_index, frame_path in enumerate(frames):
+                    frame_results = self.analyze_frame_with_crops(
+                        frame_path, f"{file_id}_{frame_index}"
+                    )
+                    results["frame_results"].append(frame_results)
 
-        return results
+            # Calculate overall statistics
+            results["statistics"] = self._calculate_statistics(results["frame_results"])
+
+            return results
+        else:
+            return False
 
     def _calculate_statistics(
         self,

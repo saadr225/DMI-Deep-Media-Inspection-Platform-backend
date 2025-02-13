@@ -28,6 +28,8 @@ RESPONSE_CODES = {
     "GENERAL_ERROR": {"code": "E19", "message": "An error occurred."},
     "PASSWORDS_DONT_MATCH": {"code": "E20", "message": "Passwords do not match."},
     "USER_DATA_NOT_FOUND": {"code": "E21", "message": "User data not found."},
+    # User submission errors
+    "MEDIA_CONTAINS_NO_FACES": {"code": "USE01", "message": "Media file contains no faces."},
 }
 
 

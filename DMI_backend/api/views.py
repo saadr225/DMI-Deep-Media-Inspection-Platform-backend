@@ -416,14 +416,26 @@ def process_deepfake_media(request):
                 media_path=file_path,
                 frame_rate=2,
             )
-            deepfake_result = DeepfakeDetectionResult.objects.create(
-                media_upload=media_upload,
-                is_deepfake=results["statistics"]["is_deepfake"],
-                confidence_score=results["statistics"]["confidence"],
-                frames_analyzed=results["statistics"]["total_frames"],
-                fake_frames=results["statistics"]["fake_frames"],
-                analysis_report=results,
-            )
+            if results is not False:
+                deepfake_result = DeepfakeDetectionResult.objects.create(
+                    media_upload=media_upload,
+                    is_deepfake=results["statistics"]["is_deepfake"],
+                    confidence_score=results["statistics"]["confidence"],
+                    frames_analyzed=results["statistics"]["total_frames"],
+                    fake_frames=results["statistics"]["fake_frames"],
+                    analysis_report=results,
+                )
+                satus_code = "SUCCESS"
+            else:
+                deepfake_result = DeepfakeDetectionResult.objects.create(
+                    media_upload=media_upload,
+                    is_deepfake=False,
+                    confidence_score=0.0,
+                    frames_analyzed=0,
+                    fake_frames=0,
+                    analysis_report={"final_verdict": "Media contains no person."},
+                )
+                satus_code = "MEDIA_CONTAINS_NO_FACES"
 
             result_data = {
                 "id": deepfake_result.id,
@@ -436,7 +448,7 @@ def process_deepfake_media(request):
             }
 
             return JsonResponse(
-                {**get_response_code("SUCCESS"), "data": result_data},
+                {**get_response_code(satus_code), "data": result_data},
                 status=status.HTTP_200_OK,
             )
 
