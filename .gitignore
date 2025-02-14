@@ -95,3 +95,4 @@ DMI_backend/media/temp/temp_frames/*
 DMI_backend/media/temp/temp_synthetic_media/*
 DMI_backend/media/submissions/*
 
+test.py
