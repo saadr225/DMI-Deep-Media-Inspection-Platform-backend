@@ -12,7 +12,7 @@ from pytorch_grad_cam.utils.image import show_cam_on_image
 from django.conf import settings
 
 
-class AIGeneratedMediaDetection:
+class AIGeneratedMediaDetectionPipeline:
     """
     Simplified AI detection for single images with GradCAM heatmap.
     """
@@ -113,7 +113,7 @@ class AIGeneratedMediaDetection:
         prediction, conf, gradcam_path = self.process_frame(output_file)
         return {
             "file_id": file_id,
-            "image_path": self.convert_to_public_url(output_file),
+            "media_path": self.convert_to_public_url(output_file),
             "prediction": prediction,
             "confidence": conf,
             "gradcam_path": self.convert_to_public_url(gradcam_path),

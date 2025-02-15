@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    get_user_submissions_history,
     process_ai_generated_media,
     signup,
     login,
@@ -12,6 +13,7 @@ from .views import (
     change_password,
     get_user_info,
     get_response_codes,
+    process_metadata,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -25,11 +27,13 @@ urlpatterns = [
     path("user/forgot_password/", forgot_password, name="forgot_password"),
     path("user/reset_password/<str:token>/", reset_password, name="reset_password"),
     path("user/info/", get_user_info, name="get_user_info"),
+    path("user/submissions/", get_user_submissions_history, name="get_user_submissions_history"),
     # token related endpoints
     path("auth/refresh_token/", refresh_token, name="refresh_token"),
     # media processing endpoints
     path("process/df/", process_deepfake_media, name="process_deepfake"),
     path("process/ai/", process_ai_generated_media, name="process_ai_generated_media"),
+    path("process/metadata/", process_metadata, name="process_metadata"),
     # response codes endpoint
     path("docs/response_codes/", get_response_codes, name="get_response_codes"),
 ]
