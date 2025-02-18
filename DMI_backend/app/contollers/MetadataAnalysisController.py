@@ -7,7 +7,7 @@ from django.conf import settings
 
 class MetadataAnalysisPipeline:
     def __init__(self) -> None:
-        self.excluded_keys = ["SourceFile", "ExifTool:ExifToolVersion"]
+        self.excluded_keys = ["SourceFile", "ExifTool:ExifToolVersion", "ExifTool:Warning"]
 
     def extract_metadata(self, file_path):
         """
