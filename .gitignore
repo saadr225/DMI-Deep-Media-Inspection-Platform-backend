@@ -97,3 +97,5 @@ DMI_backend/media/temp/temp_synthetic_media/*
 
 
 test.py
+
+DMI_backend/ML_Models/*
