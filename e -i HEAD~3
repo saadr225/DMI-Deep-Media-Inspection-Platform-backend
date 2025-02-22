@@ -1,0 +1,41 @@
+[33me9fb8a2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat: update .gitignore to exclude ML_Models directory
+[33m8fc21f7[m feat: add new deepfake detection models and remove outdated models
+[33m2466d82[m[33m ([m[1;31morigin/main[m[33m)[m feat: add media directory creation logic to controllers init to ensure required directories exist
+[33m34b66c4[m feat: refactor api views
+[33m48ea6f0[m feat: enhance user submissions history endpoint with categorized analysis and summary statistics
+[33mf0f35a4[m feat: implement metadata analysis pipeline and enhance media upload db model with original filename and identifier and more
+[33m0edf6f3[m chore: update .gitignore to exclude test.py file
+[33mb5432c0[m fix: add error handling for media without faces in deepfake processing
+[33m1caa7a7[m feat: add AIGeneratedMediaResult model and update media upload field
+[33m426c34c[m feat: add AI-generated media processing endpoint and model integration
+[33m4a01fcb[m feat: add support for large model files using Git LFS
+[33m3c59f02[m feat: add large AI model files and update dependencies;
+[33m99b1e2a[m Commit-0 from compute workstation, some changes mage for environment
+[33mc4b17c9[m fix: update frontend host URL to point to the correct port
+[33mfbf0397[m fix: update password reset logic to use user_data for retrieving user information while restting password
+[33m9920cd6[m feat: update password reset URL returned through email
+[33m36609aa[m feat: add user info retrieval endpoint, and enhance user serializer validation to check existing email and  username. in progress: email backend to use Anymail with Brevo,
+[33m27cc45c[m feat: update response codes for user-related errors, modify validation in serializers, and improve change password logic, modify error and error_codes handling and responses
+[33m28979b6[m feat: add password reset functionality with new models, serializers, and API endpoints, add SMTP configuration for sending emails
+[33m6266e6e[m feat: enhance response codes and update API endpoints for user management and media processing
+[33m7368d34[m feat: update API routes for user authentication and add response codes, implement change password functionality
+[33m62b8d3b[m feat: add CORS support with django-cors-headers, update login serializer to handle email and username authentication alowwing option to use any of them at a time
+[33mc1fc63b[m fix: update .gitignore to exclude all __pycache__ directories
+[33m7b3c032[m feat: use django User model for auth, add UserData model for user data association etc, update MediaUpload model to link with UserData, and enhance file type handling and log upload and analysis reports
+[33m0ef1c06[m feat: add HOST_URL setting and convert file paths to public URLs in deepfake detection pipeline, also implement new naming scheme for submitted files
+[33madd6b3f[m feat: update JWT settings, enhance token handling, and add refresh token endpoint
+[33mc896f83[m feat: add user authentication and media upload models, update API endpoints and settings for JWT authentication
+[33m55db600[m  update authentication and permission settings in Django REST framework, adjust media paths in views
+[33m20793ba[m adding deepfake media endpoint and updating settings for model paths
+[33m5503ad3[m feat: add deepfake detection models and update media processing functionality in API views
+[33mf4d3936[m feat: add deepfake detection models and update API endpoints functionality, add dependencies/packges
+[33m09a1955[m chore: update .gitignore to include additional files and directories for Python and Django
+[33m18e4e7e[m basic setup
+[33m43f985d[m refactor: restructure DMI_backend by removing old core services and adding new api and app modules
+[33md2610b5[m feat: integrate dotenv for environment variable management in settings
+[33m213039f[m chore: remove sensitive information from .env file
+[33ma25bd38[m fix: correct .env file formatting and update .gitignore for .env
+[33m854c4bf[m Delete .env
+[33me485b97[m update .env file and add it to .gitignore
+[33m35138d6[m add .gitignore
+[33m7a65ccc[m initial commit
