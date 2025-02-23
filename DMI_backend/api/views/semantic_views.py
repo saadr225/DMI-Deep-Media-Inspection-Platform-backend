@@ -1,4 +1,6 @@
 import os
+import shutil
+import sys
 import time
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -18,11 +20,52 @@ from app.contollers.HelpersController import URLHelper
 from api.models import UserData, MediaUpload, DeepfakeDetectionResult, AIGeneratedMediaResult
 from api.serializers import FileUploadSerializer
 
+
+# Add the project root directory to Python path
+project_root = os.path.abspath(os.path.join(os.getcwd(), ".."))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+# import the helper
+from Hugging_face_helper.helper.main import HuggingFaceHelper
+
+
+# Initialize HuggingFace Helper
+print("Initializing HuggingFace Helper...")
+hf_helper = HuggingFaceHelper(
+    token=os.environ.get("HF_TOKEN"),
+    repo_name="spectrewolf8/DMI_FYP_Models_Repo",
+    repo_local_dir=f"../../../Hugging_face_helper/repo/",
+    cache_dir=f"../../../Hugging_face_helper/cache/",
+)
+
+# Get model files if they don't exist locally
+MODEL_FILES = {
+    "frames_model": "V3_FRAMES_deepfake_detector_resnext101_64x4d_acc99.33_epochs25.pth",
+    "crops_model": "V3_CROPS_deepfake_detector_resnext101_32x8d_acc98.71_epochs25.pth",
+    "ai_gen_model": "V3_AI_image_detector_resnext101_32x8d_acc98.30_epochs25.pth",
+}
+
+# Download models if they don't exist
+for model_name, filename in MODEL_FILES.items():
+    local_path = os.path.join(settings.ML_MODELS_DIR, filename)
+    if not os.path.exists(local_path):
+        print(f"Downloading {model_name}...")
+        downloaded_path = hf_helper.download_model(filename)
+        # Create ML_MODELS_DIR if it doesn't exist
+        os.makedirs(settings.ML_MODELS_DIR, exist_ok=True)
+        print(f"Moving {filename} to {local_path}")
+        # Copy from cache to models directory
+        shutil.copy2(downloaded_path, local_path)
+        print(f"{model_name} downloaded successfully")
+    else:
+        print(f"{model_name} already exists locally")
+
 # Initialize DeepfakeDetectionPipeline
 print("Initializing DeepfakeDetectionPipeline...")
 deepfake_detection_pipeline = DeepfakeDetectionPipeline(
-    frame_model_path=f"{settings.ML_MODELS_DIR}/acc99.76_test-2.1_FRAMES_deepfake_detector_resnext50.pth",
-    crop_model_path=f"{settings.ML_MODELS_DIR}/acc99.53_test-2.1_CROPS_deepfake_detector_resnext50.pth",
+    frame_model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['frames_model']}",
+    crop_model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['crops_model']}",
     frames_dir=f"{settings.MEDIA_ROOT}/temp/temp_frames/",
     crops_dir=f"{settings.MEDIA_ROOT}/temp/temp_crops/",
     threshold=0.4,
@@ -34,7 +77,7 @@ print("DeepfakeDetectionPipeline initialized")
 # Initialize AIGeneratedMediaDetection
 print("Initializing AIGeneratedMediaDetection...")
 ai_generated_media_detection_pipeline = AIGeneratedMediaDetectionPipeline(
-    model_path=f"{settings.ML_MODELS_DIR}/acc98.30_test-2.1_AI_image_detector_resnext101_32x8d.pth",
+    model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_model']}",
     synthetic_media_dir=f"{settings.MEDIA_ROOT}/temp/temp_synthetic_media/",
     threshold=0.5,
     log_level=0,
