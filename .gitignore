@@ -100,5 +100,5 @@ test.py
 
 DMI_backend/ML_Models/*
 
-Hugging_face/cache/*
-Hugging_face/repo/*
+Hugging_face_helper/cache/*
+Hugging_face_helper/repo/*
