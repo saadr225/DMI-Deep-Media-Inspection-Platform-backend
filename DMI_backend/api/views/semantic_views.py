@@ -18,7 +18,13 @@ from app.contollers.AIGeneratedMediaDetectionController import AIGeneratedMediaD
 from app.contollers.MetadataAnalysisController import MetadataAnalysisPipeline
 from app.contollers.HelpersController import URLHelper, HuggingFaceHelper
 
-from api.models import UserData, MediaUpload, DeepfakeDetectionResult, AIGeneratedMediaResult
+from api.models import (
+    MediaUploadMetadata,
+    UserData,
+    MediaUpload,
+    DeepfakeDetectionResult,
+    AIGeneratedMediaResult,
+)
 from api.serializers import FileUploadSerializer
 
 
@@ -119,8 +125,12 @@ def process_deepfake_media(request):
                 file_identifier=filename,
                 file_type=deepfake_detection_pipeline.media_processor.check_media_type(file_path),
             )
-            print(f"file path: {file_path}")
+            # print(f"file path: {file_path}")
+
             metatdata = metadata_analysis_pipeline.extract_metadata(file_path)
+            # Save metadata
+            MediaUploadMetadata.objects.create(media_upload=media_upload, metadata=metatdata)
+
             # Process media
             results = deepfake_detection_pipeline.process_media(
                 media_path=file_path,
@@ -212,6 +222,9 @@ def process_ai_generated_media(request):
                 file_type="image",  # AI generated media only supports images
             )
             metatdata = metadata_analysis_pipeline.extract_metadata(file_path)
+            # Save metadata
+            MediaUploadMetadata.objects.create(media_upload=media_upload, metadata=metatdata)
+
             # Process media
             results = ai_generated_media_detection_pipeline.process_image(file_path)
 

@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
-from api.models import AIGeneratedMediaResult, DeepfakeDetectionResult, MediaUpload
+from api.models import AIGeneratedMediaResult, DeepfakeDetectionResult, MediaUpload, MediaUploadMetadata
 from app.contollers.HelpersController import URLHelper
 from app.contollers.ResponseCodesController import get_response_code
 from app.models import UserData
@@ -35,6 +35,12 @@ def get_user_submissions_history(request):
                 "file_type": submission.file_type,
                 "upload_date": submission.upload_date,
             }
+            # Get metadata for the submission
+            metadata_entry = MediaUploadMetadata.objects.filter(media_upload_id=submission.id)
+            if metadata_entry.exists():
+                base_entry["metadata"] = metadata_entry[0].metadata
+            else:
+                base_entry["metadata"] = {}
 
             df_entry = DeepfakeDetectionResult.objects.filter(media_upload_id=submission.id)
             ai_entry = AIGeneratedMediaResult.objects.filter(media_upload_id=submission.id)
@@ -84,6 +90,73 @@ def get_user_submissions_history(request):
     except UserData.DoesNotExist:
         return JsonResponse(
             {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return JsonResponse(
+            {**get_response_code("HISTORY_FETCH_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_submission_details(request, file_identifier):
+    try:
+        user = request.user
+        user_data = UserData.objects.get(user=user)  # user=user_data,
+        submission = MediaUpload.objects.get(file_identifier=file_identifier)
+
+        # Get metadata for the submission
+        metadata_entry = MediaUploadMetadata.objects.filter(media_upload_id=submission.id)
+        if metadata_entry.exists():
+            metadata = metadata_entry[0].metadata
+        else:
+            metadata = {}
+
+        df_entry = DeepfakeDetectionResult.objects.filter(media_upload_id=submission.id)
+        ai_entry = AIGeneratedMediaResult.objects.filter(media_upload_id=submission.id)
+
+        has_df = df_entry.exists()
+        has_ai = ai_entry.exists()
+
+        response_data = {
+            "id": submission.id,
+            "file": URLHelper.convert_to_public_url(file_path=submission.file.path),
+            "original_filename": submission.original_filename,
+            "file_type": submission.file_type,
+            "upload_date": submission.upload_date,
+            "metadata": metadata,
+        }
+
+        if has_df:
+            response_data["deepfake_detection"] = {
+                "is_deepfake": df_entry[0].is_deepfake,
+                "confidence_score": df_entry[0].confidence_score,
+                "frames_analyzed": df_entry[0].frames_analyzed,
+                "fake_frames": df_entry[0].fake_frames,
+                "analysis_report": df_entry[0].analysis_report,
+            }
+
+        if has_ai:
+            response_data["ai_generated_media"] = {
+                "is_generated": ai_entry[0].is_generated,
+                "confidence_score": ai_entry[0].confidence_score,
+                "analysis_report": ai_entry[0].analysis_report,
+            }
+
+        return JsonResponse(
+            {**get_response_code("SUCCESS"), "data": response_data},
+            status=status.HTTP_200_OK,
+        )
+    except UserData.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except MediaUpload.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("FILE_NOT_FOUND"), "error": "File not found."},
             status=status.HTTP_404_NOT_FOUND,
         )
     except Exception as e:

@@ -20,6 +20,11 @@ urlpatterns = [
         user_views.get_user_submissions_history,
         name="get_user_submissions_history",
     ),
+    path(
+        "user/submissions/<str:file_identifier>/",
+        user_views.get_submission_details,
+        name="get_submission_details",
+    ),
     # media processing endpoints
     path("process/df/", semantic_views.process_deepfake_media, name="process_deepfake"),
     path("process/ai/", semantic_views.process_ai_generated_media, name="process_ai_generated_media"),

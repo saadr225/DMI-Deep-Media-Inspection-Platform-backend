@@ -102,3 +102,4 @@ DMI_backend/ML_Models/*
 
 Hugging_face_helper/cache/*
 Hugging_face_helper/repo/*
+hf_helper_files/*
