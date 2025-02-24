@@ -16,27 +16,28 @@ from app.contollers.ResponseCodesController import get_response_code
 from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
 from app.contollers.AIGeneratedMediaDetectionController import AIGeneratedMediaDetectionPipeline
 from app.contollers.MetadataAnalysisController import MetadataAnalysisPipeline
-from app.contollers.HelpersController import URLHelper
+from app.contollers.HelpersController import URLHelper, HuggingFaceHelper
+
 from api.models import UserData, MediaUpload, DeepfakeDetectionResult, AIGeneratedMediaResult
 from api.serializers import FileUploadSerializer
 
 
-# Add the project root directory to Python path
-project_root = os.path.abspath(os.path.join(os.getcwd(), ".."))
-if project_root not in sys.path:
-    sys.path.append(project_root)
+# # Add the project root directory to Python path
+# project_root = os.path.abspath(os.path.join(os.getcwd(), ".."))
+# if project_root not in sys.path:
+#     sys.path.append(project_root)
 
 # import the helper
-from Hugging_face_helper.helper.main import HuggingFaceHelper
-
+# from Hugging_face_helper.helper.main import HuggingFaceHelper
+# Try absolute import
 
 # Initialize HuggingFace Helper
 print("Initializing HuggingFace Helper...")
 hf_helper = HuggingFaceHelper(
     token=os.environ.get("HF_TOKEN"),
     repo_name="spectrewolf8/DMI_FYP_Models_Repo",
-    repo_local_dir=f"../../../Hugging_face_helper/repo/",
-    cache_dir=f"../../../Hugging_face_helper/cache/",
+    repo_local_dir=f"../../hf_helper_files/repo/",
+    cache_dir=f"../../hf_helper/cache/",
 )
 
 # Get model files if they don't exist locally
