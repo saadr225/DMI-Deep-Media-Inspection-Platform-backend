@@ -415,19 +415,19 @@ class DeepfakeDetectionPipeline:
             FRAMES_FILE_FORMAT=self.FRAMES_FILE_FORMAT,
         )
 
-    def get_crops_for_frame(self, file_id: str, frame_index: int, crops_dir: str) -> List[str]:
+    def get_crops_for_frame(self, file_identifier: str, frame_index: int, crops_dir: str) -> List[str]:
         """
         Get all crops belonging to a specific frame using the naming scheme.
 
         Args:
-            file_id (str): Combined hash identifier (content_hash + name_hash)
+            file_identifier (str): Combined hash identifier (content_hash + name_hash)
             frame_index (int): Frame index (0 for images)
             crops_dir (str): Directory containing all crops
 
         Returns:
             list: Paths to relevant crop files
         """
-        crop_prefix = f"{file_id}_{frame_index}_"
+        crop_prefix = f"{file_identifier}_{frame_index}_"
         relevant_crops = []
 
         for filename in os.listdir(crops_dir):
@@ -583,8 +583,8 @@ class DeepfakeDetectionPipeline:
 
         # Get crops for this frame
         frame_index = 0 if "_" not in frame_id else int(frame_id.split("_")[-1])
-        file_id = frame_id.rsplit("_", 1)[0]
-        crop_paths = self.get_crops_for_frame(file_id, frame_index, self.crops_dir)
+        file_identifier = frame_id.rsplit("_", 1)[0]
+        crop_paths = self.get_crops_for_frame(file_identifier, frame_index, self.crops_dir)
 
         # Analyze each crop (without GradCAM)
         for crop_path in crop_paths:
@@ -743,7 +743,7 @@ class DeepfakeDetectionPipeline:
         media_type = self.media_processor.check_media_type(media_path)
 
         # Generate file identifier using MediaProcessor's hash functions
-        file_id = self.media_processor.generate_combined_hash(media_path)
+        file_identifier = self.media_processor.generate_combined_hash(media_path)
 
         face_found = False
 
@@ -763,13 +763,15 @@ class DeepfakeDetectionPipeline:
             results = {
                 "media_path": self.convert_to_public_url(media_path),
                 "media_type": media_type,
-                "file_id": file_id,
+                "file_identifier": file_identifier,
                 "frame_results": [],
             }
 
             if media_type == "Image":
-                media_path = os.path.join(self.frames_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}")
-                frame_results = self.analyze_frame_with_crops(media_path, f"{file_id}_0")
+                media_path = os.path.join(
+                    self.frames_dir, f"{file_identifier}_0.{self.FRAMES_FILE_FORMAT}"
+                )
+                frame_results = self.analyze_frame_with_crops(media_path, f"{file_identifier}_0")
                 results["media_path"] = self.convert_to_public_url(media_path)
                 results["frame_results"].append(frame_results)
 
@@ -777,12 +779,12 @@ class DeepfakeDetectionPipeline:
                 frames = [
                     os.path.join(self.frames_dir, f)
                     for f in os.listdir(self.frames_dir)
-                    if (f.startswith(file_id) and ("ela" not in f and "gradcam" not in f))
+                    if (f.startswith(file_identifier) and ("ela" not in f and "gradcam" not in f))
                 ]
                 frames = natsorted(frames)
                 for frame_index, frame_path in enumerate(frames):
                     frame_results = self.analyze_frame_with_crops(
-                        frame_path, f"{file_id}_{frame_index}"
+                        frame_path, f"{file_identifier}_{frame_index}"
                     )
                     results["frame_results"].append(frame_results)
 
@@ -840,7 +842,7 @@ class DeepfakeDetectionPipeline:
     # def _save_results(self, results, output_dir):
     #     """Save analysis results to output directory."""
     #     os.makedirs(output_dir, exist_ok=True)
-    #     output_path = os.path.join(output_dir, f"{results['file_id']}_analysis.json")
+    #     output_path = os.path.join(output_dir, f"{results['file_identifier']}_analysis.json")
 
     #     with open(output_path, "w") as f:
     #         json.dump(results, f, sort_keys=True, indent=4)

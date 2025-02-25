@@ -21,7 +21,7 @@ urlpatterns = [
         name="get_user_submissions_history",
     ),
     path(
-        "user/submissions/<str:file_identifier>/",
+        "user/submissions/<str:submission_identifier>/",
         user_views.get_submission_details,
         name="get_submission_details",
     ),

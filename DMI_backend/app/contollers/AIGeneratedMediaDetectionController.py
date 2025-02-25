@@ -102,9 +102,9 @@ class AIGeneratedMediaDetectionPipeline:
         """
         Single-image AI detection with GradCAM visualization.
         """
-        file_id: str = self.generate_combined_hash(image_path)
+        file_identifier: str = self.generate_combined_hash(image_path)
         output_file: str = os.path.join(
-            self.synthetic_media_dir, f"{file_id}_0.{self.FRAMES_FILE_FORMAT}"
+            self.synthetic_media_dir, f"{file_identifier}_0.{self.FRAMES_FILE_FORMAT}"
         )
         if not os.path.exists(output_file):
             img = cv2.imread(image_path)
@@ -112,7 +112,7 @@ class AIGeneratedMediaDetectionPipeline:
 
         prediction, conf, gradcam_path = self.process_frame(output_file)
         return {
-            "file_id": file_id,
+            "file_identifier": file_identifier,
             "media_path": self.convert_to_public_url(output_file),
             "prediction": prediction,
             "confidence": conf,

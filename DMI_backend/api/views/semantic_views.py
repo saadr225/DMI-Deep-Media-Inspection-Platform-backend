@@ -122,8 +122,9 @@ def process_deepfake_media(request):
                 user=UserData.objects.get(user=user),
                 file=file_path,
                 original_filename=original_filename,
-                file_identifier=filename,
+                submission_identifier=filename,  # filename becomes the submission identifier
                 file_type=deepfake_detection_pipeline.media_processor.check_media_type(file_path),
+                purpose="Deepfake-Analysis",
             )
             # print(f"file path: {file_path}")
 
@@ -156,6 +157,11 @@ def process_deepfake_media(request):
                     analysis_report={"final_verdict": "Media contains no person."},
                 )
                 satus_code = "MEDIA_CONTAINS_NO_FACES"
+            print(deepfake_result.analysis_report["file_identifier"])
+
+            # Add the file identifier to the media upload
+            media_upload.file_identifier = deepfake_result.analysis_report["file_identifier"]
+            media_upload.save()
 
             result_data = {
                 "id": deepfake_result.id,
@@ -218,8 +224,9 @@ def process_ai_generated_media(request):
                 user=UserData.objects.get(user=user),
                 file=file_path,
                 original_filename=original_filename,
-                file_identifier=filename,
+                submission_identifier=filename,  # filename becomes the submission identifier
                 file_type="image",  # AI generated media only supports images
+                purpose="AI-Generated-Media-Analysis",
             )
             metatdata = metadata_analysis_pipeline.extract_metadata(file_path)
             # Save metadata
@@ -235,13 +242,17 @@ def process_ai_generated_media(request):
                 is_generated=is_generated,
                 confidence_score=results["confidence"],
                 analysis_report={
-                    "file_id": results["file_id"],
+                    "file_identifier": results["file_identifier"],
                     "media_path": results["media_path"],
                     "gradcam_path": results["gradcam_path"],
                     "prediction": results["prediction"],
                     "confidence": results["confidence"],
                 },
             )
+
+            # Add the file identifier to the media upload
+            media_upload.file_identifier = results["file_identifier"]
+            media_upload.save()
 
             result_data = {
                 "id": ai_generated_result.id,
@@ -281,8 +292,8 @@ def process_ai_generated_media(request):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser, FileUploadParser])
 def process_metadata(request):
-    file_identfier = request.data.get("file_identifier")
-    if not file_identfier:
+    submission_identifier = request.data.get("submission_identifier")
+    if not submission_identifier:
         return JsonResponse(
             {**get_response_code("FILE_IDENTIFIER_REQUIRED"), "error": "File identifier is required."},
             status=status.HTTP_400_BAD_REQUEST,
@@ -290,7 +301,7 @@ def process_metadata(request):
 
     try:
         # Direct path construction instead of searching through all files
-        file_path = os.path.join(f"{settings.MEDIA_ROOT}/submissions/", file_identfier)
+        file_path = os.path.join(f"{settings.MEDIA_ROOT}/submissions/", submission_identifier)
 
         if not os.path.exists(file_path):
             return JsonResponse(
@@ -307,87 +318,5 @@ def process_metadata(request):
     except Exception as e:
         return JsonResponse(
             {**get_response_code("METADATA_ANALYSIS_ERROR"), "error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_user_submissions_history(request):
-    try:
-        user = request.user
-        user_data = UserData.objects.get(user=user)
-        user_submissions = MediaUpload.objects.filter(user=user_data)
-
-        # Organize submissions by type
-        categorized_history = {
-            "deepfake_analysis": [],
-            "ai_generated_analysis": [],
-            "dual_analysis": [],  # Files analyzed by both methods
-            "incomplete_analysis": [],  # Files with no analysis results
-        }
-
-        for submission in user_submissions:
-            base_entry = {
-                "id": submission.id,
-                "file": URLHelper.convert_to_public_url(file_path=submission.file.path),
-                "original_filename": submission.original_filename,
-                "file_type": submission.file_type,
-                "upload_date": submission.upload_date,
-            }
-
-            df_entry = DeepfakeDetectionResult.objects.filter(media_upload_id=submission.id)
-            ai_entry = AIGeneratedMediaResult.objects.filter(media_upload_id=submission.id)
-
-            has_df = df_entry.exists()
-            has_ai = ai_entry.exists()
-
-            if has_df:
-                base_entry["deepfake_detection"] = {
-                    "is_deepfake": df_entry[0].is_deepfake,
-                    "confidence_score": df_entry[0].confidence_score,
-                    "frames_analyzed": df_entry[0].frames_analyzed,
-                    "fake_frames": df_entry[0].fake_frames,
-                    "analysis_report": df_entry[0].analysis_report,
-                }
-
-            if has_ai:
-                base_entry["ai_generated_media"] = {
-                    "is_generated": ai_entry[0].is_generated,
-                    "confidence_score": ai_entry[0].confidence_score,
-                    "analysis_report": ai_entry[0].analysis_report,
-                }
-
-            # Categorize based on analysis type
-            if has_df and has_ai:
-                categorized_history["dual_analysis"].append(base_entry)
-            elif has_df:
-                categorized_history["deepfake_analysis"].append(base_entry)
-            elif has_ai:
-                categorized_history["ai_generated_analysis"].append(base_entry)
-            else:
-                categorized_history["incomplete_analysis"].append(base_entry)
-
-        # Add summary statistics
-        summary = {
-            "total_submissions": len(user_submissions),
-            "deepfake_only_count": len(categorized_history["deepfake_analysis"]),
-            "ai_generated_only_count": len(categorized_history["ai_generated_analysis"]),
-            "dual_analysis_count": len(categorized_history["dual_analysis"]),
-            "incomplete_analysis_count": len(categorized_history["incomplete_analysis"]),
-        }
-
-        return JsonResponse(
-            {**get_response_code("SUCCESS"), "summary": summary, "data": categorized_history},
-            status=status.HTTP_200_OK,
-        )
-    except UserData.DoesNotExist:
-        return JsonResponse(
-            {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    except Exception as e:
-        return JsonResponse(
-            {**get_response_code("HISTORY_FETCH_ERROR"), "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

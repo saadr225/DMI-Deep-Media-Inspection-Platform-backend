@@ -32,6 +32,8 @@ def get_user_submissions_history(request):
                 "id": submission.id,
                 "file": URLHelper.convert_to_public_url(file_path=submission.file.path),
                 "original_filename": submission.original_filename,
+                "submission_identifier": submission.submission_identifier,
+                "purpose": submission.purpose,
                 "file_type": submission.file_type,
                 "upload_date": submission.upload_date,
             }
@@ -56,9 +58,8 @@ def get_user_submissions_history(request):
                     "fake_frames": df_entry[0].fake_frames,
                     "analysis_report": df_entry[0].analysis_report,
                 }
-
             if has_ai:
-                base_entry["ai_generated_media"] = {
+                base_entry["ai_generated_media_detection"] = {
                     "is_generated": ai_entry[0].is_generated,
                     "confidence_score": ai_entry[0].confidence_score,
                     "analysis_report": ai_entry[0].analysis_report,
@@ -101,12 +102,13 @@ def get_user_submissions_history(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_submission_details(request, file_identifier):
+def get_submission_details(request, submission_identifier):
     try:
         user = request.user
-        user_data = UserData.objects.get(user=user)  # user=user_data,
-        submission = MediaUpload.objects.get(file_identifier=file_identifier)
-
+        user_data = UserData.objects.get(user=user)
+        submission = MediaUpload.objects.get(
+            user=user_data, submission_identifier=submission_identifier
+        )
         # Get metadata for the submission
         metadata_entry = MediaUploadMetadata.objects.filter(media_upload_id=submission.id)
         if metadata_entry.exists():
@@ -123,14 +125,16 @@ def get_submission_details(request, file_identifier):
         response_data = {
             "id": submission.id,
             "file": URLHelper.convert_to_public_url(file_path=submission.file.path),
+            "submission_identifier": submission.submission_identifier,
             "original_filename": submission.original_filename,
             "file_type": submission.file_type,
+            "purpose": submission.purpose,
             "upload_date": submission.upload_date,
             "metadata": metadata,
         }
 
         if has_df:
-            response_data["deepfake_detection"] = {
+            response_data["data"] = {
                 "is_deepfake": df_entry[0].is_deepfake,
                 "confidence_score": df_entry[0].confidence_score,
                 "frames_analyzed": df_entry[0].frames_analyzed,
@@ -138,8 +142,8 @@ def get_submission_details(request, file_identifier):
                 "analysis_report": df_entry[0].analysis_report,
             }
 
-        if has_ai:
-            response_data["ai_generated_media"] = {
+        elif has_ai:
+            response_data["data"] = {
                 "is_generated": ai_entry[0].is_generated,
                 "confidence_score": ai_entry[0].confidence_score,
                 "analysis_report": ai_entry[0].analysis_report,
