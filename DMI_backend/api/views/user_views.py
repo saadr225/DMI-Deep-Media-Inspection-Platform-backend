@@ -51,6 +51,12 @@ def get_user_submissions_history(request):
             has_ai = ai_entry.exists()
 
             if has_df:
+                # print(df_entry[0].analysis_report)
+                if df_entry[0].analysis_report and "final_verdict" in df_entry[0].analysis_report:
+                    if df_entry[0].analysis_report["final_verdict"] == "MEDIA_CONTAINS_NO_FACES":
+                        has_df = False
+                        has_ai = False
+
                 base_entry["deepfake_detection"] = {
                     "is_deepfake": df_entry[0].is_deepfake,
                     "confidence_score": df_entry[0].confidence_score,
@@ -100,9 +106,19 @@ def get_user_submissions_history(request):
         )
 
 
-@api_view(["GET"])
+@api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
-def get_submission_details(request, submission_identifier):
+def manage_submission(request, submission_identifier):
+
+    if request.method == "DELETE":
+        return delete_submission(request, submission_identifier)
+    elif request.method == "GET":
+        return fetch_submission(request, submission_identifier)
+
+
+# Helper functions
+# Submissions Fetch Helper
+def fetch_submission(request, submission_identifier):
     try:
         user = request.user
         user_data = UserData.objects.get(user=user)
@@ -115,13 +131,10 @@ def get_submission_details(request, submission_identifier):
             metadata = metadata_entry[0].metadata
         else:
             metadata = {}
-
         df_entry = DeepfakeDetectionResult.objects.filter(media_upload_id=submission.id)
         ai_entry = AIGeneratedMediaResult.objects.filter(media_upload_id=submission.id)
-
         has_df = df_entry.exists()
         has_ai = ai_entry.exists()
-
         response_data = {
             "id": submission.id,
             "file": URLHelper.convert_to_public_url(file_path=submission.file.path),
@@ -132,7 +145,6 @@ def get_submission_details(request, submission_identifier):
             "upload_date": submission.upload_date,
             "metadata": metadata,
         }
-
         if has_df:
             response_data["data"] = {
                 "is_deepfake": df_entry[0].is_deepfake,
@@ -141,16 +153,44 @@ def get_submission_details(request, submission_identifier):
                 "fake_frames": df_entry[0].fake_frames,
                 "analysis_report": df_entry[0].analysis_report,
             }
-
         elif has_ai:
             response_data["data"] = {
                 "is_generated": ai_entry[0].is_generated,
                 "confidence_score": ai_entry[0].confidence_score,
                 "analysis_report": ai_entry[0].analysis_report,
             }
-
         return JsonResponse(
             {**get_response_code("SUCCESS"), "data": response_data},
+            status=status.HTTP_200_OK,
+        )
+    except UserData.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except MediaUpload.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("FILE_NOT_FOUND"), "error": "File not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return JsonResponse(
+            {**get_response_code("HISTORY_FETCH_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# Submissions Delete Helper
+def delete_submission(request, submission_identifier):
+    try:
+        user = request.user
+        user_data = UserData.objects.get(user=user)
+        submission = MediaUpload.objects.get(
+            user=user_data, submission_identifier=submission_identifier
+        )
+        submission.delete()
+        return JsonResponse(
+            {**get_response_code("SUCCESS"), "message": "Submission deleted."},
             status=status.HTTP_200_OK,
         )
     except UserData.DoesNotExist:

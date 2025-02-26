@@ -110,6 +110,7 @@ def process_deepfake_media(request):
             media_file = validated_data["file"]
             user = request.user
             original_filename = media_file.name
+
             # Save file
             fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/submissions/")
             filename = fs.save(
@@ -126,7 +127,6 @@ def process_deepfake_media(request):
                 file_type=deepfake_detection_pipeline.media_processor.check_media_type(file_path),
                 purpose="Deepfake-Analysis",
             )
-            # print(f"file path: {file_path}")
 
             metatdata = metadata_analysis_pipeline.extract_metadata(file_path)
             # Save metadata
@@ -137,6 +137,12 @@ def process_deepfake_media(request):
                 media_path=file_path,
                 frame_rate=2,
             )
+
+            # Generate file identifier using media processor
+            file_identifier = deepfake_detection_pipeline.media_processor.generate_combined_hash(
+                file_path
+            )
+
             if results is not False:
                 deepfake_result = DeepfakeDetectionResult.objects.create(
                     media_upload=media_upload,
@@ -154,13 +160,15 @@ def process_deepfake_media(request):
                     confidence_score=0.0,
                     frames_analyzed=0,
                     fake_frames=0,
-                    analysis_report={"final_verdict": "Media contains no person."},
+                    analysis_report={
+                        "final_verdict": "MEDIA_CONTAINS_NO_FACES",
+                        "file_identifier": file_identifier,  
+                    },
                 )
                 satus_code = "MEDIA_CONTAINS_NO_FACES"
-            print(deepfake_result.analysis_report["file_identifier"])
 
             # Add the file identifier to the media upload
-            media_upload.file_identifier = deepfake_result.analysis_report["file_identifier"]
+            media_upload.file_identifier = file_identifier  
             media_upload.save()
 
             result_data = {
