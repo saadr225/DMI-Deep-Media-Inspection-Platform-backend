@@ -17,8 +17,8 @@ urlpatterns = [
     path("user/info/", user_views.get_user_info, name="get_user_info"),
     path(
         "user/submissions/",
-        user_views.get_user_submissions_history,
-        name="get_user_submissions_history",
+        user_views.manage_submission_history,
+        name="manage_submission_history",
     ),
     path(
         "user/submissions/<str:submission_identifier>/",

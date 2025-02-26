@@ -1,3 +1,4 @@
+import os
 from django.http import JsonResponse
 
 from rest_framework import status
@@ -11,8 +12,17 @@ from app.models import UserData
 from api.serializers import UserSerializer
 
 
-@api_view(["GET"])
+@api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
+def manage_submission_history(request):
+    if request.method == "GET":
+        return get_user_submissions_history(request)
+    elif request.method == "DELETE":
+        return clear_user_submissions_history(request)
+
+
+# Helper functions
+# Submissions Fetch Helper
 def get_user_submissions_history(request):
     try:
         user = request.user
@@ -102,6 +112,65 @@ def get_user_submissions_history(request):
     except Exception as e:
         return JsonResponse(
             {**get_response_code("HISTORY_FETCH_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# Submissions Delete Helper
+def clear_user_submissions_history(request):
+    """
+    Deletes all submissions and related data for the authenticated user
+    """
+    try:
+        user = request.user
+        user_data = UserData.objects.get(user=user)
+        user_submissions = MediaUpload.objects.filter(user=user_data)
+
+        deleted_submissions_count = 0
+        for submission in user_submissions:
+            try:
+                # Delete related metadata
+                MediaUploadMetadata.objects.filter(media_upload_id=submission.id).delete()
+
+                # Delete analysis results
+                DeepfakeDetectionResult.objects.filter(media_upload_id=submission.id).delete()
+                AIGeneratedMediaResult.objects.filter(media_upload_id=submission.id).delete()
+
+                # Delete physical file if it exists
+                # if submission.file and hasattr(submission.file, "path"):
+                #     file_path = submission.file.path
+                #     if os.path.exists(file_path):
+                #         os.remove(file_path)
+
+                # Delete submission record
+                submission.delete()
+                deleted_submissions_count += 1
+
+            except Exception as sub_e:
+                # Log error but continue with other deletions
+                print(f"Error deleting submission {submission.id}: {str(sub_e)}")
+                continue
+
+        return JsonResponse(
+            {
+                **get_response_code("SUCCESS"),
+                "message": f"Submissions history cleared. {deleted_submissions_count} submissions deleted.",
+                "deleted_submissions_count": deleted_submissions_count,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except UserData.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return JsonResponse(
+            {
+                **get_response_code("HISTORY_DELETE_ERROR"),
+                "error": f"Error clearing submissions history: {str(e)}",
+            },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
