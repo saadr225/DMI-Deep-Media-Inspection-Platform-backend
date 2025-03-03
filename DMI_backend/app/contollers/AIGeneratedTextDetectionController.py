@@ -239,7 +239,7 @@ class TextDetectionPipeline:
         Returns:
             dict: Analysis results for the text
         """
-        if highlight:
+        if highlight == "True":
             return self.detect_text_source_with_highlights(
                 text, probability_threshold=probability_threshold, score_multiplier=score_multiplier
             )

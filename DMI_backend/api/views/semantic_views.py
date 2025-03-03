@@ -359,7 +359,7 @@ def process_ai_generated_text(request):
             )
 
         text = request.data["text"]
-        highlight = request.data.get("highlight", True)
+        highlight = request.data.get("highlight")
         user = request.user
 
         if len(text.strip()) < 50:  # Minimum text length for reliable analysis : 50 characters
@@ -383,6 +383,7 @@ def process_ai_generated_text(request):
             purpose="AI-Text-Analysis",
         )
 
+        print(highlight)
         # Process the text
         results = text_detection_pipeline.process_text(text, highlight=highlight)
 
