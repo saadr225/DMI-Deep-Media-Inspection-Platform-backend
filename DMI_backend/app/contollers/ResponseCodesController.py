@@ -54,6 +54,13 @@ USER_SUBMISSION_ERROR_CODES = {
     "FILE_NOT_FOUND": {"code": "USE02", "message": "File not found."},
 }
 
+# AI Text Analysis Error Codes
+AI_TEXT_ERROR_CODES = {
+    "TEXT_MISSING": {"code": "ATE01", "message": "No text provided for analysis."},
+    "TEXT_PROCESSING_ERROR": {"code": "ATE02", "message": "Error processing text for AI analysis."},
+    "TEXT_TOO_SHORT": {"code": "ATE03", "message": "Provided text is too short for reliable analysis."},
+}
+
 # Combine all response codes into one dictionary for lookup
 RESPONSE_CODES = {
     **SUCCESS_CODES,
@@ -62,6 +69,7 @@ RESPONSE_CODES = {
     **FILE_MEDIA_ERROR_CODES,
     **USER_SUBMISSION_ERROR_CODES,
     **HISTORY_ERROR_CODES,
+    **AI_TEXT_ERROR_CODES,
 }
 
 

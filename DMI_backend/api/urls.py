@@ -29,6 +29,8 @@ urlpatterns = [
     path("process/df/", semantic_views.process_deepfake_media, name="process_deepfake"),
     path("process/ai/", semantic_views.process_ai_generated_media, name="process_ai_generated_media"),
     path("process/metadata/", semantic_views.process_metadata, name="process_metadata"),
+    # text processing endpoints
+    path("process/text/", semantic_views.process_ai_generated_text, name="process_ai_genearated_text"),
     # response codes endpoint
     path("docs/response_codes/", helper_views.get_response_codes, name="get_response_codes"),
 ]

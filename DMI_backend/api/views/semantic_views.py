@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 import sys
@@ -12,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser
 from rest_framework_simplejwt.exceptions import TokenError
 
+from app.contollers.AIGeneratedTextDetectionController import TextDetectionPipeline
 from app.contollers.ResponseCodesController import get_response_code
 from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
 from app.contollers.AIGeneratedMediaDetectionController import AIGeneratedMediaDetectionPipeline
@@ -19,7 +21,9 @@ from app.contollers.MetadataAnalysisController import MetadataAnalysisPipeline
 from app.contollers.HelpersController import URLHelper, HuggingFaceHelper
 
 from api.models import (
+    AIGeneratedTextResult,
     MediaUploadMetadata,
+    TextSubmission,
     UserData,
     MediaUpload,
     DeepfakeDetectionResult,
@@ -48,9 +52,10 @@ hf_helper = HuggingFaceHelper(
 
 # Get model files if they don't exist locally
 MODEL_FILES = {
-    "frames_model": "V3_FRAMES_deepfake_detector_resnext101_64x4d_acc99.33_epochs25.pth",
-    "crops_model": "V3_CROPS_deepfake_detector_resnext101_32x8d_acc98.71_epochs25.pth",
-    "ai_gen_model": "V3_AI_image_detector_resnext101_32x8d_acc98.30_epochs25.pth",
+    "deepfake_frames_detection_model": "V3_FRAMES_deepfake_detector_resnext101_64x4d_acc99.33_epochs25.pth",
+    "deepfake_crops_detection_model": "V3_CROPS_deepfake_detector_resnext101_32x8d_acc98.71_epochs25.pth",
+    "ai_gen_media_detection_model": "V3_AI_image_detector_resnext101_32x8d_acc98.30_epochs25.pth",
+    "ai_gen_text_detection_model": "AIGT_bert_epoch3.ipynb.pth",
 }
 
 # Download models if they don't exist
@@ -71,8 +76,8 @@ for model_name, filename in MODEL_FILES.items():
 # Initialize DeepfakeDetectionPipeline
 print("Initializing DeepfakeDetectionPipeline...")
 deepfake_detection_pipeline = DeepfakeDetectionPipeline(
-    frame_model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['frames_model']}",
-    crop_model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['crops_model']}",
+    frame_model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['deepfake_frames_detection_model']}",
+    crop_model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['deepfake_crops_detection_model']}",
     frames_dir=f"{settings.MEDIA_ROOT}/temp/temp_frames/",
     crops_dir=f"{settings.MEDIA_ROOT}/temp/temp_crops/",
     threshold=0.4,
@@ -84,7 +89,7 @@ print("DeepfakeDetectionPipeline initialized")
 # Initialize AIGeneratedMediaDetection
 print("Initializing AIGeneratedMediaDetection...")
 ai_generated_media_detection_pipeline = AIGeneratedMediaDetectionPipeline(
-    model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_model']}",
+    model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_media_detection_model']}",
     synthetic_media_dir=f"{settings.MEDIA_ROOT}/temp/temp_synthetic_media/",
     threshold=0.5,
     log_level=0,
@@ -96,6 +101,15 @@ print("AIGeneratedMediaDetection initialized")
 print("Initializing MetadataAnalysisPipeline...")
 metadata_analysis_pipeline = MetadataAnalysisPipeline()
 print("MetadataAnalysisPipeline initialized")
+
+# Initialize TextDetectionPipeline
+print("Initializing TextDetectionPipeline...")
+text_detection_pipeline = TextDetectionPipeline(
+    model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_text_detection_model']}",
+    threshold=0.4,
+    log_level=0,
+)
+print("TextDetectionPipeline initialized")
 
 
 @api_view(["POST"])
@@ -162,13 +176,13 @@ def process_deepfake_media(request):
                     fake_frames=0,
                     analysis_report={
                         "final_verdict": "MEDIA_CONTAINS_NO_FACES",
-                        "file_identifier": file_identifier,  
+                        "file_identifier": file_identifier,
                     },
                 )
                 satus_code = "MEDIA_CONTAINS_NO_FACES"
 
             # Add the file identifier to the media upload
-            media_upload.file_identifier = file_identifier  
+            media_upload.file_identifier = file_identifier
             media_upload.save()
 
             result_data = {
@@ -326,5 +340,82 @@ def process_metadata(request):
     except Exception as e:
         return JsonResponse(
             {**get_response_code("METADATA_ANALYSIS_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def process_ai_generated_text(request):
+    """
+    API endpoint to detect if text is human or AI-generated
+    """
+    try:
+        # Validate input
+        if not request.data or "text" not in request.data:
+            return JsonResponse(
+                {**get_response_code("TEXT_MISSING"), "error": "No text provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        text = request.data["text"]
+        highlight = request.data.get("highlight", True)
+        user = request.user
+
+        if len(text.strip()) < 50:  # Minimum text length for reliable analysis : 50 characters
+            return JsonResponse(
+                {
+                    **get_response_code("TEXT_TOO_SHORT"),
+                    "error": "Text is too short for reliable analysis",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate a submission identifier
+        text_hash = hashlib.md5(text.encode()).hexdigest()[:16]
+        submission_identifier = f"uid{user.id}-{time.strftime('%Y-%m-%d_%H-%M-%S')}-{text_hash}"
+
+        # Save text submission
+        text_submission = TextSubmission.objects.create(
+            user=UserData.objects.get(user=user),
+            text_content=text,
+            submission_identifier=submission_identifier,
+            purpose="AI-Text-Analysis",
+        )
+
+        # Process the text
+        results = text_detection_pipeline.process_text(text, highlight=highlight)
+
+        # Determine if it's AI-generated (anything not classified as "Human")
+        is_ai_generated = results["prediction"] != "Human"
+
+        # Save detection results
+        text_detection_result = AIGeneratedTextResult.objects.create(
+            text_submission=text_submission,
+            is_ai_generated=is_ai_generated,
+            source_prediction=results["prediction"],
+            confidence_scores=results["confidence"],
+            highlighted_text=results.get("highlighted_text", ""),
+            html_text=results.get("html_text", ""),
+        )
+
+        # Prepare response data
+        result_data = {
+            "submission_identifier": submission_identifier,
+            "is_ai_generated": text_detection_result.is_ai_generated,
+            "source_prediction": text_detection_result.source_prediction,
+            "confidence_scores": text_detection_result.confidence_scores,
+            "highlighted_text": text_detection_result.highlighted_text if highlight else None,
+            "html_text": text_detection_result.html_text if highlight else None,
+        }
+
+        # Return the analysis results
+        return JsonResponse(
+            {**get_response_code("SUCCESS"), "data": result_data}, status=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return JsonResponse(
+            {**get_response_code("TEXT_PROCESSING_ERROR"), "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
