@@ -206,7 +206,7 @@ class TextDetectionPipeline:
 
                 # Add the word with highlighting if needed
                 if score * score_multiplier > self.threshold:
-                    html_text += f'<span class="ai-generated">{word}</span>'
+                    html_text += f"""<span class='ai-generated'>{word}</span>"""
                 else:
                     html_text += word
 
@@ -239,7 +239,7 @@ class TextDetectionPipeline:
         Returns:
             dict: Analysis results for the text
         """
-        if highlight == "True":
+        if highlight.lower() == "true":
             return self.detect_text_source_with_highlights(
                 text, probability_threshold=probability_threshold, score_multiplier=score_multiplier
             )
