@@ -354,7 +354,13 @@ def process_ai_generated_text(request):
         # Validate input
         if not request.data or "text" not in request.data:
             return JsonResponse(
-                {**get_response_code("TEXT_MISSING"), "error": "No text provided"},
+                {**get_response_code("TEXT_MISSING"), "error": "Text parameter missing"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if "highlight" not in request.data:
+            return JsonResponse(
+                {**get_response_code("HIGHLIGHT_MISSING"), "error": "Highlight parameter missing"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
