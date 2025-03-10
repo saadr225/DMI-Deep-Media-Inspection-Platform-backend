@@ -91,6 +91,7 @@ db.sqlite3
 
 ### Media ###
 DMI_backend/media/submissions/*
+DMI_backend/media/pda_submissions/*
 DMI_backend/media/temp/temp_crops/*
 DMI_backend/media/temp/temp_frames/*
 DMI_backend/media/temp/temp_synthetic_media/*

@@ -12,6 +12,7 @@ AUTH_ERROR_CODES = {
     "TOKEN_INVALID_OR_EXPIRED": {"code": "E01", "message": "Invalid or expired token."},
     "LOGIN_REQUIRED": {"code": "E02", "message": "Login required."},
     "INVALID_CREDENTIALS": {"code": "E03", "message": "Invalid credentials."},
+    "ACCESS_DENIED": {"code": "E18", "message": "You don't have permission to access this resource."},
 }
 
 # User and Account Error Codes
@@ -39,6 +40,7 @@ FILE_MEDIA_ERROR_CODES = {
     "FILE_IDENTIFIER_REQUIRED": {"code": "E22", "message": "File identifier is required."},
     "METADATA_ANALYSIS_ERROR": {"code": "E23", "message": "Error analyzing metadata."},
     "DELETE_ERROR": {"code": "E26", "message": "Error deleting submission."},
+    "UNSUPPORTED_FILE_TYPE": {"code": "E28", "message": "This file type is not supported."},
 }
 
 # History and Submission Error Codes
@@ -46,6 +48,17 @@ HISTORY_ERROR_CODES = {
     "HISTORY_FETCH_ERROR": {"code": "E24", "message": "Error fetching submission history."},
     "HISTORY_DELETE_ERROR": {"code": "E25", "message": "Error deleting submission history."},
     "SUBMISSION_FETCH_ERROR": {"code": "E27", "message": "Error fetching submission details."},
+    "SUBMISSION_NOT_FOUND": {"code": "E29", "message": "The specified submission was not found."},
+    "INVALID_SUBMISSION": {"code": "E30", "message": "The submission is invalid or incomplete."},
+    "DUPLICATE_SUBMISSION": {"code": "E31", "message": "This content has already been submitted."},
+}
+
+# General Error Codes
+GENERAL_ERROR_CODES = {
+    "INVALID_REQUEST": {"code": "G01", "message": "Invalid request parameters."},
+    "SERVER_ERROR": {"code": "G02", "message": "An unexpected server error occurred."},
+    "NOT_FOUND": {"code": "G03", "message": "The requested resource was not found."},
+    "INVALID_CATEGORY": {"code": "G04", "message": "Invalid category selected."},
 }
 
 # User Submission Specific Error Codes
@@ -71,6 +84,7 @@ RESPONSE_CODES = {
     **USER_SUBMISSION_ERROR_CODES,
     **HISTORY_ERROR_CODES,
     **AI_TEXT_ERROR_CODES,
+    **GENERAL_ERROR_CODES,
 }
 
 

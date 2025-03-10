@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
 from app.models import UserData
+from django.utils import timezone
 
 
 class MediaUpload(models.Model):
@@ -76,6 +77,34 @@ class AIGeneratedTextResult(models.Model):
 
     def __str__(self):
         return f"{self.text_submission.user.user.username} - {self.source_prediction} - {self.analysis_date}"
+
+
+DEEPFAKE_CATEGORIES = [
+    ("POL", "Politician"),
+    ("CEL", "Celebrity"),
+    ("INF", "Influencer"),
+    ("PUB", "Public Figure"),
+    ("OTH", "Other"),
+]
+
+
+class PublicDeepfakeArchive(models.Model):
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    file = models.FileField(upload_to="pda_submissions/", max_length=512)
+    original_filename = models.CharField(max_length=256)
+    submission_identifier = models.CharField(max_length=256, unique=True)
+    file_type = models.CharField(max_length=50)  # Image or Video
+    title = models.CharField(max_length=256)
+    description = models.TextField(blank=True, null=True, max_length=1024)
+    category = models.CharField(max_length=3, choices=DEEPFAKE_CATEGORIES)
+    context = models.TextField(blank=True, null=True, max_length=256)
+    source_url = models.URLField(blank=True, null=True)
+    detection_result = models.ForeignKey(DeepfakeDetectionResult, on_delete=models.SET_NULL, null=True)
+    is_approved = models.BooleanField(default=False)  # For moderation purposes
+    submission_date = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.title} - {self.submission_date}"
 
 
 # class CommunityFeedback(models.Model):
