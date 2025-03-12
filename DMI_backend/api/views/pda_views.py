@@ -425,7 +425,7 @@ def browse_pda(request):
 @permission_classes([AllowAny])
 def get_pda_submission_detail(request, submission_identifier):
     """
-    Get detailed information about a specific PDA submission including detection results
+    Get detailed information about a specific PDA submission including detection results and metadata
     """
     try:
         # Get submission directly instead of using controller
@@ -443,8 +443,14 @@ def get_pda_submission_detail(request, submission_identifier):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Get detection result
+        # Get detection result and metadata
         detection_result = submission.detection_result
+        try:
+            metadata = MediaUploadMetadata.objects.get(
+                media_upload__submission_identifier=submission.submission_identifier.replace("pda-", "")
+            ).metadata
+        except MediaUploadMetadata.DoesNotExist:
+            metadata = {}
 
         result_data = {
             "id": submission.id,
@@ -471,6 +477,7 @@ def get_pda_submission_detail(request, submission_identifier):
                 if detection_result
                 else None
             ),
+            "metadata": metadata,
         }
 
         return JsonResponse(
