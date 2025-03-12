@@ -425,7 +425,7 @@ def browse_pda(request):
 @permission_classes([AllowAny])
 def get_pda_submission_detail(request, submission_identifier):
     """
-    Get detailed information about a specific PDA submission
+    Get detailed information about a specific PDA submission including detection results
     """
     try:
         # Get submission directly instead of using controller
@@ -443,6 +443,9 @@ def get_pda_submission_detail(request, submission_identifier):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        # Get detection result
+        detection_result = submission.detection_result
+
         result_data = {
             "id": submission.id,
             "title": submission.title,
@@ -456,6 +459,18 @@ def get_pda_submission_detail(request, submission_identifier):
             "file_type": submission.file_type,
             "submission_date": submission.submission_date,
             "file_url": URLHelper.convert_to_public_url(file_path=submission.file.path),
+            "detection_result": (
+                {
+                    "is_deepfake": detection_result.is_deepfake,
+                    "confidence_score": detection_result.confidence_score,
+                    "frames_analyzed": detection_result.frames_analyzed,
+                    "fake_frames": detection_result.fake_frames,
+                    "analysis_date": detection_result.analysis_date,
+                    "analysis_report": detection_result.analysis_report,
+                }
+                if detection_result
+                else None
+            ),
         }
 
         return JsonResponse(
