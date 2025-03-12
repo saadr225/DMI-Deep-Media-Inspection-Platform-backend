@@ -443,19 +443,13 @@ def get_pda_submission_detail(request, submission_identifier):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Check if this was submitted from an existing MediaUpload
-        original_submission_identifier = None
-        if submission.submission_identifier.startswith("pda-"):
-            # Extract the original submission identifier by removing the "pda-" prefix
-            original_submission_identifier = submission.submission_identifier[4:]
-
         result_data = {
             "id": submission.id,
             "title": submission.title,
             "category": submission.category,
             "category_display": submission.get_category_display(),
-            "submission_identifier": submission.submission_identifier,
-            "original_submission_identifier": original_submission_identifier,
+            "submission_identifier": submission.submission_identifier.replace("pda-", ""),
+            "pda_submission_identifier": submission.submission_identifier,
             "description": submission.description,
             "context": submission.context,
             "source_url": submission.source_url,
