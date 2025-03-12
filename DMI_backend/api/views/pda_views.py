@@ -204,13 +204,16 @@ def submit_existing_to_pda(request):
             )
 
         # Validate category
-        valid_categories = [{"code": choice[0], "name": choice[1]} for choice in DEEPFAKE_CATEGORIES]
+        valid_categories_expanded = [
+            {"code": choice[0], "name": choice[1]} for choice in DEEPFAKE_CATEGORIES
+        ]
+        valid_categories = [choice[0] for choice in DEEPFAKE_CATEGORIES]
         if category not in valid_categories:
             return JsonResponse(
                 {
                     **get_response_code("INVALID_CATEGORY"),
-                    "error": "Invalid category selected.",
-                    "categories": valid_categories,
+                    "error": f"Invalid category selected ({category}).",
+                    "categories": valid_categories_expanded,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -467,4 +470,3 @@ def get_pda_submission_detail(request, submission_identifier):
             {**get_response_code("SERVER_ERROR"), "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-

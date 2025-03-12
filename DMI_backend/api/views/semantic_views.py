@@ -187,6 +187,7 @@ def process_deepfake_media(request):
 
             result_data = {
                 "id": deepfake_result.id,
+                "submission_identifier": media_upload.submission_identifier,
                 "media_upload": deepfake_result.media_upload.id,
                 "is_deepfake": deepfake_result.is_deepfake,
                 "confidence_score": deepfake_result.confidence_score,
