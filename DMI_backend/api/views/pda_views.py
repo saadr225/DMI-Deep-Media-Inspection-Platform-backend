@@ -261,7 +261,10 @@ def submit_existing_to_pda(request):
                     {
                         **get_response_code("DUPLICATE_SUBMISSION"),
                         "error": "This media has already been submitted to the PDA.",
-                        "data": {"pda_submission_identifier": existing_pda.submission_identifier},
+                        "data": {
+                            "submission_identifier": submission_identifier,
+                            "pda_submission_identifier": existing_pda.submission_identifier,
+                        },
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -305,8 +308,8 @@ def submit_existing_to_pda(request):
                 {
                     **get_response_code("SUCCESS"),
                     "data": {
-                        "submission_id": pda_submission.id,
-                        "submission_identifier": pda_submission.submission_identifier,
+                        "submission_identifier": submission_identifier,
+                        "pda_submission_identifier": pda_submission.submission_identifier,
                         "status": "Under review" if not pda_submission.is_approved else "Approved",
                     },
                 },
@@ -372,11 +375,11 @@ def browse_pda(request):
             detection_result = submission.detection_result
 
             result_data = {
-                "id": submission.id,
                 "title": submission.title,
                 "category": submission.category,
                 "category_display": submission.get_category_display(),
-                "submission_identifier": submission.submission_identifier,
+                "submission_identifier": submission.submission_identifier.replace("pda-", ""),
+                "pda_submission_identifier": submission.submission_identifier,
                 "description": submission.description,
                 "context": submission.context,
                 "source_url": submission.source_url,
