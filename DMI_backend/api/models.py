@@ -99,7 +99,9 @@ class PublicDeepfakeArchive(models.Model):
     category = models.CharField(max_length=3, choices=DEEPFAKE_CATEGORIES)
     context = models.TextField(blank=True, null=True, max_length=256)
     source_url = models.URLField(blank=True, null=True)
-    detection_result = models.ForeignKey(DeepfakeDetectionResult, on_delete=models.SET_NULL, null=True)
+    detection_result = models.OneToOneField(
+        DeepfakeDetectionResult, on_delete=models.CASCADE, null=False, related_name="archive_submission"
+    )
     is_approved = models.BooleanField(default=False)  # For moderation purposes
     submission_date = models.DateTimeField(default=timezone.now)
     reviewed_by = models.ForeignKey(

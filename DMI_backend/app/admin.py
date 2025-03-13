@@ -5,7 +5,7 @@ from django.contrib.auth.models import User, Group
 from api.models import PublicDeepfakeArchive, UserData, DeepfakeDetectionResult
 from app.contollers.HelpersController import URLHelper
 from datetime import datetime
-
+from django.db.models import Q
 # Customize the admin site
 admin.site.site_header = "Deepfake Archive Administration"
 admin.site.site_title = "PDA Admin/Moderation Portal"
@@ -31,12 +31,32 @@ class PublicDeepfakeArchiveAdmin(admin.ModelAdmin):
         "original_filename",
         "file_type",
         "detection_result_display",
+        "title",
+        "category",
+        "description",
+        "context",
+        "source_url",
+        "reviewed_by",
+        "review_date",
     )
-    actions = ["approve_submissions", "reject_submissions"]
+
     fieldsets = (
         (
-            "Basic Information",
-            {"fields": ("title", "category", "description", "context", "source_url", "is_approved")},
+            "Review Decision",
+            {"fields": ("is_approved", "review_notes"), "classes": ("wide",)},
+        ),
+        (
+            "Submission Details",
+            {
+                "fields": (
+                    "title",
+                    "category",
+                    "description",
+                    "context",
+                    "source_url",
+                ),
+                "classes": ("collapse",),
+            },
         ),
         (
             "File Information",
@@ -47,13 +67,48 @@ class PublicDeepfakeArchiveAdmin(admin.ModelAdmin):
                     "file_type",
                     "submission_date",
                     "file_preview",
-                )
+                ),
+                "classes": ("collapse",),
             },
         ),
-        ("Detection Results", {"fields": ("detection_result_display",)}),
-        ("Review Information", {"fields": ("reviewed_by", "review_date", "review_notes")}),
+        ("Detection Results", {"fields": ("detection_result_display",), "classes": ("collapse",)}),
+        (
+            "Review Information",
+            {
+                "fields": ("reviewed_by", "review_date"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
+    def save_model(self, request, obj, form, change):
+        """Override save_model to automatically set reviewer information"""
+        if change:  # Only when editing existing objects
+            obj.reviewed_by = request.user
+            obj.review_date = datetime.now()
+        super().save_model(request, obj, form, change)
+
+    def get_readonly_fields(self, request, obj=None):
+        """Ensure certain fields are always readonly"""
+        return self.readonly_fields
+
+    def has_add_permission(self, request):
+        """Disable ability to add new submissions through admin"""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Disable ability to delete submissions"""
+        return False
+        
+    def get_queryset(self, request):
+        """Only show submissions that haven't been reviewed yet or were reviewed by the current user"""
+        qs = super().get_queryset(request)
+        if not request.user.is_superuser:  # For moderators
+            return qs.filter(
+                Q(reviewed_by__isnull=True) |  # Not reviewed yet
+                Q(reviewed_by=request.user)     # Or reviewed by current user
+            )
+        return qs  # Superusers can see all
     def approval_status(self, obj):
         """Display approval status with colored formatting"""
         if obj.is_approved:
