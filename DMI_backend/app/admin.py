@@ -81,13 +81,13 @@ class PublicDeepfakeArchiveAdmin(admin.ModelAdmin):
         ),
     )
 
-    def save_model(self, request, obj, form, change):
-        """Override save_model to automatically set reviewer information"""
-        if change:  # Only when editing existing objects
-            obj.reviewed_by = request.user
-            obj.review_date = datetime.now()
-        super().save_model(request, obj, form, change)
 
+    def save_model(self, request, obj, form, change):
+            """Override save_model to automatically set reviewer information"""
+            if change:  # Only when editing existing objects
+                obj.reviewed_by = request.user
+                obj.review_date = datetime.now()
+            super().save_model(request, obj, form, change)
     def get_readonly_fields(self, request, obj=None):
         """Ensure certain fields are always readonly"""
         return self.readonly_fields

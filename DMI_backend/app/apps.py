@@ -11,6 +11,8 @@ class AppConfig(AppConfig):
         """
         Initialize app-specific requirements when Django starts
         """
+        import app.signals  # Import the signals module
+
         # Media directories
         media_directories = [
             os.path.join(settings.MEDIA_ROOT, "submissions"),
