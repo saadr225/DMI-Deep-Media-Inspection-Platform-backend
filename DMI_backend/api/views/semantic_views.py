@@ -48,6 +48,8 @@ hf_helper = HuggingFaceHelper(
     repo_name="spectrewolf8/DMI_FYP_Models_Repo",
     repo_local_dir=f"../../hf_helper_files/repo/",
     cache_dir=f"../../hf_helper/cache/",
+    offline_mode=os.environ.get("HF_OFFLINE_MODE", "False").lower() == "true",
+    check_updates_interval=24 * 3600,  # Check for updates once per day
 )
 
 # Get model files if they don't exist locally
