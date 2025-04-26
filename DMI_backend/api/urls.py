@@ -1,6 +1,7 @@
 from django.urls import path
 
-from .views import auth_views, user_views, semantic_views, helper_views, pda_views
+
+from .views import auth_views, user_views, semantic_views, helper_views, pda_views, facial_watch_views
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -41,6 +42,15 @@ urlpatterns = [
     path("pda/submit/", pda_views.submit_existing_to_pda, name="submit_existing_to_pda"),
     # text processing endpoints
     path("process/text/", semantic_views.process_ai_generated_text, name="process_ai_genearated_text"),
+    # facial watch system endpoints
+    path("facial-watch/register/", facial_watch_views.register_face, name="register_face"),
+    path(
+        "facial-watch/status/",
+        facial_watch_views.get_registration_status,
+        name="get_registration_status",
+    ),
+    path("facial-watch/remove/", facial_watch_views.remove_registration, name="remove_registration"),
+    path("facial-watch/history/", facial_watch_views.get_match_history, name="get_match_history"),
     # response codes endpoint
     path("docs/response_codes/", helper_views.get_response_codes, name="get_response_codes"),
 ]

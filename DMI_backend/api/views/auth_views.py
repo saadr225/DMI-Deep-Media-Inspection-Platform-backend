@@ -14,7 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from app.contollers.ResponseCodesController import get_response_code
+from app.controllers.ResponseCodesController import get_response_code
 from app.models import PasswordResetToken, UserData
 from api.serializers import (
     ChangeEmailSerializer,

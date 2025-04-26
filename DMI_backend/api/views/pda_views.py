@@ -11,10 +11,10 @@ from rest_framework.decorators import api_view, permission_classes, parser_class
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser
 
-from app.contollers.DeepfakeDetectionController import DeepfakeDetectionPipeline
-from app.contollers.MetadataAnalysisController import MetadataAnalysisPipeline
-from app.contollers.ResponseCodesController import get_response_code
-from app.contollers.HelpersController import URLHelper
+from app.controllers.DeepfakeDetectionController import DeepfakeDetectionPipeline
+from app.controllers.MetadataAnalysisController import MetadataAnalysisPipeline
+from app.controllers.ResponseCodesController import get_response_code
+from app.controllers.HelpersController import URLHelper
 
 from api.models import (
     UserData,

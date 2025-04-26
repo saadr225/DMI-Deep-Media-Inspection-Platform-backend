@@ -119,6 +119,27 @@ class PublicDeepfakeArchive(models.Model):
         return f"{self.title} - {self.submission_date}"
 
 
+class FacialWatchRegistration(models.Model):
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    face_embedding = models.JSONField()  # Store face embedding vectors as JSON
+    registration_date = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+
+class FacialWatchMatch(models.Model):
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    media_upload = models.ForeignKey(MediaUpload, on_delete=models.SET_NULL, null=True)
+    match_confidence = models.FloatField()
+    face_location = models.JSONField(null=True)  # Store bounding box coordinates
+    match_date = models.DateTimeField(auto_now_add=True)
+    notification_sent = models.BooleanField(default=False)
+
+
 # class CommunityFeedback(models.Model):
 #     media = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
 #     user = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User, Group
 from api.models import PublicDeepfakeArchive, UserData, DeepfakeDetectionResult
-from app.contollers.HelpersController import URLHelper
+from app.controllers.HelpersController import URLHelper
 from datetime import datetime
 from django.db.models import Q
 # Customize the admin site

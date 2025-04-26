@@ -6,8 +6,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
 from api.models import AIGeneratedMediaResult, DeepfakeDetectionResult, MediaUpload, MediaUploadMetadata
-from app.contollers.HelpersController import URLHelper
-from app.contollers.ResponseCodesController import get_response_code
+from app.controllers.HelpersController import URLHelper
+from app.controllers.ResponseCodesController import get_response_code
 from app.models import UserData
 from api.serializers import UserSerializer
 

@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
 from api.models import PublicDeepfakeArchive
-from app.contollers.ResponseCodesController import get_response_code
+from app.controllers.ResponseCodesController import get_response_code
 from app.models import UserData
 
 
