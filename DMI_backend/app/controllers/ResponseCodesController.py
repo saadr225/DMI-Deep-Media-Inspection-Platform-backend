@@ -114,6 +114,17 @@ FACE_WATCH_ERROR_CODES = {
     "FACE_REMOVAL_ERROR": {"code": "FCE004", "message": "Error removing face from watch list."},
     "FACE_NOT_FOUND": {"code": "FCE005", "message": "Face not found in watch list."},
     "MULTIPLE_FACES_DETECTED": {"code": "FCE006", "message": "Multiple faces detected in the image."},
+    "FACE_ALREADY_REGISTERED": {
+        "code": "FCE007",
+        "status": "error",
+        "message": "Face already registered by another user",
+    },
+    # Add to ResponseCodesController.py
+    "FACE_ALREADY_REGISTERED_BY_USER": {
+        "code": "FCE008",
+        "status": "error",
+        "message": "Face already registered by this user",
+    },
 }
 
 # Combine all response codes into one dictionary for lookup

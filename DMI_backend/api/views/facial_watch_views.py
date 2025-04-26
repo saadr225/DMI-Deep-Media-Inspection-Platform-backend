@@ -35,6 +35,18 @@ def register_face(request):
             user_data = UserData.objects.get(user=user)
             face_image = file_upload_serializer.validated_data["file"]
 
+            # Check if user already has a registration
+            existing_registrations = FacialWatchRegistration.objects.filter(user_id=user_data.id)
+            if existing_registrations.exists():
+                return JsonResponse(
+                    {
+                        **get_response_code("FACE_ALREADY_REGISTERED_BY_USER"),
+                        "error": "You already have a face registered. Please delete your existing registration first.",
+                        "has_existing_registration": True,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
             # Save file
             fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/facial_watch/")
             filename = fs.save(
@@ -42,6 +54,21 @@ def register_face(request):
                 face_image,
             )
             file_path = os.path.join(f"{settings.MEDIA_ROOT}/facial_watch/", filename)
+
+            # Check if this face already exists for another user
+            face_check = facial_watch_system.check_face_exists(file_path, user_data.id)
+            if face_check["exists"]:
+                # Clean up the uploaded file
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                return JsonResponse(
+                    {
+                        **get_response_code("FACE_ALREADY_REGISTERED"),
+                        "error": "This face appears to already be registered by another user",
+                        "has_existing_registration": False,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
 
             # Register face
             result = facial_watch_system.register_user_face(user_data.id, file_path)

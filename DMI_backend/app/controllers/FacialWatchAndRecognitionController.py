@@ -103,6 +103,72 @@ class FacialWatchAndRecognitionPipleine:
                 print(f"Error registering user face: {e}")
             return False
 
+    def check_face_exists(self, image_path: str, requesting_user_id: int = None) -> dict:
+        """
+        Check if the face in the image already exists in the database.
+
+        Args:
+            image_path: Path to the image containing the face
+            requesting_user_id: Optional user ID to exclude from the check
+
+        Returns:
+            dict: {'exists': bool, 'user_id': int or None, 'similarity': float or None}
+        """
+        try:
+            # Extract face embedding from the uploaded image
+            try:
+                embedding_objs = DeepFace.represent(
+                    img_path=image_path,
+                    model_name=self.model_name,
+                    detector_backend=self.detector_backend,
+                    enforce_detection=True,
+                    align=True,
+                )
+
+                if not embedding_objs:
+                    return {"exists": False}
+
+                upload_embedding = np.array(embedding_objs[0]["embedding"])
+
+            except Exception as e:
+                if self.log_level >= 1:
+                    print(f"Error extracting face: {e}")
+                return {"exists": False}
+
+            # Get all registered faces (excluding the requesting user if provided)
+            if requesting_user_id:
+                registered_faces = FacialWatchRegistration.objects.exclude(user_id=requesting_user_id)
+            else:
+                registered_faces = FacialWatchRegistration.objects.all()
+
+            if not registered_faces.exists():
+                return {"exists": False}
+
+            # Check against all registered faces
+            for registered_face in registered_faces:
+                registered_embedding = np.array(registered_face.face_embedding)
+
+                # Calculate similarity (1 - cosine distance)
+                similarity = 1 - cosine(upload_embedding, registered_embedding)
+                print(f"Similarity: {similarity}")
+                # Use a stricter threshold for claiming a face already exists
+                duplicate_threshold = 0.85  # Higher value = more strict matching
+
+                if similarity > duplicate_threshold:
+                    return {
+                        "exists": True,
+                        "user_id": registered_face.user_id,
+                        "similarity": float(similarity),
+                    }
+
+            # No match found
+            return {"exists": False}
+
+        except Exception as e:
+            if self.log_level >= 1:
+                print(f"Error checking face existence: {e}")
+            return {"exists": False}
+
     def check_uploaded_image(self, image_path: str) -> list:
         """
         Check if any registered faces appear in the uploaded image.
