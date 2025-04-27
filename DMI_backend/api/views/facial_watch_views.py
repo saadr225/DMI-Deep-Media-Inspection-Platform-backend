@@ -79,7 +79,6 @@ def register_face(request):
                         **get_response_code("SUCCESS"),
                         "message": "Face registered successfully",
                         "data": {
-                            "user_id": user_data.id,
                             "registration_date": time.strftime("%Y-%m-%d %H:%M:%S"),
                         },
                     },
