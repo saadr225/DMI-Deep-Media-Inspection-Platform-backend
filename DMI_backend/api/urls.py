@@ -40,6 +40,8 @@ urlpatterns = [
     ),
     # path("pda/submit_direct/", pda_views.submit_to_pda, name="submit_to_pda"), # Deprecated for now
     path("pda/submit/", pda_views.submit_existing_to_pda, name="submit_existing_to_pda"),
+    path('pda/submission/<str:submission_identifier>', pda_views.delete_pda_submission, name='delete_pda_submission'),
+
     # text processing endpoints
     path("process/text/", semantic_views.process_ai_generated_text, name="process_ai_genearated_text"),
     # facial watch system endpoints

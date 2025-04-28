@@ -102,10 +102,13 @@ def submit_to_pda(request):
                 submission_identifier=submission_identifier,
                 is_approved=False,  # Requires moderation by default
             )
+
+            # Check for registered faces
             matches = facial_watch_system.check_uploaded_image(file_path)
             if matches:
-                # Notify matched users - note we're passing pda_submission.id instead of media_upload.id
+                # Notify matched users
                 facial_watch_system.notify_matched_users(matches, pda_submission.id)
+
             # Extract metadata and analyze for deepfakes
             metadata = metadata_analysis_pipeline.extract_metadata(file_path)
 
@@ -310,6 +313,12 @@ def submit_existing_to_pda(request):
 
             pda_submission.save()
 
+            # Check for registered faces in the copied file
+            matches = facial_watch_system.check_uploaded_image(pda_file_path)
+            if matches:
+                # Notify matched users with the PDA submission ID
+                facial_watch_system.notify_matched_users(matches, pda_submission.id)
+
             # Return success response
             return JsonResponse(
                 {
@@ -490,6 +499,79 @@ def get_pda_submission_detail(request, submission_identifier):
         return JsonResponse(
             {**get_response_code("SUCCESS"), "data": result_data},
             status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return JsonResponse(
+            {**get_response_code("SERVER_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_pda_submission(request, submission_identifier):
+    """
+    Delete a user's own PDA submission
+
+    Only allows deletion of unapproved submissions that belong to the requesting user.
+    """
+    try:
+        # Get user data
+        user = request.user
+        user_data = UserData.objects.get(user=user)
+
+        # Find the PDA submission
+        try:
+            submission = PublicDeepfakeArchive.objects.get(submission_identifier=submission_identifier)
+        except PublicDeepfakeArchive.DoesNotExist:
+            return JsonResponse(
+                {**get_response_code("NOT_FOUND"), "error": "Submission not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Verify ownership
+        if submission.user.id != user_data.id:
+            return JsonResponse(
+                {**get_response_code("ACCESS_DENIED"), "error": "Submission not owned by user."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Check if submission is already approved (optional policy)
+        # if submission.is_approved:
+        #     return JsonResponse(
+        #         {
+        #             **get_response_code("INVALID_OPERATION"),
+        #             "error": "Cannot delete an approved submission. Please contact the administrators.",
+        #         },
+        #         status=status.HTTP_400_BAD_REQUEST,
+        #     )
+
+        # Get file path before deletion
+        file_path = submission.file.path
+
+        # Store detection result if it exists
+        detection_result = submission.detection_result
+
+        # Delete the submission
+        submission.delete()
+
+        # Also delete the detection result if it exists and isn't linked to any other media upload
+        if detection_result and not detection_result.media_upload:
+            detection_result.delete()
+
+        # Delete the physical file if it exists
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        return JsonResponse(
+            {**get_response_code("SUCCESS"), "message": "Submission deleted successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+    except UserData.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+            status=status.HTTP_404_NOT_FOUND,
         )
     except Exception as e:
         return JsonResponse(
