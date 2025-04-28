@@ -211,7 +211,7 @@ def get_match_history(request):
             media_data = None
             if match.pda_submission:
                 media_data = {
-                    "id": match.pda_submission,
+                    "id": match.pda_submission.id,
                     "submission_identifier": match.pda_submission.submission_identifier,
                     "upload_date": match.pda_submission.submission_date,
                 }
