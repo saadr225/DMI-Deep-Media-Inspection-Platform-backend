@@ -113,8 +113,7 @@ class FacialWatchAndRecognitionPipleine:
             return True
 
         except Exception as e:
-            if self.log_level >= 1:
-                print(f"Error registering user face: {e}")
+            print(f"Error registering user face: {e}")
             return False
 
     def check_face_exists(self, image_path: str, requesting_user_id: int = None) -> dict:
@@ -179,8 +178,7 @@ class FacialWatchAndRecognitionPipleine:
             return {"exists": False}
 
         except Exception as e:
-            if self.log_level >= 1:
-                print(f"Error checking face existence: {e}")
+            print(f"Error checking face existence: {e}")
             return {"exists": False}
 
     def check_uploaded_image(self, image_path: str) -> list:
@@ -261,8 +259,7 @@ class FacialWatchAndRecognitionPipleine:
             return matches
 
         except Exception as e:
-            if self.log_level >= 1:
-                print(f"Error checking uploaded image: {e}")
+            print(f"Error checking uploaded image: {e}")
             return []
 
     def notify_matched_users(self, matches: list, pda_submission) -> None:
@@ -281,7 +278,7 @@ class FacialWatchAndRecognitionPipleine:
                 # Log the match in the database
                 facial_match = FacialWatchMatch(
                     user=user_data,
-                    media_upload_id=pda_submission,
+                    pda_submission=pda_submission,
                     pda_submission_identifier=pda_submission.submission_identifier,
                     match_confidence=match["similarity"],
                     face_location=match["bbox"],
@@ -302,8 +299,7 @@ class FacialWatchAndRecognitionPipleine:
                     print(f"Notification sent to user {user_id}")
 
             except Exception as e:
-                if self.log_level >= 1:
-                    print(f"Error sending notification to user {user_id}: {e}")
+                print(f"Error sending notification to user {user_id}: {e}")
 
     def remove_user_registration(self, user_id: int) -> bool:
         """
@@ -356,6 +352,5 @@ class FacialWatchAndRecognitionPipleine:
                 return False
 
         except Exception as e:
-            if self.log_level >= 1:
-                print(f"Error removing user registration: {e}")
+            print(f"Error removing user registration: {e}")
             return False
