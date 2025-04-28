@@ -365,6 +365,15 @@ def browse_pda(request):
         page = int(request.GET.get("page", 1))
         limit = int(request.GET.get("limit", 10))
 
+        # Get current user's data if authenticated
+        user_data_id = None
+        if request.user.is_authenticated:
+            try:
+                user_data = UserData.objects.get(user=request.user)
+                user_data_id = user_data.id
+            except UserData.DoesNotExist:
+                user_data_id = None
+
         # Search PDA submissions directly instead of using controller
         submissions = PublicDeepfakeArchive.objects.filter(is_approved=True)
 
@@ -390,6 +399,9 @@ def browse_pda(request):
         for submission in paginated_submissions:
             detection_result = submission.detection_result
 
+            # Determine if submission is owned by current user
+            user_owned = user_data_id is not None and submission.user.id == user_data_id
+
             result_data = {
                 "title": submission.title,
                 "category": submission.category,
@@ -402,6 +414,7 @@ def browse_pda(request):
                 "file_type": submission.file_type,
                 "submission_date": submission.submission_date,
                 "file_url": URLHelper.convert_to_public_url(file_path=submission.file.path),
+                "user_owned": user_owned,
                 "detection_result": (
                     {
                         "is_deepfake": detection_result.is_deepfake,
@@ -444,6 +457,15 @@ def get_pda_submission_detail(request, submission_identifier):
     Get detailed information about a specific PDA submission including detection results and metadata
     """
     try:
+        # Get current user's data if authenticated
+        user_data_id = None
+        if request.user.is_authenticated:
+            try:
+                user_data = UserData.objects.get(user=request.user)
+                user_data_id = user_data.id
+            except UserData.DoesNotExist:
+                user_data_id = None
+
         # Get submission directly instead of using controller
         try:
             submission = PublicDeepfakeArchive.objects.get(submission_identifier=submission_identifier)
@@ -458,6 +480,9 @@ def get_pda_submission_detail(request, submission_identifier):
                 {**get_response_code("ACCESS_DENIED"), "error": "This submission is under review."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        # Determine if submission is owned by current user
+        user_owned = user_data_id is not None and submission.user.id == user_data_id
 
         # Get detection result and metadata
         detection_result = submission.detection_result
@@ -481,6 +506,7 @@ def get_pda_submission_detail(request, submission_identifier):
             "file_type": submission.file_type,
             "submission_date": submission.submission_date,
             "file_url": URLHelper.convert_to_public_url(file_path=submission.file.path),
+            "user_owned": user_owned,
             "detection_result": (
                 {
                     "is_deepfake": detection_result.is_deepfake,
