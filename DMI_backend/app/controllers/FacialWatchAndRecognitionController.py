@@ -93,6 +93,20 @@ class FacialWatchAndRecognitionPipleine:
             )
             registration.save()
 
+            # Send email notification
+            try:
+                user_data = UserData.objects.get(id=user_id)
+                send_mail(
+                    subject="Face Registration Confirmation",
+                    message=f"Hello {user_data.user.username},\n\nYour face has been successfully registered with our Facial Watch service. You will be notified if your face is detected in any uploads to our platform.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user_data.user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                if self.log_level >= 1:
+                    print(f"Error sending registration confirmation email: {e}")
+
             if self.log_level >= 1:
                 print(f"User {user_id} registered for facial watch")
 
@@ -257,7 +271,7 @@ class FacialWatchAndRecognitionPipleine:
 
         Args:
             matches: List of user ID matches
-            image_upload_id: ID of the uploaded image
+            image_upload_id: ID of the uploaded image (could be MediaUpload ID or PDA submission ID)
         """
         for match in matches:
             try:
@@ -277,7 +291,7 @@ class FacialWatchAndRecognitionPipleine:
                 # Send email notification
                 send_mail(
                     subject="Your face was detected in an uploaded image",
-                    message=f"Hello {user_data.user.username},\n\nYour face was detected in an image uploaded to our platform. You are receiving this notification because you registered for our Facial Watch service.",
+                    message=f"Hello {user_data.user.username},\n\nYour face was detected in an image uploaded to our platform. The submission ID is: {image_upload_id}. You are receiving this notification because you registered for our Facial Watch service.",
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user_data.user.email],
                     fail_silently=False,
@@ -303,12 +317,42 @@ class FacialWatchAndRecognitionPipleine:
         try:
             registrations = FacialWatchRegistration.objects.filter(user_id=user_id)
             count = registrations.count()
-            registrations.delete()
 
-            if self.log_level >= 1:
-                print(f"Removed {count} facial watch registrations for user {user_id}")
+            if count > 0:
+                # Get user email before deleting registration
+                try:
+                    user_data = UserData.objects.get(id=user_id)
+                    user_email = user_data.user.email
+                    username = user_data.user.username
+                except Exception as e:
+                    if self.log_level >= 1:
+                        print(f"Error getting user data: {e}")
+                    user_email = None
+                    username = "User"
 
-            return count > 0
+                # Delete registrations
+                registrations.delete()
+
+                # Send notification email
+                if user_email:
+                    try:
+                        send_mail(
+                            subject="Face Registration Removed",
+                            message=f"Hello {username},\n\nYour face has been removed from our Facial Watch service. You will no longer receive notifications when your face is detected in uploads.",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[user_email],
+                            fail_silently=False,
+                        )
+                    except Exception as e:
+                        if self.log_level >= 1:
+                            print(f"Error sending registration removal email: {e}")
+
+                if self.log_level >= 1:
+                    print(f"Removed {count} facial watch registrations for user {user_id}")
+
+                return True
+            else:
+                return False
 
         except Exception as e:
             if self.log_level >= 1:
