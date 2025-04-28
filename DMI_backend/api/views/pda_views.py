@@ -69,9 +69,9 @@ def submit_to_pda(request):
             # Save file
             fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/pda_submissions/")
             original_filename = media_file.name
-            submission_identifier = f"pda-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+            pda_submission_identifier = f"pda-{uuid.uuid4().hex[:8]}-{int(time.time())}"
             filename = fs.save(
-                f"{submission_identifier}-{original_filename}",
+                f"{pda_submission_identifier}-{original_filename}",
                 media_file,
             )
             file_path = os.path.join(f"{settings.MEDIA_ROOT}/pda_submissions/", filename)
@@ -99,7 +99,7 @@ def submit_to_pda(request):
                 source_url=source_url,
                 original_filename=original_filename,
                 file_type=file_type,
-                submission_identifier=submission_identifier,
+                submission_identifier=pda_submission_identifier,
                 is_approved=False,  # Requires moderation by default
             )
 
@@ -107,7 +107,7 @@ def submit_to_pda(request):
             matches = facial_watch_system.check_uploaded_image(file_path)
             if matches:
                 # Notify matched users
-                facial_watch_system.notify_matched_users(matches, pda_submission.id)
+                facial_watch_system.notify_matched_users(matches, pda_submission_identifier)
 
             # Extract metadata and analyze for deepfakes
             metadata = metadata_analysis_pipeline.extract_metadata(file_path)
@@ -317,7 +317,7 @@ def submit_existing_to_pda(request):
             matches = facial_watch_system.check_uploaded_image(pda_file_path)
             if matches:
                 # Notify matched users with the PDA submission ID
-                facial_watch_system.notify_matched_users(matches, pda_submission.id)
+                facial_watch_system.notify_matched_users(matches, pda_submission_identifier)
 
             # Return success response
             return JsonResponse(
