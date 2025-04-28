@@ -115,7 +115,7 @@ class PublicDeepfakeArchive(models.Model):
             self.review_date = timezone.now()
         super().save(*args, **kwargs)
 
-    def __str__(self):                                      
+    def __str__(self):
         return f"{self.title} - {self.submission_date}"
 
 
@@ -127,13 +127,13 @@ class FacialWatchRegistration(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=["user", "is_active"]),
         ]
 
 
 class FacialWatchMatch(models.Model):
     user = models.ForeignKey(UserData, on_delete=models.CASCADE)
-    media_upload = models.ForeignKey(MediaUpload, on_delete=models.SET_NULL, null=True)
+    pda_submission_identifier = models.CharField(max_length=256, blank=False)
     match_confidence = models.FloatField()
     face_location = models.JSONField(null=True)  # Store bounding box coordinates
     match_date = models.DateTimeField(auto_now_add=True)
