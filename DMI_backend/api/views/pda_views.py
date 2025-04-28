@@ -107,7 +107,7 @@ def submit_to_pda(request):
             matches = facial_watch_system.check_uploaded_image(file_path)
             if matches:
                 # Notify matched users
-                facial_watch_system.notify_matched_users(matches, pda_submission_identifier)
+                facial_watch_system.notify_matched_users(matches, pda_submission)
 
             # Extract metadata and analyze for deepfakes
             metadata = metadata_analysis_pipeline.extract_metadata(file_path)
@@ -317,7 +317,7 @@ def submit_existing_to_pda(request):
             matches = facial_watch_system.check_uploaded_image(pda_file_path)
             if matches:
                 # Notify matched users with the PDA submission ID
-                facial_watch_system.notify_matched_users(matches, pda_submission_identifier)
+                facial_watch_system.notify_matched_users(matches, pda_submission)
 
             # Return success response
             return JsonResponse(

@@ -133,6 +133,7 @@ class FacialWatchRegistration(models.Model):
 
 class FacialWatchMatch(models.Model):
     user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    pda_submission = models.ForeignKey(PublicDeepfakeArchive, on_delete=models.SET_NULL, null=True)
     pda_submission_identifier = models.CharField(max_length=256, blank=False)
     match_confidence = models.FloatField()
     face_location = models.JSONField(null=True)  # Store bounding box coordinates

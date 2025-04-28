@@ -265,7 +265,7 @@ class FacialWatchAndRecognitionPipleine:
                 print(f"Error checking uploaded image: {e}")
             return []
 
-    def notify_matched_users(self, matches: list, pda_submission_identifier: str) -> None:
+    def notify_matched_users(self, matches: list, pda_submission) -> None:
         """
         Notify users that their face has been detected in an upload.
 
@@ -281,7 +281,8 @@ class FacialWatchAndRecognitionPipleine:
                 # Log the match in the database
                 facial_match = FacialWatchMatch(
                     user=user_data,
-                    pda_submission_identifier=pda_submission_identifier,
+                    media_upload_id=pda_submission.id,
+                    pda_submission_identifier=pda_submission.submission_identifier,
                     match_confidence=match["similarity"],
                     face_location=match["bbox"],
                     notification_sent=True,
@@ -291,7 +292,7 @@ class FacialWatchAndRecognitionPipleine:
                 # Send email notification
                 send_mail(
                     subject="Your face was detected in an uploaded image",
-                    message=f"Hello {user_data.user.username},\n\nYour face was detected in an image uploaded to our platform. The PDA submission ID is: {pda_submission_identifier}. You are receiving this notification because you registered for our Facial Watch service.",
+                    message=f"Hello {user_data.user.username},\n\nYour face was detected in an image uploaded to our platform. The PDA submission ID is: {pda_submission.submission_identifier}. You are receiving this notification because you registered for our Facial Watch service.",
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user_data.user.email],
                     fail_silently=False,
