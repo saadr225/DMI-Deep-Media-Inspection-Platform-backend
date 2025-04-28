@@ -115,7 +115,7 @@ class PublicDeepfakeArchive(models.Model):
             self.review_date = timezone.now()
         super().save(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self):                                      
         return f"{self.title} - {self.submission_date}"
 
 

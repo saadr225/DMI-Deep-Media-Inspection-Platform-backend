@@ -15,7 +15,9 @@ from app.controllers.DeepfakeDetectionController import DeepfakeDetectionPipelin
 from app.controllers.MetadataAnalysisController import MetadataAnalysisPipeline
 from app.controllers.ResponseCodesController import get_response_code
 from app.controllers.HelpersController import URLHelper
+from app.controllers.FacialWatchAndRecognitionController import FacialWatchAndRecognitionPipleine
 
+# Initialize facial watch system (add this near top of file with other initializations)
 from api.models import (
     UserData,
     DeepfakeDetectionResult,
@@ -29,6 +31,8 @@ from api.serializers import FileUploadSerializer
 # This should be initialized alongside other controllers in semantic_views.py
 # and imported here to avoid duplication
 from api.views.semantic_views import deepfake_detection_pipeline, metadata_analysis_pipeline
+
+facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=1)
 
 
 @api_view(["POST"])
@@ -98,7 +102,10 @@ def submit_to_pda(request):
                 submission_identifier=submission_identifier,
                 is_approved=False,  # Requires moderation by default
             )
-
+            matches = facial_watch_system.check_uploaded_image(file_path)
+            if matches:
+                # Notify matched users - note we're passing pda_submission.id instead of media_upload.id
+                facial_watch_system.notify_matched_users(matches, pda_submission.id)
             # Extract metadata and analyze for deepfakes
             metadata = metadata_analysis_pipeline.extract_metadata(file_path)
 

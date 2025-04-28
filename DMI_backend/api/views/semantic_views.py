@@ -146,11 +146,7 @@ def process_deepfake_media(request):
                 file_type=deepfake_detection_pipeline.media_processor.check_media_type(file_path),
                 purpose="Deepfake-Analysis",
             )
-            # Check for registered faces
-            matches = facial_watch_system.check_uploaded_image(file_path)
-            if matches:
-                # Notify matched users
-                facial_watch_system.notify_matched_users(matches, media_upload.id)
+            
             metatdata = metadata_analysis_pipeline.extract_metadata(file_path)
             # Save metadata
             MediaUploadMetadata.objects.create(media_upload=media_upload, metadata=metatdata)
