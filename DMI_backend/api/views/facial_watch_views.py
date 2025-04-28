@@ -17,7 +17,7 @@ from api.serializers import FileUploadSerializer
 
 
 # Initialize facial watch controller
-facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=1)
+facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=0)
 
 
 @api_view(["POST"])
@@ -209,11 +209,11 @@ def get_match_history(request):
         match_history = []
         for match in matches:
             media_data = None
-            if match.media_upload:
+            if match.pda_submission:
                 media_data = {
-                    "id": match.media_upload.id,
-                    "submission_identifier": match.media_upload.submission_identifier,
-                    "upload_date": match.media_upload.upload_date,
+                    "id": match.pda_submission,
+                    "submission_identifier": match.pda_submission.submission_identifier,
+                    "upload_date": match.pda_submission.submission_date,
                 }
 
             match_history.append(

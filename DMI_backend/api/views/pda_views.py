@@ -32,7 +32,7 @@ from api.serializers import FileUploadSerializer
 # and imported here to avoid duplication
 from api.views.semantic_views import deepfake_detection_pipeline, metadata_analysis_pipeline
 
-facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=1)
+facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=0)
 
 
 @api_view(["POST"])

@@ -281,7 +281,7 @@ class FacialWatchAndRecognitionPipleine:
                 # Log the match in the database
                 facial_match = FacialWatchMatch(
                     user=user_data,
-                    media_upload_id=pda_submission.id,
+                    media_upload_id=pda_submission,
                     pda_submission_identifier=pda_submission.submission_identifier,
                     match_confidence=match["similarity"],
                     face_location=match["bbox"],
