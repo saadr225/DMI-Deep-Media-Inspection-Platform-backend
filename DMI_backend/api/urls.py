@@ -40,8 +40,11 @@ urlpatterns = [
     ),
     # path("pda/submit_direct/", pda_views.submit_to_pda, name="submit_to_pda"), # Deprecated for now
     path("pda/submit/", pda_views.submit_existing_to_pda, name="submit_existing_to_pda"),
-    path('pda/submission/<str:submission_identifier>', pda_views.delete_pda_submission, name='delete_pda_submission'),
-
+    path(
+        "pda/submission/<str:submission_identifier>",
+        pda_views.delete_pda_submission,
+        name="delete_pda_submission",
+    ),
     # text processing endpoints
     path("process/text/", semantic_views.process_ai_generated_text, name="process_ai_genearated_text"),
     # facial watch system endpoints
@@ -53,6 +56,7 @@ urlpatterns = [
     ),
     path("facial-watch/remove/", facial_watch_views.remove_registration, name="remove_registration"),
     path("facial-watch/history/", facial_watch_views.get_match_history, name="get_match_history"),
+    path("facial-watch/search", facial_watch_views.search_faces_in_pda, name="search_faces_in_pda"),
     # response codes endpoint
     path("docs/response_codes/", helper_views.get_response_codes, name="get_response_codes"),
 ]

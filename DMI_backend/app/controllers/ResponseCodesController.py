@@ -125,6 +125,7 @@ FACE_WATCH_ERROR_CODES = {
         "status": "error",
         "message": "Face already registered by this user",
     },
+    "FACE_SEARCH_ERROR": {"code": "FCE009", "message": "Error searching for faces in PDA."},
 }
 
 # Combine all response codes into one dictionary for lookup

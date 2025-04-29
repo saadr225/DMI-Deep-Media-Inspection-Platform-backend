@@ -241,3 +241,64 @@ def get_match_history(request):
             {**get_response_code("SERVER_ERROR"), "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser, FileUploadParser])
+def search_faces_in_pda(request):
+    """
+    Search for a face in PDA submissions by uploading an image
+    """
+    file_upload_serializer = FileUploadSerializer(data=request.data)
+
+    if file_upload_serializer.is_valid():
+        try:
+            search_image = file_upload_serializer.validated_data["file"]
+
+            # Save file temporarily
+            fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/face_searches/")
+            os.makedirs(f"{settings.MEDIA_ROOT}/face_searches/", exist_ok=True)
+            filename = fs.save(
+                f"search-{time.strftime('%Y-%m-%d_%H-%M-%S')}-{search_image.name}",
+                search_image,
+            )
+            file_path = os.path.join(f"{settings.MEDIA_ROOT}/face_searches/", filename)
+
+            # Perform search
+            search_threshold = float(request.data.get("threshold", 0.6))  # Allow custom threshold
+            result = facial_watch_system.search_faces_in_pda(file_path, threshold=search_threshold)
+
+            # Clean up the temporary file
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+            if result["success"]:
+                return JsonResponse(
+                    {
+                        **get_response_code("SUCCESS"),
+                        "data": {"matches": result["matches"], "total_matches": len(result["matches"])},
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return JsonResponse(
+                    {**get_response_code("FACE_SEARCH_ERROR"), "error": result["error"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        except UserData.DoesNotExist:
+            return JsonResponse(
+                {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return JsonResponse(
+                {**get_response_code("SERVER_ERROR"), "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+    else:
+        return JsonResponse(
+            {**get_response_code("FILE_UPLOAD_ERROR"), "error": file_upload_serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
