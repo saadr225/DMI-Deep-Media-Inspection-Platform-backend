@@ -140,7 +140,18 @@ class FacialWatchMatch(models.Model):
     match_date = models.DateTimeField(auto_now_add=True)
     notification_sent = models.BooleanField(default=False)
 
-
+class DetectedFace(models.Model):
+    pda_submission = models.ForeignKey(PublicDeepfakeArchive, on_delete=models.CASCADE, related_name="detected_faces")
+    face_embedding = models.JSONField()  # Store face embedding vectors as JSON
+    face_location = models.JSONField()  # Store bounding box coordinates
+    frame_id = models.CharField(max_length=100, null=True)  # For videos, store frame ID
+    detection_date = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=["pda_submission"]),
+        ]
+        
 # class CommunityFeedback(models.Model):
 #     media = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
 #     user = models.ForeignKey(User, on_delete=models.CASCADE)

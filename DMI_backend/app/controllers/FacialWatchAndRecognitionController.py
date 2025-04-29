@@ -165,7 +165,7 @@ class FacialWatchAndRecognitionPipleine:
                 similarity = 1 - cosine(upload_embedding, registered_embedding)
                 print(f"Similarity: {similarity}")
                 # Use a stricter threshold for claiming a face already exists
-                duplicate_threshold = 0.85  # Higher value = more strict matching
+                duplicate_threshold = 0.65  # Higher value = more strict matching
 
                 if similarity > duplicate_threshold:
                     return {
