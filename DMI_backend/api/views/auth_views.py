@@ -100,7 +100,7 @@ def login(request):
         user = authenticate(username=username, password=password)
         if user:
             try:
-                user_data = UserData.objects.get(user=user)
+                user_data, created = UserData.objects.get_or_create(user=user)
                 user_response = UserSerializer(user).data
                 user_data_response = {
                     "user": user_response,
