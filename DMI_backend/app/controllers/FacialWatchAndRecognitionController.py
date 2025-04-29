@@ -335,12 +335,19 @@ class FacialWatchAndRecognitionPipleine:
                 # Delete registrations
                 registrations.delete()
 
+                # Also delete all match history for this user
+                matches_count = FacialWatchMatch.objects.filter(user_id=user_id).count()
+                FacialWatchMatch.objects.filter(user_id=user_id).delete()
+
+                if self.log_level >= 1:
+                    print(f"Removed {matches_count} facial match records for user {user_id}")
+
                 # Send notification email
                 if user_email:
                     try:
                         send_mail(
                             subject="Face Registration Removed",
-                            message=f"Hello {username},\n\nYour face has been removed from our Facial Watch service. You will no longer receive notifications when your face is detected in uploads.",
+                            message=f"Hello {username},\n\nYour face has been removed from our Facial Watch service. You will no longer receive notifications when your face is detected in uploads. All your previous match history has also been cleared.",
                             from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[user_email],
                             fail_silently=False,

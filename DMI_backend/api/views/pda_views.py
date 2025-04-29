@@ -314,7 +314,71 @@ def submit_existing_to_pda(request):
             pda_submission.save()
 
             # Check for registered faces in the copied file
-            matches = facial_watch_system.check_uploaded_image(pda_file_path)
+
+            face_path = pda_file_path  # Default to the original file path
+
+            # For videos, we need to extract a frame with a face first
+            if file_type == "Video":
+                # Create directory for storing frames if needed
+                frames_dir = os.path.join(settings.MEDIA_ROOT, "facial_landmarks_frames")
+                os.makedirs(frames_dir, exist_ok=True)
+
+                # Extract a frame containing a face
+                extracted_frame_path = (
+                    deepfake_detection_pipeline.media_processor.extract_single_frame_with_face(
+                        pda_file_path, frames_dir
+                    )
+                )
+                if extracted_frame_path:
+                    face_path = extracted_frame_path
+                else:
+                    # No faces found in the video
+                    matches = []
+                    face_path = None
+
+            # Process the image or extracted frame
+            if face_path:
+                # Check for registered faces (for notifications)
+                matches = facial_watch_system.check_uploaded_image(face_path)
+
+                # Store face data in the database for future searches
+                try:
+                    # Extract faces and embeddings using DeepFace
+                    from deepface import DeepFace
+
+                    # Extract faces with bounding boxes
+                    extracted_faces = DeepFace.extract_faces(
+                        img_path=face_path,
+                        detector_backend=facial_watch_system.detector_backend,
+                        enforce_detection=False,
+                        align=True,
+                    )
+
+                    # Get embeddings for each face
+                    embeddings = DeepFace.represent(
+                        img_path=face_path,
+                        model_name=facial_watch_system.model_name,
+                        detector_backend=facial_watch_system.detector_backend,
+                        enforce_detection=False,
+                        align=True,
+                    )
+
+                    # Store each detected face in the database
+                    for i, face_data in enumerate(extracted_faces):
+                        if i < len(embeddings):  # Ensure we have an embedding for this face
+                            from api.models import DetectedFace
+
+                            DetectedFace.objects.create(
+                                pda_submission=pda_submission,
+                                face_embedding=embeddings[i]["embedding"],
+                                face_location=face_data["facial_area"],
+                                frame_id=os.path.basename(face_path) if file_type == "Video" else None,
+                            )
+                except Exception as e:
+                    print(f"Error storing face data: {e}")
+            else:
+                matches = []
+
             if matches:
                 # Notify matched users with the PDA submission ID
                 facial_watch_system.notify_matched_users(matches, pda_submission)
