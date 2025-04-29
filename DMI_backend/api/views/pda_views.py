@@ -16,6 +16,7 @@ from app.controllers.MetadataAnalysisController import MetadataAnalysisPipeline
 from app.controllers.ResponseCodesController import get_response_code
 from app.controllers.HelpersController import URLHelper
 from app.controllers.FacialWatchAndRecognitionController import FacialWatchAndRecognitionPipleine
+from api.models import PDASubmissionProfiledFace
 
 # Initialize facial watch system (add this near top of file with other initializations)
 from api.models import (
@@ -366,9 +367,8 @@ def submit_existing_to_pda(request):
                     # Store each detected face in the database
                     for i, face_data in enumerate(extracted_faces):
                         if i < len(embeddings):  # Ensure we have an embedding for this face
-                            from api.models import DetectedFace
 
-                            DetectedFace.objects.create(
+                            PDASubmissionProfiledFace.objects.create(
                                 pda_submission=pda_submission,
                                 face_embedding=embeddings[i]["embedding"],
                                 face_location=face_data["facial_area"],
