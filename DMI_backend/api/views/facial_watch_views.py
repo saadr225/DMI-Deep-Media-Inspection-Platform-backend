@@ -17,7 +17,7 @@ from api.serializers import FileUploadSerializer
 
 
 # Initialize facial watch controller
-facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=0)
+facial_watch_system = FacialWatchAndRecognitionPipleine(recognition_threshold=0.3, log_level=1)
 
 
 @api_view(["POST"])

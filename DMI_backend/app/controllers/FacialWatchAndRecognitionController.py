@@ -1,4 +1,9 @@
 import os
+
+# Force TensorFlow (used by DeepFace) to use CPU only
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "false"
+
 import time
 import numpy as np
 from django.conf import settings
