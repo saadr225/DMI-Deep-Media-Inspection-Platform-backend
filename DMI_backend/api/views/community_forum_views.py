@@ -138,7 +138,6 @@ def add_reply(request, thread_id):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([JSONParser])
@@ -159,7 +158,7 @@ def toggle_like(request):
         reply_id = request.data.get("reply_id")
 
         result = forum_controller.toggle_like(
-            user_data=user_data, thread_id=thread_id, reply_id=reply_id
+            user_data=user_data, thread_id=thread_id, reply_id=reply_id, like_type="like"
         )
 
         if result["success"]:
@@ -188,6 +187,54 @@ def toggle_like(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([JSONParser])
+def toggle_dislike(request):
+    """
+    Toggle dislike/downvote on a thread or reply
+
+    Required fields (one of):
+    - thread_id: ID of thread to dislike
+    - reply_id: ID of reply to dislike
+    """
+    try:
+        user = request.user
+        user_data = UserData.objects.get(user=user)
+
+        # Get fields
+        thread_id = request.data.get("thread_id")
+        reply_id = request.data.get("reply_id")
+
+        result = forum_controller.toggle_like(
+            user_data=user_data, thread_id=thread_id, reply_id=reply_id, like_type="dislike"
+        )
+
+        if result["success"]:
+            return JsonResponse({**get_response_code("SUCCESS"), **result}, status=status.HTTP_200_OK)
+        else:
+            if "NOT_FOUND" in result["code"]:
+                return JsonResponse(
+                    {**get_response_code(result["code"]), "error": result["error"]},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            else:
+                return JsonResponse(
+                    {**get_response_code(result["code"]), "error": result["error"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+    except UserData.DoesNotExist:
+        return JsonResponse(
+            {**get_response_code("USER_DATA_NOT_FOUND"), "error": "User data not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        logger.error(f"Error in toggle_dislike: {str(e)}")
+        return JsonResponse(
+            {**get_response_code("SERVER_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])

@@ -224,7 +224,12 @@ class ForumReply(models.Model):
 
 
 class ForumLike(models.Model):
-    """Likes/upvotes for threads and replies"""
+    """Likes/upvotes/downvotes for threads and replies"""
+
+    LIKE_TYPES = [
+        ('like', 'Like'),
+        ('dislike', 'Dislike'),
+    ]
 
     user = models.ForeignKey(UserData, on_delete=models.CASCADE)
     thread = models.ForeignKey(
@@ -233,6 +238,7 @@ class ForumLike(models.Model):
     reply = models.ForeignKey(
         ForumReply, on_delete=models.CASCADE, null=True, blank=True, related_name="likes"
     )
+    like_type = models.CharField(max_length=10, choices=LIKE_TYPES, default='like')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -257,10 +263,10 @@ class ForumLike(models.Model):
         ]
 
     def __str__(self):
+        action = "Dislike" if self.like_type == "dislike" else "Like"
         if self.thread:
-            return f"Like on thread by {self.user.user.username}"
-        return f"Like on reply by {self.user.user.username}"
-
+            return f"{action} on thread by {self.user.user.username}"
+        return f"{action} on reply by {self.user.user.username}"
 
 class ForumAnalytics(models.Model):
     """Analytics for the forum"""

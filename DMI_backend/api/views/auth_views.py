@@ -43,7 +43,7 @@ def signup(request):
 
             return JsonResponse(
                 {
-                    **get_response_code("USER_CREATION_SUCCESS"),
+                    **get_response_code("SUCCESS"),
                     "data": user_data_response,
                 },
                 status=status.HTTP_201_CREATED,

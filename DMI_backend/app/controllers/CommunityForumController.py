@@ -22,7 +22,6 @@ from app.models import UserData
 logger = logging.getLogger(__name__)
 
 
-
 class CommunityForumController:
     def __init__(self):
         """Initialize the Community Forum Controller"""
@@ -285,14 +284,15 @@ class CommunityForumController:
                 "code": "FORUM_REPLY_ERROR",
             }
 
-    def toggle_like(self, user_data, thread_id=None, reply_id=None):
+    def toggle_like(self, user_data, thread_id=None, reply_id=None, like_type="like"):
         """
-        Toggle like/upvote on a thread or reply
+        Toggle like/dislike on a thread or reply
 
         Args:
             user_data (UserData): User data of the liker
-            thread_id (int, optional): ID of thread to like
-            reply_id (int, optional): ID of reply to like
+            thread_id (int, optional): ID of thread to like/dislike
+            reply_id (int, optional): ID of reply to like/dislike
+            like_type (str, optional): Type of vote ('like' or 'dislike')
 
         Returns:
             dict: Response with like status
@@ -306,16 +306,22 @@ class CommunityForumController:
                     "code": "FORUM_INVALID_LIKE_TARGET",
                 }
 
-            # Find the target object
-            target = None
+            # Validate like_type
+            if like_type not in ["like", "dislike"]:
+                return {
+                    "success": False,
+                    "error": "Invalid like type. Must be 'like' or 'dislike'",
+                    "code": "FORUM_INVALID_LIKE_TYPE",
+                }
+
+            # Find the target object and check for existing likes/dislikes
             if thread_id:
                 try:
                     target = ForumThread.objects.get(
                         id=thread_id, approval_status="approved", is_deleted=False
                     )
-                    existing_like = ForumLike.objects.filter(
-                        user=user_data, thread=target, reply=None
-                    ).first()
+                    # Check for any existing like/dislike of any type
+                    existing_like = ForumLike.objects.filter(user=user_data, thread=target).first()
                 except ForumThread.DoesNotExist:
                     return {
                         "success": False,
@@ -325,9 +331,7 @@ class CommunityForumController:
             else:
                 try:
                     target = ForumReply.objects.get(id=reply_id, is_deleted=False)
-                    existing_like = ForumLike.objects.filter(
-                        user=user_data, reply=target, thread=None
-                    ).first()
+                    existing_like = ForumLike.objects.filter(user=user_data, reply=target).first()
                 except ForumReply.DoesNotExist:
                     return {
                         "success": False,
@@ -337,32 +341,43 @@ class CommunityForumController:
 
             # Toggle like status
             if existing_like:
-                existing_like.delete()
-                action = "removed"
-                # Update analytics
-                self._ensure_analytics().total_likes -= 1
-                self._ensure_analytics().save()
-            else:
-                # Create new like
-                if thread_id:
-                    ForumLike.objects.create(user=user_data, thread=target)
+                if existing_like.like_type == like_type:
+                    # If same type, remove it (toggle off)
+                    existing_like.delete()
+                    action = "removed"
+                    # Update analytics
+                    self.analytics.total_likes -= 1
+                    self.analytics.save()
                 else:
-                    ForumLike.objects.create(user=user_data, reply=target)
+                    # If different type, change the type (switch from like to dislike or vice versa)
+                    existing_like.like_type = like_type
+                    existing_like.save()
+                    action = "changed"
+            else:
+                # Create new like/dislike
+                if thread_id:
+                    ForumLike.objects.create(user=user_data, thread=target, like_type=like_type)
+                else:
+                    ForumLike.objects.create(user=user_data, reply=target, like_type=like_type)
                 action = "added"
                 # Update analytics
-                self._ensure_analytics().total_likes += 1
-                self._ensure_analytics().save()
+                self.analytics.total_likes += 1
+                self.analytics.save()
 
-            # Get updated like count
+            # Get updated counts
             if thread_id:
-                like_count = ForumLike.objects.filter(thread=target).count()
+                like_count = ForumLike.objects.filter(thread=target, like_type="like").count()
+                dislike_count = ForumLike.objects.filter(thread=target, like_type="dislike").count()
             else:
-                like_count = ForumLike.objects.filter(reply=target).count()
+                like_count = ForumLike.objects.filter(reply=target, like_type="like").count()
+                dislike_count = ForumLike.objects.filter(reply=target, like_type="dislike").count()
 
             return {
                 "success": True,
                 "action": action,
+                "like_type": like_type,
                 "like_count": like_count,
+                "dislike_count": dislike_count,
                 "code": f"FORUM_LIKE_{action.upper()}",
             }
 
@@ -737,13 +752,20 @@ class CommunityForumController:
                     }
                 )
 
-            # Check if user has liked the thread
+            # Check if user has liked or disliked the thread
             user_liked_thread = False
+            user_disliked_thread = False
             if user_data:
-                user_liked_thread = ForumLike.objects.filter(user=user_data, thread=thread).exists()
+                user_liked_thread = ForumLike.objects.filter(
+                    user=user_data, thread=thread, like_type="like"
+                ).exists()
+                user_disliked_thread = ForumLike.objects.filter(
+                    user=user_data, thread=thread, like_type="dislike"
+                ).exists()
 
-            # Get like count for thread
-            thread_like_count = ForumLike.objects.filter(thread=thread).count()
+            # Get like and dislike counts for thread
+            thread_like_count = ForumLike.objects.filter(thread=thread, like_type="like").count()
+            thread_dislike_count = ForumLike.objects.filter(thread=thread, like_type="dislike").count()
 
             # Format response
             thread_detail = {
@@ -765,7 +787,9 @@ class CommunityForumController:
                 "replies": formatted_replies,
                 "reply_count": len(formatted_replies),
                 "like_count": thread_like_count,
+                "dislike_count": thread_dislike_count,
                 "user_liked": user_liked_thread,
+                "user_disliked": user_disliked_thread,
             }
 
             return {"success": True, "thread": thread_detail, "code": "FORUM_THREAD_FETCHED"}
@@ -935,6 +959,3 @@ class CommunityForumController:
                 "error": f"Error searching threads: {str(e)}",
                 "code": "FORUM_SEARCH_ERROR",
             }
-
-
-
