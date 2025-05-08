@@ -1,0 +1,103 @@
+{% extends "admin/base_site.html" %} {% load i18n admin_urls static admin_list %} {% block extrastyle %} {{ block.super }} <link
+rel="stylesheet" href="{% static "admin/css/changelists.css" %}">
+<style>
+  .thread-card {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+  }
+  .thread-title {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  .thread-meta {
+    color: #666;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .thread-content {
+    border-left: 3px solid #ccc;
+    padding-left: 15px;
+    margin: 10px 0;
+  }
+  .thread-tags span {
+    display: inline-block;
+    background-color: #e0e0e0;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-right: 5px;
+    font-size: 12px;
+  }
+  .action-buttons {
+    margin-top: 15px;
+  }
+  .btn-approve {
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .btn-reject {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  .empty-queue {
+    text-align: center;
+    padding: 50px;
+    color: #666;
+  }
+</style>
+{% endblock %} {% block content %}
+<div id="content-main">
+  <div class="module" id="changelist">
+    <div class="changelist-form-container">
+      <h1>Thread Moderation Queue</h1>
+
+      {% if pending_threads %}
+      <p>{{ pending_threads.count }} thread{{ pending_threads.count|pluralize }} pending approval.</p>
+
+      {% for thread in pending_threads %}
+      <div class="thread-card">
+        <div class="thread-title">{{ thread.title }}</div>
+        <div class="thread-meta">
+          <strong>Author:</strong> {{ thread.author.user.username }} | <strong>Topic:</strong> {{ thread.topic.name }} |
+          <strong>Created:</strong> {{ thread.created_at|date:"M d, Y H:i" }}
+        </div>
+        <div class="thread-content">
+          {{ thread.content|linebreaks|truncatewords:50 }} {% if thread.content|wordcount > 50 %}
+          <a href="{% url 'admin:api_forumthread_change' thread.id %}">Read more</a>
+          {% endif %}
+        </div>
+        <div class="thread-tags">
+          {% for tag in thread.tags.all %}
+          <span>{{ tag.name }}</span>
+          {% endfor %}
+        </div>
+        <div class="action-buttons">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="thread_id" value="{{ thread.id }}" />
+            <button type="submit" name="action" value="approve" class="btn-approve">Approve</button>
+            <button type="submit" name="action" value="reject" class="btn-reject">Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %} {% else %}
+      <div class="empty-queue">
+        <h2>No pending threads!</h2>
+        <p>All threads have been moderated.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

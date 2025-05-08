@@ -2,10 +2,27 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User, Group
-from api.models import PublicDeepfakeArchive, UserData, DeepfakeDetectionResult
+from api.models import (
+    PublicDeepfakeArchive,
+    UserData,
+    DeepfakeDetectionResult,
+    ForumThread,
+    ForumReply,
+    ForumTopic,
+    ForumTag,
+    ForumAnalytics,
+    ForumReaction,
+)
 from app.controllers.HelpersController import URLHelper
-from datetime import datetime
-from django.db.models import Q
+from app.controllers import CommunityForumController
+from datetime import datetime, timedelta
+from django.db.models import Q, Count
+from django.urls import reverse
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from django.shortcuts import render
+
 # Customize the admin site
 admin.site.site_header = "Deepfake Archive Administration"
 admin.site.site_title = "PDA Admin/Moderation Portal"
@@ -81,13 +98,13 @@ class PublicDeepfakeArchiveAdmin(admin.ModelAdmin):
         ),
     )
 
-
     def save_model(self, request, obj, form, change):
-            """Override save_model to automatically set reviewer information"""
-            if change:  # Only when editing existing objects
-                obj.reviewed_by = request.user
-                obj.review_date = datetime.now()
-            super().save_model(request, obj, form, change)
+        """Override save_model to automatically set reviewer information"""
+        if change:  # Only when editing existing objects
+            obj.reviewed_by = request.user
+            obj.review_date = datetime.now()
+        super().save_model(request, obj, form, change)
+
     def get_readonly_fields(self, request, obj=None):
         """Ensure certain fields are always readonly"""
         return self.readonly_fields
@@ -99,16 +116,17 @@ class PublicDeepfakeArchiveAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Disable ability to delete submissions"""
         return False
-        
+
     def get_queryset(self, request):
         """Only show submissions that haven't been reviewed yet or were reviewed by the current user"""
         qs = super().get_queryset(request)
         if not request.user.is_superuser:  # For moderators
             return qs.filter(
-                Q(reviewed_by__isnull=True) |  # Not reviewed yet
-                Q(reviewed_by=request.user)     # Or reviewed by current user
+                Q(reviewed_by__isnull=True)  # Not reviewed yet
+                | Q(reviewed_by=request.user)  # Or reviewed by current user
             )
         return qs  # Superusers can see all
+
     def approval_status(self, obj):
         """Display approval status with colored formatting"""
         if obj.is_approved:
@@ -313,9 +331,719 @@ class CustomUserAdmin(BaseUserAdmin):
     remove_moderator.short_description = "Remove moderator status from selected users"
 
 
-# Unregister the default UserAdmin
-admin.site.unregister(User)
-# Register our CustomUserAdmin
-admin.site.register(User, CustomUserAdmin)
-admin.site.register(UserData, UserDataAdmin)
+# Forum-related admin classes
+class ForumThreadAdmin(admin.ModelAdmin):
+    list_display = (
+        "title",
+        "author",
+        "topic",
+        "created_at",
+        "approval_status",
+        "is_deleted",
+        "view_count",
+        "reply_count",
+        "like_count",
+    )
+    list_filter = ("approval_status", "topic", "is_deleted", "created_at")
+    search_fields = ("title", "content", "author__user__username")
+    actions = ["approve_threads", "reject_threads", "delete_threads"]
+    date_hierarchy = "created_at"
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(
+            reply_count=Count("replies", filter=Q(replies__is_deleted=False)), like_count=Count("likes")
+        )
+        return qs
+
+    def reply_count(self, obj):
+        return obj.reply_count
+
+    def like_count(self, obj):
+        return obj.like_count
+
+    reply_count.admin_order_field = "reply_count"
+    like_count.admin_order_field = "like_count"
+
+    def approve_threads(self, request, queryset):
+        count = 0
+        for thread in queryset.filter(approval_status="pending"):
+            thread.approval_status = "approved"
+            thread.save()
+            count += 1
+
+            # Send email notification
+            try:
+                send_mail(
+                    subject="Your forum thread has been approved",
+                    message=f"Hello {thread.author.user.username},\n\n"
+                    f"Your thread '{thread.title}' has been approved and is now visible on the forum.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[thread.author.user.email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                # Log the error but continue processing
+                print(f"Failed to send approval email: {e}")
+
+        if count == 1:
+            message = "1 thread was"
+        else:
+            message = f"{count} threads were"
+        self.message_user(request, f"{message} successfully approved.")
+
+    approve_threads.short_description = "Approve selected threads"
+
+    def reject_threads(self, request, queryset):
+        count = 0
+        for thread in queryset.filter(approval_status="pending"):
+            thread.approval_status = "rejected"
+            thread.save()
+            count += 1
+
+            # Send email notification
+            try:
+                send_mail(
+                    subject="Your forum thread was not approved",
+                    message=f"Hello {thread.author.user.username},\n\n"
+                    f"We regret to inform you that your thread '{thread.title}' "
+                    f"was not approved. Please review our community guidelines.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[thread.author.user.email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                # Log the error but continue processing
+                print(f"Failed to send rejection email: {e}")
+
+        if count == 1:
+            message = "1 thread was"
+        else:
+            message = f"{count} threads were"
+        self.message_user(request, f"{message} rejected.")
+
+    reject_threads.short_description = "Reject selected threads"
+
+    def delete_threads(self, request, queryset):
+        count = 0
+        for thread in queryset:
+            thread.is_deleted = True
+            thread.save()
+            count += 1
+
+        if count == 1:
+            message = "1 thread was"
+        else:
+            message = f"{count} threads were"
+        self.message_user(request, f"{message} marked as deleted.")
+
+    delete_threads.short_description = "Mark selected threads as deleted"
+
+    def get_urls(self):
+        from django.urls import path
+
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "moderation-queue/",
+                self.admin_site.admin_view(self.moderation_queue_view),
+                name="forum-moderation-queue",
+            ),
+        ]
+        return custom_urls + urls
+
+    def moderation_queue_view(self, request):
+        """Custom view for thread moderation queue with robust filtering"""
+        from django.contrib.admin.views.main import PAGE_VAR
+
+        # Get pending threads
+        pending_threads = (
+            ForumThread.objects.filter(approval_status="pending")
+            .select_related("author__user", "topic")
+            .prefetch_related("tags")
+            .annotate(
+                reply_count=Count("replies", filter=Q(replies__is_deleted=False)),
+                like_count=Count("likes"),
+            )
+            .order_by("-created_at")
+        )
+
+        # Handle approvals or rejections
+        if request.method == "POST":
+            thread_id = request.POST.get("thread_id")
+            action = request.POST.get("action")
+
+            if thread_id and action in ["approve", "reject"]:
+                try:
+                    thread = ForumThread.objects.get(id=thread_id)
+
+                    if action == "approve":
+                        thread.approval_status = "approved"
+                        message = f"Thread '{thread.title}' has been approved."
+                    else:
+                        thread.approval_status = "rejected"
+                        message = f"Thread '{thread.title}' has been rejected."
+
+                    thread.save()
+
+                    # Send email notification
+                    try:
+                        if action == "approve":
+                            subject = "Your forum thread has been approved"
+                            message_text = (
+                                f"Hello {thread.author.user.username},\n\n"
+                                f"Your thread '{thread.title}' has been approved and is now visible on the forum."
+                            )
+                        else:
+                            subject = "Your forum thread was not approved"
+                            message_text = (
+                                f"Hello {thread.author.user.username},\n\n"
+                                f"We regret to inform you that your thread '{thread.title}' "
+                                f"was not approved. Please review our community guidelines."
+                            )
+
+                        send_mail(
+                            subject=subject,
+                            message=message_text,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[thread.author.user.email],
+                            fail_silently=True,
+                        )
+                    except Exception as e:
+                        # Log the error but continue processing
+                        print(f"Failed to send thread status email: {e}")
+
+                    self.message_user(request, message)
+                except ForumThread.DoesNotExist:
+                    self.message_user(request, "Thread not found.", level="error")
+
+        # Context for template rendering
+        context = {
+            "title": "Thread Moderation Queue",
+            "opts": self.model._meta,
+            "app_label": self.model._meta.app_label,
+            "pending_threads": pending_threads,
+            "has_change_permission": self.has_change_permission(request),
+        }
+
+        return render(request, "admin/forum/moderation_queue.html", context)
+
+
+class ForumReplyAdmin(admin.ModelAdmin):
+    list_display = ("get_content_preview", "author", "thread", "created_at", "is_deleted")
+    list_filter = ("is_deleted", "created_at")
+    search_fields = ("content", "author__user__username", "thread__title")
+    actions = ["delete_replies", "restore_replies"]
+
+    def get_content_preview(self, obj):
+        if len(obj.content) > 50:
+            return f"{obj.content[:50]}..."
+        return obj.content
+
+    get_content_preview.short_description = "Content"
+
+    def delete_replies(self, request, queryset):
+        count = queryset.update(is_deleted=True)
+        if count == 1:
+            message = "1 reply was"
+        else:
+            message = f"{count} replies were"
+        self.message_user(request, f"{message} marked as deleted.")
+
+    delete_replies.short_description = "Mark selected replies as deleted"
+
+    def restore_replies(self, request, queryset):
+        count = queryset.update(is_deleted=False)
+        if count == 1:
+            message = "1 reply was"
+        else:
+            message = f"{count} replies were"
+        self.message_user(request, f"{message} restored.")
+
+    restore_replies.short_description = "Restore selected replies"
+
+
+class ForumTopicAdmin(admin.ModelAdmin):
+    list_display = ("name", "thread_count", "created_at")
+    search_fields = ("name", "description")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(thread_count=Count("forumthread", filter=Q(forumthread__is_deleted=False)))
+        return qs
+
+    def thread_count(self, obj):
+        return obj.thread_count
+
+    thread_count.admin_order_field = "thread_count"
+    thread_count.short_description = "Thread Count"
+
+
+class ForumTagAdmin(admin.ModelAdmin):
+    list_display = ("name", "thread_count")
+    search_fields = ("name",)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(thread_count=Count("forumthread", filter=Q(forumthread__is_deleted=False)))
+        return qs
+
+    def thread_count(self, obj):
+        return obj.thread_count
+
+    thread_count.admin_order_field = "thread_count"
+    thread_count.short_description = "Thread Count"
+
+
+class ForumAnalyticsAdmin(admin.ModelAdmin):
+    list_display = ("total_threads", "total_replies", "total_likes", "last_updated")
+    readonly_fields = (
+        "total_threads",
+        "total_replies",
+        "total_likes",
+        "last_updated",
+        "get_analytics_dashboard",
+    )
+
+    def has_add_permission(self, request):
+        # Only one analytics record should exist
+        return ForumAnalytics.objects.count() == 0
+
+    def has_delete_permission(self, request, obj=None):
+        # Prevent deletion of analytics record
+        return False
+
+    def get_analytics_dashboard(self, obj):
+        """Display comprehensive analytics dashboard"""
+        # Get recent activity (last 30 days)
+        today = timezone.now()
+        thirty_days_ago = today - timedelta(days=30)
+
+        # Count recent threads and replies
+        recent_threads = ForumThread.objects.filter(
+            created_at__gte=thirty_days_ago, is_deleted=False
+        ).count()
+
+        recent_replies = ForumReply.objects.filter(
+            created_at__gte=thirty_days_ago, is_deleted=False
+        ).count()
+
+        # Most active users
+        active_users = (
+            UserData.objects.annotate(
+                total_activity=Count(
+                    "forumthread", filter=Q(forumthread__created_at__gte=thirty_days_ago)
+                )
+                + Count("forumreply", filter=Q(forumreply__created_at__gte=thirty_days_ago))
+            )
+            .filter(total_activity__gt=0)
+            .order_by("-total_activity")[:5]
+        )
+
+        # Popular topics
+        popular_topics = (
+            ForumTopic.objects.annotate(
+                recent_threads=Count(
+                    "forumthread",
+                    filter=Q(
+                        forumthread__created_at__gte=thirty_days_ago, forumthread__is_deleted=False
+                    ),
+                )
+            )
+            .filter(recent_threads__gt=0)
+            .order_by("-recent_threads")[:5]
+        )
+
+        # Create HTML dashboard
+        html = format_html(
+            '<div style="padding: 15px; background-color: #f5f5f5; border-radius: 5px;">'
+        )
+
+        # Summary section
+        html += format_html(
+            "<h2>Forum Analytics Dashboard</h2>"
+            '<div style="display: flex; justify-content: space-between; margin-bottom: 20px;">'
+            '<div style="background-color: #dff0d8; padding: 15px; border-radius: 5px; width: 30%;">'
+            "<h3>Total Threads</h3>"
+            '<p style="font-size: 24px; font-weight: bold;">{}</p>'
+            "<p>Last 30 days: {}</p>"
+            "</div>"
+            '<div style="background-color: #d9edf7; padding: 15px; border-radius: 5px; width: 30%;">'
+            "<h3>Total Replies</h3>"
+            '<p style="font-size: 24px; font-weight: bold;">{}</p>'
+            "<p>Last 30 days: {}</p>"
+            "</div>"
+            '<div style="background-color: #fcf8e3; padding: 15px; border-radius: 5px; width: 30%;">'
+            "<h3>Total Likes</h3>"
+            '<p style="font-size: 24px; font-weight: bold;">{}</p>'
+            "</div>"
+            "</div>",
+            obj.total_threads,
+            recent_threads,
+            obj.total_replies,
+            recent_replies,
+            obj.total_likes,
+        )
+
+        # Most active users
+        html += format_html(
+            '<h3>Most Active Users (Last 30 days)</h3><ul style="list-style-type: none; padding: 0;">'
+        )
+        for user in active_users:
+            html += format_html(
+                '<li style="padding: 8px; margin-bottom: 5px; background-color: #fff; border-radius: 3px;">'
+                "<strong>{}</strong>: {} activities"
+                "</li>",
+                user.user.username,
+                user.total_activity,
+            )
+        html += format_html("</ul>")
+
+        # Popular topics
+        html += format_html(
+            '<h3>Popular Topics (Last 30 days)</h3><ul style="list-style-type: none; padding: 0;">'
+        )
+        for topic in popular_topics:
+            html += format_html(
+                '<li style="padding: 8px; margin-bottom: 5px; background-color: #fff; border-radius: 3px;">'
+                "<strong>{}</strong>: {} new threads"
+                "</li>",
+                topic.name,
+                topic.recent_threads,
+            )
+        html += format_html("</ul>")
+
+        html += format_html("</div>")
+        return html
+
+    get_analytics_dashboard.short_description = "Analytics Dashboard"
+
+
+# Enhanced user management
+class EnhancedUserDataAdmin(UserDataAdmin):
+    list_display = (
+        "user",
+        "is_verified",
+        "is_moderator",
+        "thread_count",
+        "reply_count",
+        "last_activity",
+    )
+    list_filter = ("is_verified", "user__is_staff", "user__is_active", "user__groups")
+    readonly_fields = ("thread_count", "reply_count", "last_activity", "user_activity_summary")
+    actions = ["verify_users", "unverify_users", "suspend_users", "activate_users"]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.annotate(
+            thread_count=Count("forumthread", filter=Q(forumthread__is_deleted=False)),
+            reply_count=Count("forumreply", filter=Q(forumreply__is_deleted=False)),
+            last_post=Count("forumthread", filter=Q(forumthread__is_deleted=False)),
+        )
+        return qs
+
+    def is_moderator(self, obj):
+        return obj.user.groups.filter(name="PDA_Moderator").exists() or obj.user.is_staff
+
+    is_moderator.boolean = True
+    is_moderator.short_description = "Moderator"
+
+    def thread_count(self, obj):
+        return obj.thread_count
+
+    thread_count.admin_order_field = "thread_count"
+
+    def reply_count(self, obj):
+        return obj.reply_count
+
+    reply_count.admin_order_field = "reply_count"
+
+    def last_activity(self, obj):
+        last_thread = ForumThread.objects.filter(author=obj).order_by("-created_at").first()
+        last_reply = ForumReply.objects.filter(author=obj).order_by("-created_at").first()
+
+        last_thread_date = last_thread.created_at if last_thread else None
+        last_reply_date = last_reply.created_at if last_reply else None
+
+        if last_thread_date and last_reply_date:
+            return max(last_thread_date, last_reply_date)
+        elif last_thread_date:
+            return last_thread_date
+        elif last_reply_date:
+            return last_reply_date
+        else:
+            return None
+
+    def user_activity_summary(self, obj):
+        """Display detailed user activity summary"""
+        # Get recent threads
+        recent_threads = ForumThread.objects.filter(author=obj, is_deleted=False).order_by(
+            "-created_at"
+        )[:5]
+
+        # Get recent replies
+        recent_replies = ForumReply.objects.filter(author=obj, is_deleted=False).order_by(
+            "-created_at"
+        )[:5]
+
+        # Create HTML summary
+        html = format_html(
+            '<div style="padding: 15px; background-color: #f5f5f5; border-radius: 5px;">'
+        )
+
+        # User info
+        html += format_html(
+            "<h2>User Activity: {}</h2>"
+            "<p><strong>Email:</strong> {}</p>"
+            "<p><strong>Date Joined:</strong> {}</p>"
+            "<p><strong>Status:</strong> {} | <strong>Verified:</strong> {}</p>",
+            obj.user.username,
+            obj.user.email,
+            obj.user.date_joined.strftime("%Y-%m-%d %H:%M"),
+            "Active" if obj.user.is_active else "Suspended",
+            "Yes" if obj.is_verified else "No",
+        )
+
+        # Recent threads
+        html += format_html("<h3>Recent Threads</h3>")
+        if recent_threads:
+            html += format_html("<ul>")
+            for thread in recent_threads:
+                html += format_html(
+                    '<li><a href="{}">{}</a> - {}</li>',
+                    reverse("admin:api_forumthread_change", args=[thread.id]),
+                    thread.title,
+                    thread.created_at.strftime("%Y-%m-%d %H:%M"),
+                )
+            html += format_html("</ul>")
+        else:
+            html += format_html("<p>No recent threads.</p>")
+
+        # Recent replies
+        html += format_html("<h3>Recent Replies</h3>")
+        if recent_replies:
+            html += format_html("<ul>")
+            for reply in recent_replies:
+                html += format_html(
+                    '<li><a href="{}">Reply to: {}</a> - {}</li>',
+                    reverse("admin:api_forumreply_change", args=[reply.id]),
+                    reply.thread.title[:30] + ("..." if len(reply.thread.title) > 30 else ""),
+                    reply.created_at.strftime("%Y-%m-%d %H:%M"),
+                )
+            html += format_html("</ul>")
+        else:
+            html += format_html("<p>No recent replies.</p>")
+
+        html += format_html("</div>")
+        return html
+
+    user_activity_summary.short_description = "User Activity Summary"
+
+    def verify_users(self, request, queryset):
+        count = queryset.update(is_verified=True)
+        self.message_user(request, f"{count} users were verified successfully.")
+
+    verify_users.short_description = "Verify selected users"
+
+    def unverify_users(self, request, queryset):
+        count = queryset.update(is_verified=False)
+        self.message_user(request, f"{count} users were unverified successfully.")
+
+    unverify_users.short_description = "Unverify selected users"
+
+    def suspend_users(self, request, queryset):
+        for user_data in queryset:
+            user = user_data.user
+            user.is_active = False
+            user.save()
+
+            # Send notification email
+            try:
+                send_mail(
+                    subject="Your account has been suspended",
+                    message=f"Hello {user.username},\n\n"
+                    f"Your account has been suspended. Please contact the "
+                    f"administration for more information.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                # Log the error but continue processing
+                print(f"Failed to send suspension email: {e}")
+
+        self.message_user(request, f"{queryset.count()} users were suspended successfully.")
+
+    suspend_users.short_description = "Suspend selected users"
+
+    def activate_users(self, request, queryset):
+        count = 0
+        for user_data in queryset:
+            if not user_data.user.is_active:
+                user = user_data.user
+                user.is_active = True
+                user.save()
+                count += 1
+
+                # Send notification email
+                try:
+                    send_mail(
+                        subject="Your account has been reactivated",
+                        message=f"Hello {user.username},\n\n"
+                        f"Your account has been reactivated and you can now log in again.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[user.email],
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    # Log the error but continue processing
+                    print(f"Failed to send reactivation email: {e}")
+
+        self.message_user(request, f"{count} users were activated successfully.")
+
+    activate_users.short_description = "Activate suspended users"
+
+
+# Add to the existing imports
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
+from django.views.generic import TemplateView
+
+
+# Add this class to create a custom admin view for analytics
+class ForumAnalyticsDashboardView(TemplateView):
+    template_name = "admin/forum/analytics_dashboard.html"
+
+    @method_decorator(staff_member_required)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get date range from request or default to last 30 days
+        days = int(self.request.GET.get("days", 30))
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days)
+
+        # Thread stats
+        total_threads = ForumThread.objects.filter(is_deleted=False).count()
+        new_threads = ForumThread.objects.filter(created_at__gte=start_date, is_deleted=False).count()
+
+        # Reply stats
+        total_replies = ForumReply.objects.filter(is_deleted=False).count()
+        new_replies = ForumReply.objects.filter(created_at__gte=start_date, is_deleted=False).count()
+
+        # Most active users
+        most_active_users = (
+            UserData.objects.annotate(
+                thread_count=Count(
+                    "forumthread",
+                    filter=Q(forumthread__created_at__gte=start_date, forumthread__is_deleted=False),
+                ),
+                reply_count=Count(
+                    "forumreply",
+                    filter=Q(forumreply__created_at__gte=start_date, forumreply__is_deleted=False),
+                ),
+                total_activity=Count(
+                    "forumthread",
+                    filter=Q(forumthread__created_at__gte=start_date, forumthread__is_deleted=False),
+                )
+                + Count(
+                    "forumreply",
+                    filter=Q(forumreply__created_at__gte=start_date, forumreply__is_deleted=False),
+                ),
+            )
+            .filter(total_activity__gt=0)
+            .order_by("-total_activity")[:10]
+        )
+
+        # Popular topics
+        popular_topics = (
+            ForumTopic.objects.annotate(
+                thread_count=Count(
+                    "forumthread",
+                    filter=Q(
+                        forumthread__created_at__gte=start_date,
+                        forumthread__is_deleted=False,
+                        forumthread__approval_status="approved",
+                    ),
+                )
+            )
+            .filter(thread_count__gt=0)
+            .order_by("-thread_count")[:5]
+        )
+
+        # Daily activity for charts (last 30 days)
+        daily_data = []
+        for i in range(days):
+            day = end_date - timedelta(days=i)
+            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+
+            threads = ForumThread.objects.filter(
+                created_at__gte=day_start, created_at__lt=day_end, is_deleted=False
+            ).count()
+
+            replies = ForumReply.objects.filter(
+                created_at__gte=day_start, created_at__lt=day_end, is_deleted=False
+            ).count()
+
+            daily_data.append(
+                {
+                    "date": day_start.strftime("%Y-%m-%d"),
+                    "threads": threads,
+                    "replies": replies,
+                    "total": threads + replies,
+                }
+            )
+
+        # Reverse for chronological order
+        daily_data.reverse()
+
+        context.update(
+            {
+                "title": "Forum Analytics Dashboard",
+                "total_threads": total_threads,
+                "new_threads": new_threads,
+                "total_replies": total_replies,
+                "new_replies": new_replies,
+                "most_active_users": most_active_users,
+                "popular_topics": popular_topics,
+                "daily_data": daily_data,
+                "days": days,
+                "start_date": start_date,
+                "end_date": end_date,
+            }
+        )
+
+        return context
+
+
+# Register the custom analytics URL
+from django.urls import path
+
+
+def get_admin_urls(urls_func):
+    def get_urls():
+        my_urls = [
+            path("forum-analytics/", ForumAnalyticsDashboardView.as_view(), name="forum-analytics"),
+        ]
+        return my_urls + urls_func()  # Call the function to get actual URLs
+
+    return get_urls
+
+
+# Monkeypatch the admin site
+admin_urls = admin.site.get_urls
+admin.site.get_urls = get_admin_urls(admin_urls)
+# Register the admin classes
+admin.site.register(ForumThread, ForumThreadAdmin)
+admin.site.register(ForumReply, ForumReplyAdmin)
+admin.site.register(ForumTopic, ForumTopicAdmin)
+admin.site.register(ForumTag, ForumTagAdmin)
+admin.site.register(ForumAnalytics, ForumAnalyticsAdmin)
+
+
+admin.site.register(UserData, EnhancedUserDataAdmin)
 admin.site.register(PublicDeepfakeArchive, PublicDeepfakeArchiveAdmin)

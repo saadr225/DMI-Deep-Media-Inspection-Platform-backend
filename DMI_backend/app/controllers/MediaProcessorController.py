@@ -92,7 +92,7 @@ class MediaProcessor:
             print(f"Error processing frame: {e}")
             return None, False
 
-    def generate_crops(
+    def generate_crops_deprecated(
         self,
         frame: np.ndarray,
         output_dir: str,
@@ -141,6 +141,77 @@ class MediaProcessor:
                 print("Crop saved at: ", output_face_path)
             # Save the face crop
             cv2.imwrite(output_face_path, face_crop)
+
+    def generate_crops(
+        self,
+        frame: np.ndarray,
+        output_dir: str,
+        frame_index: int,
+        detected_faces: Dict[int, Dict[str, Union[Tuple[int, int], float]]],
+        frame_id: str,
+        show_crops: bool = False,
+    ) -> None:
+        """
+        Generate and save square face crops from a frame at 256x256 resolution.
+        Args:
+            frame (numpy.ndarray): Input image frame.
+            output_dir (str): Directory to save face crops.
+            frame_index (int): Index of the current frame.
+            detected_faces (dict): Dictionary of detected faces.
+            frame_id (str): Identifier for the frame.
+            show_crops (bool): Whether to display the crops (for debugging).
+        """
+        frame_height, frame_width = frame.shape[:2]
+
+        for face_idx, face_data in detected_faces.items():
+            top_left = face_data["top_left"]
+            bottom_right = face_data["bottom_right"]
+
+            # Calculate width and height of the detected face
+            width = bottom_right[0] - top_left[0]
+            height = bottom_right[1] - top_left[1]
+
+            # Find the center of the bounding box
+            center_x = (top_left[0] + bottom_right[0]) // 2
+            center_y = (top_left[1] + bottom_right[1]) // 2
+
+            # Use the larger dimension to create a square box
+            box_size = max(width, height)
+
+            # Calculate new coordinates for square crop
+            new_x1 = max(0, center_x - box_size // 2)
+            new_y1 = max(0, center_y - box_size // 2)
+            new_x2 = min(frame_width, center_x + box_size // 2)
+            new_y2 = min(frame_height, center_y + box_size // 2)
+
+            # Crop the face from the frame (square crop)
+            face_crop = frame[new_y1:new_y2, new_x1:new_x2]
+
+            # Resize to 256x256
+            face_crop_resized = cv2.resize(face_crop, (256, 256), interpolation=cv2.INTER_CUBIC)
+
+            if show_crops:
+                # Display the face crop (for debugging)
+                cv2.imshow(f"Face {face_idx} from Frame {frame_index}", face_crop_resized)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+            # Generate output path for the face crop
+            output_face_path = os.path.join(
+                output_dir,
+                f"{frame_id}_{frame_index}_{face_idx}.{self.FRAMES_FILE_FORMAT}",
+            )
+
+            # Check if the crop already exists
+            if os.path.exists(output_face_path):
+                if self.log_level >= 2:
+                    print(f"Skipping crop {output_face_path}: already exists")
+                continue
+            if self.log_level >= 2:
+                print("Crop saved at: ", output_face_path)
+
+            # Save the face crop (256x256 square)
+            cv2.imwrite(output_face_path, face_crop_resized)
 
     def check_media_type(self, file_path: str) -> str:
         """

@@ -1,7 +1,14 @@
 from django.urls import path
+from .views import (
+    auth_views,
+    user_views,
+    semantic_views,
+    helper_views,
+    pda_views,
+    facial_watch_views,
+    community_forum_views,
+)
 
-
-from .views import auth_views, user_views, semantic_views, helper_views, pda_views, facial_watch_views
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -59,4 +66,18 @@ urlpatterns = [
     path("facial-watch/search", facial_watch_views.search_faces_in_pda, name="search_faces_in_pda"),
     # response codes endpoint
     path("docs/response_codes/", helper_views.get_response_codes, name="get_response_codes"),
+    
+    # community forum endpoints
+    path("forum/threads/", community_forum_views.get_threads, name="get_threads"),
+    path("forum/threads/create/", community_forum_views.create_thread, name="create_thread"),
+    path("forum/threads/<int:thread_id>/", community_forum_views.get_thread_detail, name="get_thread_detail"),
+    path("forum/threads/<int:thread_id>/edit/", community_forum_views.edit_thread, name="edit_thread"),
+    path("forum/threads/<int:thread_id>/delete/", community_forum_views.delete_thread, name="delete_thread"),
+    path("forum/threads/<int:thread_id>/reply/", community_forum_views.add_reply, name="add_reply"),
+    path("forum/replies/<int:reply_id>/edit/", community_forum_views.edit_reply, name="edit_reply"),
+    path("forum/replies/<int:reply_id>/delete/", community_forum_views.delete_reply, name="delete_reply"),
+    path("forum/like/", community_forum_views.toggle_like, name="toggle_like"),
+    path("forum/topics/", community_forum_views.get_topics, name="get_topics"),
+    path("forum/tags/", community_forum_views.get_tags, name="get_tags"),
+    path("forum/search/", community_forum_views.search_threads, name="search_threads"),
 ]
