@@ -26,10 +26,12 @@ logger = logging.getLogger(__name__)
 class CommunityForumController:
     def __init__(self):
         """Initialize the Community Forum Controller"""
-        # Ensure analytics exists
-        self.analytics, created = ForumAnalytics.objects.get_or_create(id=1)
-        if created:
-            logger.info("Created new forum analytics record")
+        self.analytics = None  # Initialize as None
+
+    def _ensure_analytics(self):
+        if self.analytics is None:
+            self.analytics, _ = ForumAnalytics.objects.get_or_create(id=1)
+        return self.analytics
 
     def create_thread(self, title, content, user_data, topic_id, tags=None):
         """
@@ -70,8 +72,8 @@ class CommunityForumController:
                 thread.tags.set(tags)
 
             # Update analytics
-            self.analytics.total_threads += 1
-            self.analytics.save()
+            self._ensure_analytics().total_threads += 1
+            self._ensure_analytics().save()
 
             return {
                 "success": True,
@@ -235,8 +237,8 @@ class CommunityForumController:
             thread.save()
 
             # Update analytics
-            self.analytics.total_replies += 1
-            self.analytics.save()
+            self._ensure_analytics().total_replies += 1
+            self._ensure_analytics().save()
 
             # Send notification email to thread author if not the same as reply author
             if thread.author.id != user_data.id:
@@ -338,8 +340,8 @@ class CommunityForumController:
                 existing_like.delete()
                 action = "removed"
                 # Update analytics
-                self.analytics.total_likes -= 1
-                self.analytics.save()
+                self._ensure_analytics().total_likes -= 1
+                self._ensure_analytics().save()
             else:
                 # Create new like
                 if thread_id:
@@ -348,8 +350,8 @@ class CommunityForumController:
                     ForumLike.objects.create(user=user_data, reply=target)
                 action = "added"
                 # Update analytics
-                self.analytics.total_likes += 1
-                self.analytics.save()
+                self._ensure_analytics().total_likes += 1
+                self._ensure_analytics().save()
 
             # Get updated like count
             if thread_id:
