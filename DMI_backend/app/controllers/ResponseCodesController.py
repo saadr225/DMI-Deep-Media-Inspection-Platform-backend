@@ -150,6 +150,7 @@ FORUM_SUCCESS_CODES = {
     "FORUM_DISLIKE_REMOVED": {"code": "FRM117", "message": "Dislike removed successfully."},
     "FORUM_REACTION_ADDED": {"code": "FRM118", "message": "Reaction added successfully."},
     "FORUM_REACTION_REMOVED": {"code": "FRM119", "message": "Reaction removed successfully."},
+    "FORUM_REPLIES_FETCHED": {"code": "FRM120", "message": "Thread replies fetched successfully."},
 }
 
 # Forum Error Codes
@@ -201,6 +202,7 @@ FORUM_ERROR_CODES = {
         "message": "Must provide either thread_id or reply_id for reaction.",
     },
     "FORUM_INVALID_REACTION_TYPE": {"code": "FRM029", "message": "Invalid reaction type."},
+    "FORUM_REPLIES_ERROR": {"code": "FRM030", "message": "Error fetching thread replies."},
 }
 
 # Combine all response codes into one dictionary for lookup

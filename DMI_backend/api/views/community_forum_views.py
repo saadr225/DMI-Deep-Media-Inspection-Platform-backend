@@ -812,3 +812,70 @@ def search_threads(request):
             {**get_response_code("FORUM_SEARCH_ERROR"), "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_thread_replies(request, thread_id):
+    """
+    Get replies for a specific thread
+
+    URL parameters:
+    - thread_id: ID of the thread
+
+    Query parameters:
+    - page: Page number (default: 1)
+    - items: Items per page (default: 20)
+    """
+    try:
+        # Check if user is authenticated
+        user_data = None
+        if request.user.is_authenticated:
+            user_data = UserData.objects.get(user=request.user)
+
+        # Get query parameters
+        page = int(request.query_params.get("page", 1))
+        items_per_page = int(request.query_params.get("items", 20))
+        
+        # Limit items per page to prevent overload
+        items_per_page = min(items_per_page, 50)
+
+        result = forum_controller.get_thread_replies(
+            thread_id=thread_id, 
+            user_data=user_data, 
+            page=page, 
+            items_per_page=items_per_page
+        )
+
+        if result["success"]:
+            return JsonResponse(
+                {**get_response_code("FORUM_REPLIES_FETCHED"), **result}, status=status.HTTP_200_OK
+            )
+        else:
+            if result["code"] == "FORUM_THREAD_NOT_FOUND":
+                return JsonResponse(
+                    {**get_response_code(result["code"]), "error": result["error"]},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            elif result["code"] == "FORUM_THREAD_NOT_APPROVED":
+                return JsonResponse(
+                    {**get_response_code(result["code"]), "error": result["error"]},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            else:
+                return JsonResponse(
+                    {**get_response_code(result["code"]), "error": result["error"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+    except ValueError:
+        return JsonResponse(
+            {**get_response_code("INVALID_REQUEST"), "error": "Invalid page or items parameter"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        logger.error(f"Error in get_thread_replies: {str(e)}")
+        return JsonResponse(
+            {**get_response_code("FORUM_REPLIES_ERROR"), "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

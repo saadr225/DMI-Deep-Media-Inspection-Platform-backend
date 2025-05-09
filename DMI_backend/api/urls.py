@@ -90,4 +90,5 @@ urlpatterns = [
     path("forum/topics/", community_forum_views.get_topics, name="get_topics"),
     path("forum/tags/", community_forum_views.get_tags, name="get_tags"),
     path("forum/search/", community_forum_views.search_threads, name="search_threads"),
+    path("forum/threads/<int:thread_id>/replies/", community_forum_views.get_thread_replies, name="get_thread_replies"),
 ]

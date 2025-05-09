@@ -1388,3 +1388,178 @@ class CommunityForumController:
                 "error": f"Error adding reaction: {str(e)}",
                 "code": "FORUM_REACTION_ERROR",
             }
+
+    def get_thread_replies(self, thread_id, user_data=None, page=1, items_per_page=20):
+        """
+        Get replies for a specific thread
+
+        Args:
+            thread_id (int): ID of the thread
+            user_data (UserData, optional): Current user data
+            page (int): Page number
+            items_per_page (int): Items per page
+
+        Returns:
+            dict: Response with thread replies
+        """
+        try:
+            # Get thread
+            try:
+                thread = ForumThread.objects.get(id=thread_id, is_deleted=False)
+                
+                # Check if thread is approved or user is author/moderator
+                if thread.approval_status != "approved":
+                    if not user_data or (
+                        user_data.id != thread.author.id
+                        and not user_data.is_moderator()
+                        and not user_data.user.is_staff
+                    ):
+                        return {
+                            "success": False,
+                            "error": "Thread is not approved",
+                            "code": "FORUM_THREAD_NOT_APPROVED",
+                        }
+                        
+            except ForumThread.DoesNotExist:
+                return {
+                    "success": False,
+                    "error": "Thread not found",
+                    "code": "FORUM_THREAD_NOT_FOUND",
+                }
+
+            # Get top-level replies (no parent)
+            replies = ForumReply.objects.filter(
+                thread=thread, is_deleted=False, parent_reply=None
+            ).select_related("author__user").order_by("created_at")
+            
+            # Paginate results
+            paginator = Paginator(replies, items_per_page)
+            try:
+                paginated_replies = paginator.page(page)
+            except PageNotAnInteger:
+                paginated_replies = paginator.page(1)
+            except EmptyPage:
+                paginated_replies = paginator.page(paginator.num_pages)
+
+            # Format replies
+            formatted_replies = []
+            for reply in paginated_replies:
+                # Get child replies (nested comments)
+                child_replies = ForumReply.objects.filter(
+                    parent_reply=reply, is_deleted=False
+                ).select_related("author__user")
+
+                formatted_child_replies = []
+                for child in child_replies:
+                    # Get likes for child reply
+                    like_count = ForumLike.objects.filter(reply=child, like_type="like").count()
+                    dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").count()
+                    
+                    # Check if user has liked the child reply
+                    user_liked = False
+                    user_disliked = False
+                    if user_data:
+                        user_liked = ForumLike.objects.filter(user=user_data, reply=child, like_type="like").exists()
+                        user_disliked = ForumLike.objects.filter(user=user_data, reply=child, like_type="dislike").exists()
+                    
+                    # Get reactions for child reply
+                    child_reactions = self.get_reaction_counts(reply_id=child.id)
+                    
+                    # Calculate time ago
+                    time_ago = self._calculate_time_ago(child.created_at)
+                    created_date = child.created_at.strftime("%B %d, %Y")
+                    
+                    # Get child author details
+                    child_author = {
+                        "username": child.author.user.username,
+                        "avatar": child.author.profile_image_url,
+                        "joinDate": child.author.user.date_joined.strftime("%B %Y"),
+                        "postCount": self._get_user_post_count(child.author),
+                        "isVerified": child.author.is_verified or child.author.user.is_staff
+                    }
+
+                    formatted_child_replies.append({
+                        "id": child.id,
+                        "content": child.content,
+                        "author": child_author,
+                        "date": created_date,
+                        "timeAgo": time_ago,
+                        "likes": like_count,
+                        "upvotes": like_count,
+                        "downvotes": dislike_count,
+                        "isVerified": child.author.is_verified or child.author.user.is_staff,
+                        "media": {
+                            "url": child.media_url,
+                            "type": child.media_type
+                        } if child.media_url else None,
+                        "replies": [],
+                        "reactions": child_reactions,
+                        "user_liked": user_liked,
+                        "user_disliked": user_disliked,
+                        "is_solution": child.is_solution,
+                    })
+
+                # Get like info for parent reply
+                like_count = ForumLike.objects.filter(reply=reply, like_type="like").count()
+                dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").count()
+                
+                # Check if user has liked/disliked the parent reply
+                user_liked = False
+                user_disliked = False
+                if user_data:
+                    user_liked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="like").exists()
+                    user_disliked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="dislike").exists()
+                
+                # Get reactions for parent reply
+                reply_reactions = self.get_reaction_counts(reply_id=reply.id)
+                
+                # Calculate time ago for parent reply
+                time_ago = self._calculate_time_ago(reply.created_at)
+                created_date = reply.created_at.strftime("%B %d, %Y")
+                
+                # Get parent reply author details
+                reply_author = {
+                    "username": reply.author.user.username,
+                    "avatar": reply.author.profile_image_url,
+                    "joinDate": reply.author.user.date_joined.strftime("%B %Y"),
+                    "postCount": self._get_user_post_count(reply.author),
+                    "isVerified": reply.author.is_verified or reply.author.user.is_staff
+                }
+
+                formatted_replies.append({
+                    "id": reply.id,
+                    "content": reply.content,
+                    "author": reply_author,
+                    "date": created_date,
+                    "timeAgo": time_ago,
+                    "likes": like_count,
+                    "upvotes": like_count,
+                    "downvotes": dislike_count,
+                    "isVerified": reply.author.is_verified or reply.author.user.is_staff,
+                    "media": {
+                        "url": reply.media_url,
+                        "type": reply.media_type
+                    } if reply.media_url else None,
+                    "replies": formatted_child_replies,
+                    "reactions": reply_reactions,
+                    "user_liked": user_liked,
+                    "user_disliked": user_disliked,
+                    "is_solution": reply.is_solution,
+                })
+
+            return {
+                "success": True,
+                "replies": formatted_replies,
+                "page": page,
+                "pages": paginator.num_pages,
+                "total": paginator.count,
+                "code": "FORUM_REPLIES_FETCHED",
+            }
+
+        except Exception as e:
+            logger.error(f"Error fetching thread replies: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Error fetching thread replies: {str(e)}",
+                "code": "FORUM_REPLIES_ERROR",
+            }
