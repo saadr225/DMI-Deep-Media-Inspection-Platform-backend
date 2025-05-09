@@ -1,0 +1,214 @@
+{% extends "moderation/base.html" %} {% block title %}Forum Moderation{% endblock %} {% block page_title %}Forum Moderation{% endblock %} {%
+block header_actions %}
+<div class="button-group">
+  <button id="refreshQueue" class="btn btn-secondary"><i class="icon-refresh"></i> Refresh Queue</button>
+</div>
+{% endblock %} {% block content %}
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="label">Pending Threads</div>
+    <div class="value">{{ pending_count }}</div>
+  </div>
+</div>
+
+{% if action_message %}
+<div class="alert alert-success">{{ action_message }}</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <h3>Threads Pending Approval</h3>
+  </div>
+  <div class="card-body">
+    {% if pending_threads %} {% for thread in pending_threads %}
+    <div class="thread-item">
+      <div class="thread-header">
+        <h4 class="thread-title">
+          <a href="{% url 'thread_detail' thread.id %}">{{ thread.title }}</a>
+        </h4>
+        <span class="thread-date">{{ thread.created_at|date:"M d, Y" }}</span>
+      </div>
+
+      <div class="thread-meta">
+        <span class="thread-author">By {{ thread.author.user.username }}</span>
+        <span class="thread-topic">in {{ thread.topic.name }}</span>
+      </div>
+
+      <div class="thread-content">
+        <p>{{ thread.content|truncatechars:200 }}</p>
+      </div>
+
+      {% if thread.tags.all %}
+      <div class="thread-tags">
+        {% for tag in thread.tags.all %}
+        <span class="tag">{{ tag.name }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="thread-stats">
+        <span class="stat-item"><i class="icon-reply"></i> {{ thread.reply_count }} replies</span>
+        <span class="stat-item"><i class="icon-heart"></i> {{ thread.like_count }} likes</span>
+      </div>
+
+      <div class="moderation-actions">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="thread_id" value="{{ thread.id }}" />
+          <button type="submit" name="action" value="approve" class="btn btn-success btn-sm"><i class="icon-check"></i> Approve</button>
+          <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm"><i class="icon-times"></i> Reject</button>
+          <a href="{% url 'thread_detail' thread.id %}" class="btn btn-primary btn-sm"> <i class="icon-eye"></i> View Details </a>
+        </form>
+      </div>
+    </div>
+    {% endfor %} {% if pending_threads.has_other_pages %}
+    <div class="pagination">
+      <ul>
+        {% if pending_threads.has_previous %}
+        <li><a href="?page={{ pending_threads.previous_page_number }}">&laquo; Previous</a></li>
+        {% else %}
+        <li><a class="disabled">&laquo; Previous</a></li>
+        {% endif %} {% for i in pending_threads.paginator.page_range %} {% if pending_threads.number == i %}
+        <li><a class="active">{{ i }}</a></li>
+        {% else %}
+        <li><a href="?page={{ i }}">{{ i }}</a></li>
+        {% endif %} {% endfor %} {% if pending_threads.has_next %}
+        <li><a href="?page={{ pending_threads.next_page_number }}">Next &raquo;</a></li>
+        {% else %}
+        <li><a class="disabled">Next &raquo;</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %} {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">✓</div>
+      <h3 class="empty-state-title">All Caught Up!</h3>
+      <p>There are no threads pending approval at this time.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %} {% block extra_styles %}
+<style>
+  .thread-item {
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .thread-item:last-child {
+    border-bottom: none;
+  }
+
+  .thread-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .thread-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .thread-title a {
+    color: var(--dark-color);
+    text-decoration: none;
+  }
+
+  .thread-title a:hover {
+    color: var(--primary-color);
+  }
+
+  .thread-date {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .thread-meta {
+    display: flex;
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .thread-meta > span:not(:last-child):after {
+    content: "•";
+    margin: 0 8px;
+  }
+
+  .thread-content {
+    margin-bottom: 15px;
+  }
+
+  .thread-tags {
+    margin-bottom: 15px;
+  }
+
+  .thread-stats {
+    display: flex;
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+  }
+
+  .thread-stats .stat-item:not(:last-child) {
+    margin-right: 15px;
+  }
+
+  .moderation-actions {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .moderation-actions form {
+    display: flex;
+    gap: 10px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .empty-state-icon {
+    font-size: 48px;
+    background-color: #e3fcef;
+    color: var(--success-color);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+
+  .empty-state-title {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+
+  .alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+
+  .alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+  }
+</style>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Refresh button
+    document.getElementById("refreshQueue").addEventListener("click", function () {
+      window.location.reload();
+    });
+  });
+</script>
+{% endblock %}
