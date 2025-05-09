@@ -1,0 +1,298 @@
+{% extends "admin/base_site.html" %} {% load i18n static %} {% block extrastyle %}{{ block.super }} <link rel="stylesheet" type="text/css"
+href="{% static "admin/css/dashboard.css" %}">
+<style>
+  .dashboard-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .stats-card {
+    flex: 1;
+    min-width: 300px;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+  }
+  .stats-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #417690;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  .stat-box {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #417690;
+  }
+  .stat-label {
+    color: #666;
+    font-size: 12px;
+  }
+  .quick-links-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #417690;
+  }
+  .quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  .quick-link-button {
+    padding: 8px 15px;
+    background-color: #417690;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  .quick-link-button:hover {
+    background-color: #2d5475;
+    color: white;
+  }
+  .warning-count {
+    background-color: #d9534f;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin-left: 5px;
+  }
+  .recent-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  .recent-list li {
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+  }
+  .recent-list li:last-child {
+    border-bottom: none;
+  }
+  .recent-list-title {
+    font-weight: bold;
+  }
+  .recent-list-meta {
+    color: #666;
+    font-size: 12px;
+  }
+  .active-users-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  .active-users-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .active-users-list li:last-child {
+    border-bottom: none;
+  }
+  .activity-count {
+    background-color: #5bc0de;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+</style>
+{% endblock %} {% block coltype %}colMS{% endblock %} {% block bodyclass %}{{ block.super }} dashboard{% endblock %} {% block content %}
+<div id="content-main">
+  <div class="dashboard-container">
+    <!-- Moderation Actions -->
+    <div class="stats-card">
+      <div class="stats-title">Moderation Dashboard</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value">{{ pda_pending_count }}</div>
+          <div class="stat-label">Pending PDA Submissions</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ forum_pending_count }}</div>
+          <div class="stat-label">Pending Forum Threads</div>
+        </div>
+      </div>
+
+      <div class="quick-links-title">Quick Actions</div>
+      <div class="quick-links">
+        <a href="{% url 'admin:api_forumthread_changelist' %}?approval_status__exact=pending" class="quick-link-button">
+          Forum Moderation Queue{% if forum_pending_count > 0 %}<span class="warning-count">{{ forum_pending_count }}</span>{% endif %}
+        </a>
+        <a href="{% url 'admin:api_publicdeepfakearchive_changelist' %}?review_date__isnull=True" class="quick-link-button">
+          PDA Moderation Queue{% if pda_pending_count > 0 %}<span class="warning-count">{{ pda_pending_count }}</span>{% endif %}
+        </a>
+        <a href="{% url 'admin:forum-analytics' %}" class="quick-link-button">Forum Analytics</a>
+      </div>
+
+      <div class="quick-links-title">User Management</div>
+      <div class="quick-links">
+        <a href="{% url 'admin:auth_user_add' %}" class="quick-link-button">Add New User</a>
+        <a href="{% url 'admin:auth_user_changelist' %}" class="quick-link-button">Manage Users</a>
+        <a href="{% url 'admin:auth_group_changelist' %}" class="quick-link-button">Manage Groups</a>
+        <a href="{% url 'admin:api_userdata_changelist' %}" class="quick-link-button">User Activity</a>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="stats-card">
+      <div class="stats-title">Recent PDA Submissions</div>
+      <ul class="recent-list">
+        {% for submission in recent_pda_submissions %}
+        <li>
+          <div class="recent-list-title">{{ submission.title }}</div>
+          <div class="recent-list-meta">
+            {{ submission.submission_date|date:"M d, Y H:i" }} | {% if submission.is_approved %}
+            <span style="color: green; font-weight: bold">Approved</span>
+            {% elif submission.review_date %}
+            <span style="color: red; font-weight: bold">Rejected</span>
+            {% else %}
+            <span style="color: orange; font-weight: bold">Pending</span>
+            {% endif %}
+          </div>
+        </li>
+        {% empty %}
+        <li>No recent submissions</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- User Stats -->
+    <div class="stats-card">
+      <div class="stats-title">Community Stats</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value">{{ user_count }}</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ verified_user_count }}</div>
+          <div class="stat-label">Verified Users</div>
+        </div>
+      </div>
+
+      <div class="quick-links-title">Active Users (Last 7 Days)</div>
+      <ul class="active-users-list">
+        {% for user in active_users %}
+        <li>
+          <span>{{ user.user.username }}</span>
+          <span class="activity-count">{{ user.activity_count }} activities</span>
+        </li>
+        {% empty %}
+        <li>No active users in this period</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Recent Forum Activity -->
+    <div class="stats-card">
+      <div class="stats-title">Recent Forum Activity</div>
+      <ul class="recent-list">
+        {% for thread in recent_forum_threads %}
+        <li>
+          <div class="recent-list-title">{{ thread.title }}</div>
+          <div class="recent-list-meta">
+            {{ thread.created_at|date:"M d, Y H:i" }} | {% if thread.approval_status == 'approved' %}
+            <span style="color: green; font-weight: bold">Approved</span>
+            {% elif thread.approval_status == 'rejected' %}
+            <span style="color: red; font-weight: bold">Rejected</span>
+            {% else %}
+            <span style="color: orange; font-weight: bold">Pending</span>
+            {% endif %}
+          </div>
+        </li>
+        {% empty %}
+        <li>No recent forum activity</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  {% if app_list %}
+  <h2>Apps & Models</h2>
+  {% for app in app_list %}
+  <div class="app-{{ app.app_label }} module{% if app.app_url in request.path|urlencode %} current-app{% endif %}">
+    <table>
+      <caption>
+        <a
+          href="{{ app.app_url }}"
+          class="section"
+          title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}"
+          >{{ app.name }}</a
+        >
+      </caption>
+      {% for model in app.models %}
+      <tr class="model-{{ model.object_name|lower }}{% if model.admin_url in request.path|urlencode %} current-model{% endif %}">
+        {% if model.admin_url %}
+        <th scope="row">
+          <a href="{{ model.admin_url }}" {% if model.admin_url in request.path|urlencode %} aria-current="page" {% endif %}
+            >{{ model.name }}</a
+          >
+        </th>
+        {% else %}
+        <th scope="row">{{ model.name }}</th>
+        {% endif %} {% if model.add_url %}
+        <td><a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a></td>
+        {% else %}
+        <td></td>
+        {% endif %} {% if model.admin_url and show_changelinks %} {% if model.view_only %}
+        <td><a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a></td>
+        {% else %}
+        <td><a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a></td>
+        {% endif %} {% elif show_changelinks %}
+        <td></td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endfor %} {% else %}
+  <p>{% translate 'You don't have permission to view or edit anything.' %}</p>
+  {% endif %}
+</div>
+{% endblock %} {% block sidebar %}
+<div id="content-related">
+  <div class="module" id="recent-actions-module">
+    <h2>{% translate 'Recent actions' %}</h2>
+    <h3>{% translate 'My actions' %}</h3>
+    {% load log %} {% get_admin_log 10 as admin_log for_user user %} {% if not admin_log %}
+    <p>{% translate 'None available' %}</p>
+    {% else %}
+    <ul class="actionlist">
+      {% for entry in admin_log %}
+      <li
+        class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}"
+      >
+        {% if entry.is_deletion or not entry.get_admin_url %} {{ entry.object_repr }} {% else %}
+        <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+        {% endif %}
+        <br />
+        {% if entry.content_type %}
+        <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+        {% else %}
+        <span class="mini quiet">{% translate 'Unknown content' %}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

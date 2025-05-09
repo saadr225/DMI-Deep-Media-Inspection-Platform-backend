@@ -18,6 +18,7 @@ TXT - AI text analysis codes
 IMG - Image analysis and face recognition codes (currently using FCE prefix)
 SYS - General system codes
 USE - User submission specific codes
+FRM - Forum and community-related codes
 
 Notes:
 - For consistency, some prefixes should be updated (HIS→SUB, FCE→IMG, USE→IMG)
@@ -128,6 +129,80 @@ FACE_WATCH_ERROR_CODES = {
     "FACE_SEARCH_ERROR": {"code": "FCE009", "message": "Error searching for faces in PDA."},
 }
 
+# Forum Success Codes
+FORUM_SUCCESS_CODES = {
+    "FORUM_THREAD_CREATED": {"code": "FRM101", "message": "Forum thread created successfully."},
+    "FORUM_THREAD_APPROVED": {"code": "FRM102", "message": "Thread has been approved."},
+    "FORUM_THREAD_REJECTED": {"code": "FRM103", "message": "Thread has been rejected."},
+    "FORUM_REPLY_CREATED": {"code": "FRM104", "message": "Reply added successfully."},
+    "FORUM_THREAD_UPDATED": {"code": "FRM105", "message": "Thread updated successfully."},
+    "FORUM_THREAD_DELETED": {"code": "FRM106", "message": "Thread deleted successfully."},
+    "FORUM_REPLY_UPDATED": {"code": "FRM107", "message": "Reply updated successfully."},
+    "FORUM_REPLY_DELETED": {"code": "FRM108", "message": "Reply deleted successfully."},
+    "FORUM_THREADS_FETCHED": {"code": "FRM109", "message": "Threads fetched successfully."},
+    "FORUM_THREAD_FETCHED": {"code": "FRM110", "message": "Thread details fetched successfully."},
+    "FORUM_TOPICS_FETCHED": {"code": "FRM111", "message": "Topics fetched successfully."},
+    "FORUM_TAGS_FETCHED": {"code": "FRM112", "message": "Tags fetched successfully."},
+    "FORUM_SEARCH_RESULTS": {"code": "FRM113", "message": "Search results fetched successfully."},
+    "FORUM_LIKE_ADDED": {"code": "FRM114", "message": "Like added successfully."},
+    "FORUM_LIKE_REMOVED": {"code": "FRM115", "message": "Like removed successfully."},
+    "FORUM_DISLIKE_ADDED": {"code": "FRM116", "message": "Dislike added successfully."},
+    "FORUM_DISLIKE_REMOVED": {"code": "FRM117", "message": "Dislike removed successfully."},
+    "FORUM_REACTION_ADDED": {"code": "FRM118", "message": "Reaction added successfully."},
+    "FORUM_REACTION_REMOVED": {"code": "FRM119", "message": "Reaction removed successfully."},
+}
+
+# Forum Error Codes
+FORUM_ERROR_CODES = {
+    "FORUM_MISSING_FIELDS": {"code": "FRM001", "message": "Missing required forum fields."},
+    "FORUM_TOPIC_NOT_FOUND": {"code": "FRM002", "message": "Forum topic not found."},
+    "FORUM_THREAD_NOT_FOUND": {"code": "FRM003", "message": "Thread not found or not approved."},
+    "FORUM_THREAD_DELETED": {"code": "FRM004", "message": "Thread has been deleted."},
+    "FORUM_THREAD_NOT_APPROVED": {"code": "FRM005", "message": "Thread is not approved."},
+    "FORUM_PERMISSION_DENIED": {
+        "code": "FRM006",
+        "message": "Permission denied for this forum action.",
+    },
+    "FORUM_MISSING_CONTENT": {"code": "FRM007", "message": "Forum content is required."},
+    "FORUM_REPLY_NOT_FOUND": {"code": "FRM008", "message": "Reply not found."},
+    "FORUM_INVALID_LIKE_TARGET": {
+        "code": "FRM009",
+        "message": "Must provide either thread_id or reply_id, not both.",
+    },
+    "FORUM_INVALID_LIKE_TYPE": {
+        "code": "FRM010",
+        "message": "Invalid like type. Must be 'like' or 'dislike'.",
+    },
+    "FORUM_CREATE_ERROR": {"code": "FRM011", "message": "Error creating forum thread."},
+    "FORUM_MODERATE_ERROR": {"code": "FRM012", "message": "Error moderating forum thread."},
+    "FORUM_REPLY_ERROR": {"code": "FRM013", "message": "Error adding reply."},
+    "FORUM_LIKE_ERROR": {"code": "FRM014", "message": "Error toggling like status."},
+    "FORUM_THREAD_EDIT_ERROR": {"code": "FRM015", "message": "Error editing thread."},
+    "FORUM_THREAD_DELETE_ERROR": {"code": "FRM016", "message": "Error deleting thread."},
+    "FORUM_REPLY_EDIT_ERROR": {"code": "FRM017", "message": "Error editing reply."},
+    "FORUM_REPLY_DELETE_ERROR": {"code": "FRM018", "message": "Error deleting reply."},
+    "FORUM_THREAD_FETCH_ERROR": {"code": "FRM019", "message": "Error fetching threads."},
+    "FORUM_THREAD_DETAIL_ERROR": {"code": "FRM020", "message": "Error fetching thread detail."},
+    "FORUM_TOPICS_ERROR": {"code": "FRM021", "message": "Error fetching topics."},
+    "FORUM_TAGS_ERROR": {"code": "FRM022", "message": "Error fetching tags."},
+    "FORUM_SEARCH_ERROR": {"code": "FRM023", "message": "Error searching threads."},
+    "FORUM_SEARCH_TOO_SHORT": {
+        "code": "FRM024",
+        "message": "Search query must be at least 3 characters.",
+    },
+    "FORUM_INVALID_PARENT": {
+        "code": "FRM025",
+        "message": "Parent reply does not belong to this thread.",
+    },
+    "FORUM_INVALID_STATUS": {"code": "FRM026", "message": "Invalid approval status."},
+    "FORUM_REACTION_ERROR": {"code": "FRM027", "message": "Error toggling reaction."},
+    "FORUM_INVALID_REACTION_TARGET": {
+        "code": "FRM028",
+        "message": "Must provide either thread_id or reply_id for reaction.",
+    },
+    "FORUM_INVALID_REACTION_TYPE": {"code": "FRM029", "message": "Invalid reaction type."},
+}
+
 # Combine all response codes into one dictionary for lookup
 RESPONSE_CODES = {
     **SUCCESS_CODES,
@@ -138,7 +213,9 @@ RESPONSE_CODES = {
     **HISTORY_ERROR_CODES,
     **AI_TEXT_ERROR_CODES,
     **GENERAL_ERROR_CODES,
-    **FACE_WATCH_ERROR_CODES,  # Added this as it was missing from the combined dictionary
+    **FACE_WATCH_ERROR_CODES,
+    **FORUM_SUCCESS_CODES,  # Added forum success codes
+    **FORUM_ERROR_CODES,  # Added forum error codes
 }
 
 

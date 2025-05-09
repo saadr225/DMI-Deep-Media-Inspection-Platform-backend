@@ -19,10 +19,15 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from app.views.moderator_views import forum_moderation_view, moderation_dashboard
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api-auth/", include("rest_framework.urls")),
     path("", include("app.urls")),
     path("api/", include("api.urls")),
+    # Direct access moderation shortcuts with better UX
+    path("moderation/", moderation_dashboard, name="moderation_dashboard"),
+    path("fmoderation/", moderation_dashboard, name="moderation_dashboard_alt"),
+    path("forum-moderation/", forum_moderation_view, name="forum_moderation"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

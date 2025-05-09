@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User, Group
+from django.contrib.admin.sites import AdminSite
 from api.models import (
     PublicDeepfakeArchive,
     UserData,
@@ -16,19 +17,106 @@ from api.models import (
 from app.controllers.HelpersController import URLHelper
 from app.controllers import CommunityForumController
 from datetime import datetime, timedelta
-from django.db.models import Q, Count
-from django.urls import reverse
+from django.db.models import Q, Count, Sum
+from django.urls import path, reverse
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from django.shortcuts import render
-
-# Customize the admin site
-admin.site.site_header = "Deepfake Archive Administration"
-admin.site.site_title = "PDA Admin/Moderation Portal"
-admin.site.index_title = "Welcome to PDA Admin/Morderator Portal"
+from django.shortcuts import render, redirect
+from django.template.response import TemplateResponse
 
 
+# Custom AdminSite for better dashboard and organization
+class PDAAdminSite(AdminSite):
+    site_header = "Deepfake Archive Administration"
+    site_title = "PDA Admin/Moderation Portal"
+    index_title = "Welcome to PDA Admin/Moderation Portal"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "forum-analytics/",
+                self.admin_view(ForumAnalyticsDashboardView.as_view()),
+                name="forum-analytics",
+            ),
+            path(
+                "make-moderator/<int:user_id>/",
+                self.admin_view(self.make_moderator_view),
+                name="make-moderator",
+            ),
+            path(
+                "remove-moderator/<int:user_id>/",
+                self.admin_view(self.remove_moderator_view),
+                name="remove-moderator",
+            ),
+        ]
+        return custom_urls + urls
+
+    def make_moderator_view(self, request, user_id):
+        user = User.objects.get(id=user_id)
+        moderator_group, created = Group.objects.get_or_create(name="PDA_Moderator")
+        if not user.groups.filter(name="PDA_Moderator").exists():
+            user.groups.add(moderator_group)
+            self.message_user(request, f"User {user.username} was successfully made a moderator.")
+        return redirect("admin:auth_user_change", user_id)
+
+    def remove_moderator_view(self, request, user_id):
+        user = User.objects.get(id=user_id)
+        moderator_group = Group.objects.get(name="PDA_Moderator")
+        if user.groups.filter(name="PDA_Moderator").exists():
+            user.groups.remove(moderator_group)
+            self.message_user(request, f"Moderator status removed from {user.username}.")
+        return redirect("admin:auth_user_change", user_id)
+
+    def index(self, request, extra_context=None):
+        # Get overall stats
+        pda_pending_count = PublicDeepfakeArchive.objects.filter(review_date__isnull=True).count()
+        forum_pending_count = ForumThread.objects.filter(approval_status="pending").count()
+        user_count = UserData.objects.count()
+        verified_user_count = UserData.objects.filter(is_verified=True).count()
+
+        # Recent activity
+        recent_pda_submissions = PublicDeepfakeArchive.objects.order_by("-submission_date")[:5]
+        recent_forum_threads = ForumThread.objects.filter(is_deleted=False).order_by("-created_at")[:5]
+
+        # Most active users (last 7 days)
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        active_users = (
+            UserData.objects.annotate(
+                activity_count=Count(
+                    "forumthread", filter=Q(forumthread__created_at__gte=seven_days_ago)
+                )
+                + Count("forumreply", filter=Q(forumreply__created_at__gte=seven_days_ago))
+            )
+            .filter(activity_count__gt=0)
+            .order_by("-activity_count")[:5]
+        )
+
+        extra_context = extra_context or {}
+        extra_context.update(
+            {
+                "pda_pending_count": pda_pending_count,
+                "forum_pending_count": forum_pending_count,
+                "user_count": user_count,
+                "verified_user_count": verified_user_count,
+                "recent_pda_submissions": recent_pda_submissions,
+                "recent_forum_threads": recent_forum_threads,
+                "active_users": active_users,
+            }
+        )
+
+        return super().index(request, extra_context=extra_context)
+
+
+# Create an instance of our custom admin site
+pda_admin_site = PDAAdminSite(name="pda_admin")
+
+# Replace the default admin site
+admin.site = pda_admin_site
+
+
+# Rest of your admin classes...
 class PublicDeepfakeArchiveAdmin(admin.ModelAdmin):
     list_display = (
         "title",
@@ -294,11 +382,36 @@ class CustomUserAdmin(BaseUserAdmin):
     list_filter = ("is_staff", "is_superuser", "groups")
     actions = ["make_moderator", "remove_moderator"]
 
+    fieldsets = BaseUserAdmin.fieldsets + (
+        (
+            "Moderation",
+            {
+                "fields": ("moderator_actions",),
+            },
+        ),
+    )
+    readonly_fields = ("moderator_actions",)
+
     def is_moderator(self, obj):
         return obj.groups.filter(name="PDA_Moderator").exists()
 
     is_moderator.boolean = True
     is_moderator.short_description = "Moderator"
+
+    def moderator_actions(self, obj):
+        if obj.pk:
+            is_mod = obj.groups.filter(name="PDA_Moderator").exists()
+            if is_mod:
+                return format_html(
+                    '<a class="button" href="{}">Remove Moderator Status</a>',
+                    reverse("admin:remove-moderator", args=[obj.pk]),
+                )
+            else:
+                return format_html(
+                    '<a class="button default" style="background:#417690;color:white" href="{}">Make Moderator</a>',
+                    reverse("admin:make-moderator", args=[obj.pk]),
+                )
+        return "Save the user first to manage moderator status"
 
     def make_moderator(self, request, queryset):
         moderator_group, created = Group.objects.get_or_create(name="PDA_Moderator")
@@ -1020,30 +1133,17 @@ class ForumAnalyticsDashboardView(TemplateView):
         return context
 
 
-# Register the custom analytics URL
-from django.urls import path
+# Register user & auth models
+pda_admin_site.register(User, CustomUserAdmin)
+pda_admin_site.register(Group)
 
+# Register PDA models with app groups
+pda_admin_site.register(UserData, EnhancedUserDataAdmin)
+pda_admin_site.register(PublicDeepfakeArchive, PublicDeepfakeArchiveAdmin)
 
-def get_admin_urls(urls_func):
-    def get_urls():
-        my_urls = [
-            path("forum-analytics/", ForumAnalyticsDashboardView.as_view(), name="forum-analytics"),
-        ]
-        return my_urls + urls_func()  # Call the function to get actual URLs
-
-    return get_urls
-
-
-# Monkeypatch the admin site
-admin_urls = admin.site.get_urls
-admin.site.get_urls = get_admin_urls(admin_urls)
-# Register the admin classes
-admin.site.register(ForumThread, ForumThreadAdmin)
-admin.site.register(ForumReply, ForumReplyAdmin)
-admin.site.register(ForumTopic, ForumTopicAdmin)
-admin.site.register(ForumTag, ForumTagAdmin)
-admin.site.register(ForumAnalytics, ForumAnalyticsAdmin)
-
-
-admin.site.register(UserData, EnhancedUserDataAdmin)
-admin.site.register(PublicDeepfakeArchive, PublicDeepfakeArchiveAdmin)
+# Register forum models with app groups
+pda_admin_site.register(ForumThread, ForumThreadAdmin)
+pda_admin_site.register(ForumReply, ForumReplyAdmin)
+pda_admin_site.register(ForumTopic, ForumTopicAdmin)
+pda_admin_site.register(ForumTag, ForumTagAdmin)
+pda_admin_site.register(ForumAnalytics, ForumAnalyticsAdmin)

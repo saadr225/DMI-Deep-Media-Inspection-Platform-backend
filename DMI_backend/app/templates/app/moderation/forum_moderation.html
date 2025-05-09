@@ -1,0 +1,236 @@
+{% extends 'admin/base.html' %} {% load static %} {% block extrastyle %} {{ block.super }}
+<style>
+  .moderation-header {
+    background-color: #417690;
+    color: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .moderation-title {
+    margin: 0;
+    font-size: 24px;
+  }
+  .alert {
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+  .alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  .alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+  }
+  .thread-card {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 25px;
+  }
+  .thread-title {
+    font-size: 20px;
+    margin: 0 0 15px 0;
+    color: #417690;
+  }
+  .thread-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .meta-icon {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    background-size: contain;
+  }
+  .thread-content {
+    border-left: 4px solid #e9ecef;
+    padding: 15px;
+    margin: 15px 0;
+    background-color: #f8f9fa;
+    border-radius: 0 4px 4px 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .thread-tags {
+    margin-top: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .thread-tag {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .btn-approve {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+  }
+  .btn-approve:hover {
+    background-color: #218838;
+  }
+  .btn-reject {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+  }
+  .btn-reject:hover {
+    background-color: #c82333;
+  }
+  .btn-view {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+  .btn-view:hover {
+    background-color: #138496;
+    color: white;
+  }
+  .btn-back {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: none;
+  }
+  .btn-back:hover {
+    background-color: #5a6268;
+    color: white;
+  }
+  .empty-queue {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 40px;
+    text-align: center;
+    color: #6c757d;
+  }
+  .empty-icon {
+    font-size: 48px;
+    color: #28a745;
+    margin-bottom: 20px;
+  }
+  .empty-title {
+    font-size: 24px;
+    color: #417690;
+    margin-bottom: 10px;
+  }
+  .counter-badge {
+    background: #f8f9fa;
+    color: #417690;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 5px 15px;
+    border-radius: 20px;
+  }
+</style>
+{% endblock %} {% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'moderation_dashboard' %}">Dashboard</a> &rsaquo;
+  <a href="{% url 'forum_moderation' %}">Forum Moderation</a>
+</div>
+{% endblock %} {% block content %}
+<div id="content-main">
+  <div class="moderation-header">
+    <h1 class="moderation-title">{{ page_title }}</h1>
+    <div class="counter-badge">{{ pending_count }} thread{{ pending_count|pluralize }} pending</div>
+  </div>
+
+  {% if action_message %}
+  <div class="alert alert-success">{{ action_message }}</div>
+  {% endif %} {% if pending_count > 0 %} {% for thread in pending_threads %}
+  <div class="thread-card">
+    <h2 class="thread-title">{{ thread.title }}</h2>
+    <div class="thread-meta">
+      <div class="meta-item"><strong>Author:</strong> {{ thread.author.user.username }}</div>
+      <div class="meta-item"><strong>Topic:</strong> {{ thread.topic.name }}</div>
+      <div class="meta-item"><strong>Created:</strong> {{ thread.created_at|date:"M d, Y H:i" }}</div>
+      {% if thread.reply_count %}
+      <div class="meta-item"><strong>Replies:</strong> {{ thread.reply_count }}</div>
+      {% endif %}
+    </div>
+
+    <div class="thread-content">
+      {{ thread.content|linebreaks|truncatewords:100 }} {% if thread.content|wordcount > 100 %}
+      <div style="text-align: center; margin-top: 15px">
+        <a href="{% url 'admin:api_forumthread_change' thread.id %}" class="btn-view" style="font-size: 12px; padding: 5px 10px"
+          >Continue Reading</a
+        >
+      </div>
+      {% endif %}
+    </div>
+
+    {% if thread.tags.all %}
+    <div class="thread-tags">
+      {% for tag in thread.tags.all %}
+      <span class="thread-tag">{{ tag.name }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="action-buttons">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="thread_id" value="{{ thread.id }}" />
+        <button type="submit" name="action" value="approve" class="btn-approve">Approve Thread</button>
+        <button type="submit" name="action" value="reject" class="btn-reject">Reject Thread</button>
+      </form>
+      <a href="{% url 'admin:api_forumthread_change' thread.id %}" class="btn-view">View Details</a>
+    </div>
+  </div>
+  {% endfor %} {% else %}
+  <div class="empty-queue">
+    <div class="empty-icon">✓</div>
+    <h2 class="empty-title">All Caught Up!</h2>
+    <p>There are no threads pending moderation at this time.</p>
+    <a href="{% url 'moderation_dashboard' %}" class="btn-back" style="margin-top: 20px">Back to Dashboard</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
