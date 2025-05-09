@@ -4,89 +4,239 @@ block header_actions %}
   <button id="refreshQueue" class="btn btn-secondary"><i class="icon-refresh"></i> Refresh Queue</button>
 </div>
 {% endblock %} {% block content %}
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="label">Pending Threads</div>
-    <div class="value">{{ pending_count }}</div>
-  </div>
-</div>
-
-{% if action_message %}
-<div class="alert alert-success">{{ action_message }}</div>
-{% endif %}
-
 <div class="card">
-  <div class="card-header">
-    <h3>Threads Pending Approval</h3>
-  </div>
-  <div class="card-body">
-    {% if pending_threads %} {% for thread in pending_threads %}
-    <div class="thread-item">
-      <div class="thread-header">
-        <h4 class="thread-title">
-          <a href="{% url 'thread_detail' thread.id %}">{{ thread.title }}</a>
-        </h4>
-        <span class="thread-date">{{ thread.created_at|date:"M d, Y" }}</span>
-      </div>
-
-      <div class="thread-meta">
-        <span class="thread-author">By {{ thread.author.user.username }}</span>
-        <span class="thread-topic">in {{ thread.topic.name }}</span>
-      </div>
-
-      <div class="thread-content">
-        <p>{{ thread.content|truncatechars:200 }}</p>
-      </div>
-
-      {% if thread.tags.all %}
-      <div class="thread-tags">
-        {% for tag in thread.tags.all %}
-        <span class="tag">{{ tag.name }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      <div class="thread-stats">
-        <span class="stat-item"><i class="icon-reply"></i> {{ thread.reply_count }} replies</span>
-        <span class="stat-item"><i class="icon-heart"></i> {{ thread.like_count }} likes</span>
-      </div>
-
-      <div class="moderation-actions">
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="thread_id" value="{{ thread.id }}" />
-          <button type="submit" name="action" value="approve" class="btn btn-success btn-sm"><i class="icon-check"></i> Approve</button>
-          <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm"><i class="icon-times"></i> Reject</button>
-          <a href="{% url 'thread_detail' thread.id %}" class="btn btn-primary btn-sm"> <i class="icon-eye"></i> View Details </a>
-        </form>
-      </div>
+    <div class="card-header">
+        <h3>Forum Thread Moderation</h3>
+        
+        <!-- Tabs for different filters -->
+        <ul class="nav nav-tabs card-header-tabs mt-3">
+            <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'pending' %}active{% endif %}" href="{% url 'forum_moderation' %}?filter=pending">
+                    Pending Threads
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'reported' %}active{% endif %}" href="{% url 'forum_moderation' %}?filter=reported">
+                    Reported Content
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter_type == 'all' %}active{% endif %}" href="{% url 'forum_moderation' %}?filter=all">
+                    All Threads
+                </a>
+            </li>
+        </ul>
     </div>
-    {% endfor %} {% if pending_threads.has_other_pages %}
-    <div class="pagination">
-      <ul>
-        {% if pending_threads.has_previous %}
-        <li><a href="?page={{ pending_threads.previous_page_number }}">&laquo; Previous</a></li>
-        {% else %}
-        <li><a class="disabled">&laquo; Previous</a></li>
-        {% endif %} {% for i in pending_threads.paginator.page_range %} {% if pending_threads.number == i %}
-        <li><a class="active">{{ i }}</a></li>
-        {% else %}
-        <li><a href="?page={{ i }}">{{ i }}</a></li>
-        {% endif %} {% endfor %} {% if pending_threads.has_next %}
-        <li><a href="?page={{ pending_threads.next_page_number }}">Next &raquo;</a></li>
-        {% else %}
-        <li><a class="disabled">Next &raquo;</a></li>
+    
+    <div class="card-body">
+        {% if action_message %}
+        <div class="alert alert-success">{{ action_message }}</div>
         {% endif %}
-      </ul>
+        
+        {% if filter_type == 'reported' %}
+            <!-- Reported Content View -->
+            <h4>Reported Threads</h4>
+            {% if threads %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Date</th>
+                            <th>Report Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for thread in threads %}
+                        <tr>
+                            <td>{{ thread.title }}</td>
+                            <td>{{ thread.author.user.username }}</td>
+                            <td>{{ thread.created_at|date:"M d, Y" }}</td>
+                            <td>{{ thread.report_reason }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'thread_detail' thread.id %}" class="btn btn-primary btn-sm">Review</a>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to dismiss this report?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                                        <input type="hidden" name="action" value="dismiss_report">
+                                        <button type="submit" class="btn btn-secondary btn-sm">Dismiss Report</button>
+                                    </form>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this thread?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                                        <input type="hidden" name="action" value="delete">
+                                        <button type="submit" class="btn btn-danger btn-sm">Delete Thread</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center">No reported threads found.</p>
+            {% endif %}
+            
+            {% if reported_replies %}
+            <h4 class="mt-4">Reported Replies</h4>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Content</th>
+                            <th>Thread</th>
+                            <th>Author</th>
+                            <th>Date</th>
+                            <th>Report Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reply in reported_replies %}
+                        <tr>
+                            <td>{{ reply.content|truncatechars:50 }}</td>
+                            <td>{{ reply.thread.title|truncatechars:30 }}</td>
+                            <td>{{ reply.author.user.username }}</td>
+                            <td>{{ reply.created_at|date:"M d, Y" }}</td>
+                            <td>{{ reply.report_reason }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'thread_detail' reply.thread.id %}#reply-{{ reply.id }}" class="btn btn-primary btn-sm">Review</a>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to dismiss this report?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="reply_id" value="{{ reply.id }}">
+                                        <input type="hidden" name="action" value="dismiss_reply_report">
+                                        <button type="submit" class="btn btn-secondary btn-sm">Dismiss Report</button>
+                                    </form>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this reply?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="reply_id" value="{{ reply.id }}">
+                                        <input type="hidden" name="action" value="delete_reply">
+                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <!-- Regular Thread Moderation View -->
+            {% if threads %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Topic</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for thread in threads %}
+                        <tr>
+                            <td>{{ thread.title }}</td>
+                            <td>{{ thread.author.user.username }}</td>
+                            <td>{{ thread.topic.name }}</td>
+                            <td>{{ thread.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                {% if thread.approval_status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif thread.approval_status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% else %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'thread_detail' thread.id %}" class="btn btn-primary btn-sm">View</a>
+                                    
+                                    {% if thread.approval_status == 'pending' %}
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                                        <input type="hidden" name="action" value="approve">
+                                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                    </form>
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                                        <input type="hidden" name="action" value="reject">
+                                        <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                    {% if not thread.is_deleted %}
+                                    <form method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this thread?');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                                        <input type="hidden" name="action" value="delete">
+                                        <button type="submit" class="btn btn-secondary btn-sm">Delete</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if threads.has_other_pages %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-4">
+                    {% if threads.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ threads.previous_page_number }}&filter={{ filter_type }}">Previous</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Previous</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in threads.paginator.page_range %}
+                    {% if threads.number == i %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ i }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ i }}&filter={{ filter_type }}">{{ i }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                    
+                    {% if threads.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ threads.next_page_number }}&filter={{ filter_type }}">Next</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+            {% else %}
+            <p class="text-center">No threads found.</p>
+            {% endif %}
+        {% endif %}
     </div>
-    {% endif %} {% else %}
-    <div class="empty-state">
-      <div class="empty-state-icon">✓</div>
-      <h3 class="empty-state-title">All Caught Up!</h3>
-      <p>There are no threads pending approval at this time.</p>
-    </div>
-    {% endif %}
-  </div>
 </div>
 {% endblock %} {% block extra_styles %}
 <style>

@@ -9,6 +9,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.models import User, Group
 from django.core.paginator import Paginator
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -17,12 +18,39 @@ from datetime import timedelta
 from api.models import PublicDeepfakeArchive, ForumThread, ForumReply, ForumTopic, ForumTag
 from app.controllers.ResponseCodesController import get_response_code
 from app.controllers.CommunityForumController import CommunityForumController
-from app.models import UserData
+from app.models import UserData, ModeratorAction
 from app.utils.decorators import moderator_required
 
 
 # Initialize the forum controller
 forum_controller = CommunityForumController()
+
+
+# Helper function to log moderator actions
+def log_moderator_action(moderator, action_type, content_type, content_object=None, content_identifier="", notes=None):
+    """
+    Log a moderator action for auditing purposes
+    """
+    try:
+        action = ModeratorAction(
+            moderator=moderator,
+            action_type=action_type,
+            content_type=content_type,
+            content_identifier=content_identifier,
+            notes=notes
+        )
+        
+        # If content_object is provided, link it using Generic Foreign Key
+        if content_object:
+            content_type_obj = ContentType.objects.get_for_model(content_object.__class__)
+            action.content_object_type = content_type_obj
+            action.content_object_id = content_object.id
+        
+        action.save()
+        return action
+    except Exception as e:
+        print(f"Error logging moderator action: {str(e)}")
+        return None
 
 
 class ModeratorPermission:
@@ -163,15 +191,37 @@ def pda_moderation_view(request):
                         submission.is_approved = True
                         submission.review_date = timezone.now()
                         submission.review_notes = review_notes
-                        submission.reviewer = request.user
+                        submission.reviewed_by = request.user
                         submission.save()
+                        
+                        # Log the action
+                        log_moderator_action(
+                            moderator=request.user,
+                            action_type="approve",
+                            content_type="pda",
+                            content_object=submission,
+                            content_identifier=f"PDA: {submission.title}",
+                            notes=review_notes
+                        )
+                        
                         action_message = f"Submission '{submission.title}' has been approved."
                     else:
                         submission.is_approved = False
                         submission.review_date = timezone.now()
                         submission.review_notes = review_notes
-                        submission.reviewer = request.user
+                        submission.reviewed_by = request.user
                         submission.save()
+                        
+                        # Log the action
+                        log_moderator_action(
+                            moderator=request.user,
+                            action_type="reject",
+                            content_type="pda",
+                            content_object=submission,
+                            content_identifier=f"PDA: {submission.title}",
+                            notes=review_notes
+                        )
+                        
                         action_message = f"Submission '{submission.title}' has been rejected."
 
                 except Exception as e:
@@ -445,120 +495,172 @@ def thread_detail_view(request, thread_id):
 
 @login_required
 def moderation_dashboard(request):
-    """Modern dashboard view for all moderation activities"""
+    """
+    Main dashboard for the moderation panel
+    Shows overview statistics and recent activity
+    """
+    # Check if user is a moderator or admin
     try:
         user_data = UserData.objects.get(user=request.user)
-
-        # Check if user is moderator or staff
         if not (user_data.is_moderator() or request.user.is_staff):
-            return redirect("login")
+            messages.error(request, "You do not have permission to access the moderation panel.")
+            return redirect('home')
+    except UserData.DoesNotExist:
+        messages.error(request, "User profile not found.")
+        return redirect('home')
 
-        # Fetch stats
-        pda_pending_count = PublicDeepfakeArchive.objects.filter(review_date__isnull=True).count()
-        forum_pending_count = ForumThread.objects.filter(approval_status="pending").count()
-
-        # Get total counts for stats
-        total_threads = ForumThread.objects.filter(is_deleted=False).count()
-        total_replies = ForumReply.objects.filter(is_deleted=False).count()
-
-        # Recent activities
-        recent_pda = PublicDeepfakeArchive.objects.order_by("-submission_date")[:10]
-        recent_threads = ForumThread.objects.filter(is_deleted=False).order_by("-created_at")[:10]
-
-        # Get most active topics
-        active_topics = (
-            ForumTopic.objects.annotate(
-                thread_count=Count(
-                    "forumthread",
-                    filter=Q(forumthread__created_at__gte=timezone.now() - timedelta(days=7)),
-                )
-            )
-            .filter(thread_count__gt=0)
-            .order_by("-thread_count")[:5]
-        )
-
-        # Context for the template
-        context = {
-            "page_title": "Moderation Dashboard",
-            "user": request.user,
-            "pda_pending_count": pda_pending_count,
-            "forum_pending_count": forum_pending_count,
-            "recent_pda": recent_pda,
-            "recent_threads": recent_threads,
-            "active_topics": active_topics,
-            "total_threads": total_threads,
-            "total_replies": total_replies,
-        }
-
-        return render(request, "moderation/dashboard.html", context)
-
-    except Exception as e:
-        # If there's an error, redirect to login
-        print(f"Error in moderation dashboard: {str(e)}")
-        return redirect("login")
+    # Get pending submissions count
+    pda_pending_count = PublicDeepfakeArchive.objects.filter(review_date__isnull=True).count()
+    
+    # Get pending forum threads count
+    forum_pending_count = ForumThread.objects.filter(approval_status="pending").count()
+    
+    # Get reported content count - for now use 0 since we need to add this field
+    # Later we can implement a proper report system
+    reported_count = 0
+    
+    # Get total user count
+    user_count = UserData.objects.count()
+    
+    # Recent PDA submissions
+    recent_pda_submissions = PublicDeepfakeArchive.objects.order_by("-submission_date")[:5]
+    
+    # Recent forum threads
+    recent_forum_threads = ForumThread.objects.filter(is_deleted=False).order_by("-created_at")[:5]
+    
+    # Get moderator actions (for admins only)
+    moderator_actions = None
+    if request.user.is_staff:
+        moderator_actions = ModeratorAction.objects.all().order_by('-timestamp')[:10]
+    
+    context = {
+        'page_title': 'Moderation Dashboard',
+        'pda_pending_count': pda_pending_count,
+        'forum_pending_count': forum_pending_count,
+        'reported_count': reported_count,
+        'user_count': user_count,
+        'recent_pda_submissions': recent_pda_submissions,
+        'recent_forum_threads': recent_forum_threads,
+        'moderator_actions': moderator_actions,
+    }
+    
+    return render(request, 'moderation/dashboard.html', context)
 
 
 @moderator_required
 def forum_moderation_view(request):
-    """Modern view for forum thread moderation"""
+    """View for forum threads moderation"""
     try:
-        # Get pending threads with annotations
-        pending_threads = (
-            ForumThread.objects.filter(approval_status="pending")
-            .select_related("author__user", "topic")
-            .prefetch_related("tags")
-            .annotate(
-                reply_count=Count("replies", filter=Q(replies__is_deleted=False)),
-                like_count=Count("likes"),
-            )
-            .order_by("-created_at")
-        )
-
-        # Paginate results
-        paginator = Paginator(pending_threads, 10)  # 10 threads per page
+        # Get filter parameter
+        filter_type = request.GET.get("filter", "pending")
+        
+        # Apply filters based on selection
+        if filter_type == "pending":
+            threads = ForumThread.objects.filter(approval_status="pending").order_by("-created_at")
+        elif filter_type == "reported":
+            # For now, there's no reported content system, so use an empty queryset
+            # In the future, implement is_reported field
+            threads = ForumThread.objects.none()
+            reported_replies = ForumReply.objects.none()
+        else:
+            threads = ForumThread.objects.all().order_by("-created_at")
+        
+        # Paginate threads
+        paginator = Paginator(threads, 10)
         page_number = request.GET.get("page", 1)
         page_obj = paginator.get_page(page_number)
-
-        # Handle form submissions (approve/reject)
+        
+        # Process actions (approve/reject/delete)
         if request.method == "POST":
             thread_id = request.POST.get("thread_id")
             action = request.POST.get("action")
-
-            if thread_id and action in ["approve", "reject"]:
-                try:
-                    # Use the controller to moderate the thread
-                    result = forum_controller.moderate_thread(
-                        thread_id=int(thread_id),
-                        approval_status=action + "d",  # "approved" or "rejected"
+            
+            if thread_id and action in ["approve", "reject", "delete"]:
+                thread = get_object_or_404(ForumThread, id=thread_id)
+                
+                if action == "approve":
+                    thread.approval_status = "approved"
+                    thread.save()
+                    
+                    # Log the action
+                    log_moderator_action(
                         moderator=request.user,
+                        action_type="approve",
+                        content_type="thread",
+                        content_object=thread,
+                        content_identifier=f"Thread: {thread.title}",
                     )
-
-                    # Show success message through template context
-                    if result["success"]:
-                        thread = ForumThread.objects.get(id=thread_id)
-                        action_message = f"Thread '{thread.title}' has been {action}d successfully."
-                    else:
-                        action_message = f"Error: {result['error']}"
-
-                except Exception as e:
-                    action_message = f"Error processing action: {str(e)}"
+                    
+                    # Send email notification to author
+                    try:
+                        send_mail(
+                            subject="Your Forum Thread Has Been Approved",
+                            message=f"Hello {thread.author.user.username},\n\nYour thread '{thread.title}' has been approved and is now visible in the forum.",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[thread.author.user.email],
+                            fail_silently=True,
+                        )
+                    except Exception as e:
+                        print(f"Error sending approval email: {str(e)}")
+                        
+                    action_message = f"Thread '{thread.title}' has been approved."
+                    
+                elif action == "reject":
+                    thread.approval_status = "rejected"
+                    thread.save()
+                    
+                    # Log the action
+                    log_moderator_action(
+                        moderator=request.user,
+                        action_type="reject",
+                        content_type="thread",
+                        content_object=thread,
+                        content_identifier=f"Thread: {thread.title}",
+                    )
+                    
+                    # Send email notification to author
+                    try:
+                        send_mail(
+                            subject="Your Forum Thread Was Not Approved",
+                            message=f"Hello {thread.author.user.username},\n\nYour thread '{thread.title}' was not approved. Please review our community guidelines.",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[thread.author.user.email],
+                            fail_silently=True,
+                        )
+                    except Exception as e:
+                        print(f"Error sending rejection email: {str(e)}")
+                        
+                    action_message = f"Thread '{thread.title}' has been rejected."
+                    
+                elif action == "delete":
+                    thread.is_deleted = True
+                    thread.save()
+                    
+                    # Log the action
+                    log_moderator_action(
+                        moderator=request.user,
+                        action_type="delete",
+                        content_type="thread",
+                        content_object=thread,
+                        content_identifier=f"Thread: {thread.title}",
+                    )
+                    
+                    action_message = f"Thread '{thread.title}' has been deleted."
             else:
                 action_message = None
         else:
             action_message = None
-
-        # Context for the template
+        
         context = {
             "page_title": "Forum Moderation",
-            "user": request.user,
-            "pending_threads": page_obj,
+            "threads": page_obj,
+            "filter_type": filter_type,
             "action_message": action_message,
-            "pending_count": pending_threads.count(),
+            "reported_replies": reported_replies if filter_type == "reported" else None,
         }
-
+        
         return render(request, "moderation/forum_moderation.html", context)
-
+    
     except Exception as e:
-        # If there's an error, redirect to dashboard
-        print(f"Error in forum moderation: {str(e)}")
+        print(f"Error in forum moderation view: {str(e)}")
         return redirect("moderation_dashboard")

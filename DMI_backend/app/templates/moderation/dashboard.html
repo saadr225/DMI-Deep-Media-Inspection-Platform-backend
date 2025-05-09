@@ -1,259 +1,167 @@
-{% extends "moderation/base.html" %} {% block title %}Dashboard{% endblock %} {% block content %}
-<!-- Overview Stats -->
+{% extends "moderation/base.html" %}
+{% block title %}Moderation Dashboard{% endblock %}
+
+{% block content %}
 <div class="stats-grid">
-  <div class="stat-card">
-    <div class="label">Pending PDA Submissions</div>
-    <div class="value">{{ pda_pending_count }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">Pending Forum Threads</div>
-    <div class="value">{{ forum_pending_count }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">Total Forum Threads</div>
-    <div class="value">{{ total_threads }}</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">Total Forum Replies</div>
-    <div class="value">{{ total_replies }}</div>
-  </div>
+    <div class="stat-card primary">
+        <i class="fas fa-folder fa-2x"></i>
+        <div class="label">Pending PDA Submissions</div>
+        <div class="value">{{ pda_pending_count }}</div>
+        <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-sm mt-2">Review</a>
+    </div>
+    <div class="stat-card info">
+        <i class="fas fa-comments fa-2x"></i>
+        <div class="label">Pending Forum Threads</div>
+        <div class="value">{{ forum_pending_count }}</div>
+        <a href="{% url 'forum_moderation' %}" class="btn btn-info btn-sm mt-2">Review</a>
+    </div>
+    <div class="stat-card warning">
+        <i class="fas fa-flag fa-2x"></i>
+        <div class="label">Reported Content</div>
+        <div class="value">{{ reported_count|default:"0" }}</div>
+        <a href="{% url 'forum_moderation' %}?filter=reported" class="btn btn-warning btn-sm mt-2">Review</a>
+    </div>
+    <div class="stat-card success">
+        <i class="fas fa-users fa-2x"></i>
+        <div class="label">Total Users</div>
+        <div class="value">{{ user_count }}</div>
+        {% if request.is_admin %}
+        <a href="{% url 'user_management' %}" class="btn btn-success btn-sm mt-2">Manage</a>
+        {% endif %}
+    </div>
 </div>
 
-<!-- Quick Access Cards -->
-<div class="dashboard-grid">
-  <!-- Recent PDA Submissions -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Recent PDA Submissions</h3>
-    </div>
-    <div class="card-body">
-      {% if recent_pda %}
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for submission in recent_pda %}
-            <tr>
-              <td>{{ submission.title|truncatechars:40 }}</td>
-              <td>{{ submission.submission_date|date:"M d, Y" }}</td>
-              <td>
-                {% if submission.review_date %} {% if submission.is_approved %}
-                <span class="badge bg-success">Approved</span>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="m-0 font-weight-bold">Recent PDA Submissions</h5>
+                <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-sm">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_pda_submissions %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in recent_pda_submissions %}
+                            <tr>
+                                <td>{{ submission.title }}</td>
+                                <td>{{ submission.category }}</td>
+                                <td>{{ submission.submission_date|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if submission.is_approved %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% elif submission.review_date %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                <span class="badge bg-danger">Rejected</span>
-                {% endif %} {% else %}
-                <span class="badge bg-warning">Pending</span>
+                <p class="text-center">No recent submissions found.</p>
                 {% endif %}
-              </td>
-              <td>
-                {% if not submission.review_date %}
-                <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-sm">Review</a>
-                {% else %}
-                <button disabled class="btn btn-secondary btn-sm">Reviewed</button>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="text-center">No recent submissions found.</p>
-      {% endif %}
-      <div class="card-footer">
-        <a href="{% url 'pda_moderation' %}" class="btn btn-primary">View All Submissions</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Forum Threads -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Recent Forum Threads</h3>
-    </div>
-    <div class="card-body">
-      {% if recent_threads %}
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Author</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for thread in recent_threads %}
-            <tr>
-              <td>{{ thread.title|truncatechars:30 }}</td>
-              <td>{{ thread.author.user.username }}</td>
-              <td>{{ thread.created_at|date:"M d, Y" }}</td>
-              <td>
-                {% if thread.approval_status == "approved" %}
-                <span class="badge bg-success">Approved</span>
-                {% elif thread.approval_status == "rejected" %}
-                <span class="badge bg-danger">Rejected</span>
-                {% else %}
-                <span class="badge bg-warning">Pending</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if thread.approval_status == "pending" %}
-                <a href="{% url 'thread_detail' thread.id %}" class="btn btn-primary btn-sm">Review</a>
-                {% else %}
-                <a href="{% url 'thread_detail' thread.id %}" class="btn btn-secondary btn-sm">View</a>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="text-center">No recent threads found.</p>
-      {% endif %}
-      <div class="card-footer">
-        <a href="{% url 'forum_moderation' %}" class="btn btn-primary">View All Threads</a>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Topics -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Active Forum Topics</h3>
-    </div>
-    <div class="card-body">
-      {% if active_topics %}
-      <div class="topic-list">
-        {% for topic in active_topics %}
-        <div class="topic-item">
-          <div class="topic-info">
-            <h4>{{ topic.name }}</h4>
-            <p>{{ topic.description|truncatechars:100 }}</p>
-          </div>
-          <div class="topic-stats">
-            <span class="badge bg-primary">{{ topic.thread_count }} threads</span>
-          </div>
+            </div>
         </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p class="text-center">No active topics found.</p>
-      {% endif %}
     </div>
-  </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="m-0 font-weight-bold">Recent Forum Activity</h5>
+                <a href="{% url 'forum_moderation' %}" class="btn btn-primary btn-sm">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_forum_threads %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Author</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for thread in recent_forum_threads %}
+                            <tr>
+                                <td>{{ thread.title }}</td>
+                                <td>{{ thread.author.user.username }}</td>
+                                <td>{{ thread.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if thread.approval_status == 'approved' %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% elif thread.approval_status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center">No recent forum activity found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
-{% endblock %} {% block extra_styles %}
-<style>
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
 
-  @media (min-width: 992px) {
-    .dashboard-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
+{% if request.is_admin %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="m-0 font-weight-bold">Moderator Activity</h5>
+                <a href="{% url 'analytics_dashboard' %}" class="btn btn-primary btn-sm">View Analytics</a>
+            </div>
+            <div class="card-body">
+                {% if moderator_actions %}
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Moderator</th>
+                                <th>Action</th>
+                                <th>Content</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for action in moderator_actions %}
+                            <tr>
+                                <td>{{ action.moderator.username }}</td>
+                                <td>{{ action.action_type }}</td>
+                                <td>{{ action.content_type }}</td>
+                                <td>{{ action.timestamp|date:"M d, Y H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center">No recent moderator activity found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
-  .table-responsive {
-    overflow-x: auto;
-  }
-
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .table th,
-  .table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .table th {
-    font-weight: 600;
-    color: var(--dark-color);
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
-    border-radius: 0.25rem;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: baseline;
-    color: white;
-  }
-
-  .bg-success {
-    background-color: var(--success-color);
-  }
-
-  .bg-danger {
-    background-color: var(--danger-color);
-  }
-
-  .bg-warning {
-    background-color: var(--warning-color);
-  }
-
-  .bg-primary {
-    background-color: var(--primary-color);
-  }
-
-  .card-footer {
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--border-color);
-    text-align: right;
-  }
-
-  .topic-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .topic-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    border-radius: 0.35rem;
-    background-color: var(--light-color);
-  }
-
-  .topic-info h4 {
-    margin: 0 0 0.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
-  .topic-info p {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--text-muted);
-  }
-
-  .text-center {
-    text-align: center;
-    padding: 2rem;
-    color: var(--text-muted);
-  }
-</style>
 {% endblock %}
