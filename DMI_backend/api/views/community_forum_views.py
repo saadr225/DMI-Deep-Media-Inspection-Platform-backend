@@ -43,6 +43,7 @@ def create_thread(request):
 
     Optional fields:
     - tags: List of tag IDs
+    - is_pinned: Whether the thread should be pinned (moderators only)
     """
     try:
         user = request.user
@@ -53,9 +54,15 @@ def create_thread(request):
         content = request.data.get("content")
         topic_id = request.data.get("topic_id")
         tags = request.data.get("tags", [])
+        is_pinned = request.data.get("is_pinned", False)
 
         result = forum_controller.create_thread(
-            title=title, content=content, user_data=user_data, topic_id=topic_id, tags=tags
+            title=title, 
+            content=content, 
+            user_data=user_data, 
+            topic_id=topic_id, 
+            tags=tags,
+            is_pinned=is_pinned
         )
 
         if result["success"]:
@@ -92,6 +99,8 @@ def edit_thread(request, thread_id):
     - title: New title
     - content: New content
     - tags: New list of tag IDs
+    - is_pinned: Whether the thread should be pinned (moderators only)
+    - is_locked: Whether the thread should be locked (moderators only)
     """
     try:
         user = request.user
@@ -101,9 +110,11 @@ def edit_thread(request, thread_id):
         title = request.data.get("title")
         content = request.data.get("content")
         tags = request.data.get("tags") if "tags" in request.data else None
+        is_pinned = request.data.get("is_pinned") if "is_pinned" in request.data else None
+        is_locked = request.data.get("is_locked") if "is_locked" in request.data else None
 
         # Check if at least one field is provided
-        if title is None and content is None and tags is None:
+        if title is None and content is None and tags is None and is_pinned is None and is_locked is None:
             return JsonResponse(
                 {
                     **get_response_code("FORUM_MISSING_FIELDS"),
@@ -113,7 +124,13 @@ def edit_thread(request, thread_id):
             )
 
         result = forum_controller.edit_thread(
-            thread_id=thread_id, user_data=user_data, title=title, content=content, tags=tags
+            thread_id=thread_id, 
+            user_data=user_data, 
+            title=title, 
+            content=content, 
+            tags=tags,
+            is_pinned=is_pinned,
+            is_locked=is_locked
         )
 
         if result["success"]:
@@ -210,6 +227,7 @@ def add_reply(request, thread_id):
     Optional fields:
     - parent_reply_id: ID of parent reply if this is a nested reply
     - media_file: Media file attachment
+    - is_solution: Whether this reply should be marked as solution (thread author or moderator only)
     """
     try:
         user = request.user
@@ -219,6 +237,11 @@ def add_reply(request, thread_id):
         content = request.data.get("content")
         parent_reply_id = request.data.get("parent_reply_id")
         media_file = request.FILES.get("media_file")
+        is_solution = request.data.get("is_solution", False)
+        
+        # Convert string 'true'/'false' to boolean if needed
+        if isinstance(is_solution, str):
+            is_solution = is_solution.lower() == 'true'
 
         result = forum_controller.add_reply(
             thread_id=thread_id,
@@ -226,6 +249,7 @@ def add_reply(request, thread_id):
             user_data=user_data,
             parent_reply_id=parent_reply_id,
             media_file=media_file,
+            is_solution=is_solution
         )
 
         if result["success"]:
@@ -237,6 +261,11 @@ def add_reply(request, thread_id):
                 return JsonResponse(
                     {**get_response_code(result["code"]), "error": result["error"]},
                     status=status.HTTP_404_NOT_FOUND,
+                )
+            elif result["code"] == "FORUM_THREAD_LOCKED":
+                return JsonResponse(
+                    {**get_response_code(result["code"]), "error": result["error"]},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
             else:
                 return JsonResponse(
@@ -630,7 +659,10 @@ def get_threads(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_thread_detail(request, thread_id):
-    """Get detailed information about a thread"""
+    """
+    Get detailed information about a thread.
+    Returns all thread details including author info, reactions, tags, etc.
+    """
     try:
         # Check if user is authenticated
         user_data = None
@@ -640,32 +672,46 @@ def get_thread_detail(request, thread_id):
         result = forum_controller.get_thread_detail(thread_id=thread_id, user_data=user_data)
 
         if result["success"]:
-            return JsonResponse(
-                {**get_response_code("FORUM_THREAD_FETCHED"), **result}, status=status.HTTP_200_OK
-            )
+            response_data = {
+                "status": "success",
+                "code": "FORUM_THREAD_FETCHED",
+                "message": "Thread details retrieved successfully",
+                "data": result["thread"]
+            }
+            return JsonResponse(response_data, status=status.HTTP_200_OK)
         else:
-            if result["code"] == "FORUM_THREAD_NOT_FOUND" or result["code"] == "FORUM_THREAD_DELETED":
-                return JsonResponse(
-                    {**get_response_code(result["code"]), "error": result["error"]},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-            elif result["code"] == "FORUM_THREAD_NOT_APPROVED":
-                return JsonResponse(
-                    {**get_response_code(result["code"]), "error": result["error"]},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+            error_code = result["code"]
+            
+            if error_code in ["FORUM_THREAD_NOT_FOUND", "FORUM_THREAD_DELETED"]:
+                response_data = {
+                    "status": "error",
+                    "code": error_code,
+                    "message": result["error"]
+                }
+                return JsonResponse(response_data, status=status.HTTP_404_NOT_FOUND)
+            elif error_code == "FORUM_THREAD_NOT_APPROVED":
+                response_data = {
+                    "status": "error",
+                    "code": error_code,
+                    "message": result["error"]
+                }
+                return JsonResponse(response_data, status=status.HTTP_403_FORBIDDEN)
             else:
-                return JsonResponse(
-                    {**get_response_code(result["code"]), "error": result["error"]},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                response_data = {
+                    "status": "error",
+                    "code": error_code,
+                    "message": result["error"]
+                }
+                return JsonResponse(response_data, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         logger.error(f"Error in get_thread_detail: {str(e)}")
-        return JsonResponse(
-            {**get_response_code("FORUM_THREAD_DETAIL_ERROR"), "error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        response_data = {
+            "status": "error",
+            "code": "FORUM_THREAD_DETAIL_ERROR",
+            "message": str(e)
+        }
+        return JsonResponse(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["GET"])

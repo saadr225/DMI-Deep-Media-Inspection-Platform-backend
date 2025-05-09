@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -7,6 +8,7 @@ from django.db.models import Q, Count, F
 from django.core.files.storage import FileSystemStorage
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.auth.models import Group, User
 
 from api.models import (
     ForumThread,
@@ -15,6 +17,8 @@ from api.models import (
     ForumTag,
     ForumLike,
     ForumAnalytics,
+    ForumReaction,
+    ForumNotification,
 )
 from app.models import UserData
 
@@ -32,7 +36,7 @@ class CommunityForumController:
             self.analytics, _ = ForumAnalytics.objects.get_or_create(id=1)
         return self.analytics
 
-    def create_thread(self, title, content, user_data, topic_id, tags=None):
+    def create_thread(self, title, content, user_data, topic_id, tags=None, is_pinned=False):
         """
         Create a new forum thread
 
@@ -42,6 +46,7 @@ class CommunityForumController:
             user_data (UserData): Author user data
             topic_id (int): ID of the topic
             tags (list, optional): List of tag IDs
+            is_pinned (bool, optional): Whether thread should be pinned
 
         Returns:
             dict: Response with thread details or error
@@ -57,13 +62,22 @@ class CommunityForumController:
 
             # Get topic
             try:
-                topic = ForumTopic.objects.get(id=topic_id)
+                topic = ForumTopic.objects.get(id=topic_id, is_active=True)
             except ForumTopic.DoesNotExist:
-                return {"success": False, "error": "Topic not found", "code": "FORUM_TOPIC_NOT_FOUND"}
+                return {"success": False, "error": "Topic not found or inactive", "code": "FORUM_TOPIC_NOT_FOUND"}
+
+            # Check for auto-approval
+            auto_approve = user_data.is_verified or user_data.is_moderator() or user_data.user.is_staff
+            approval_status = "approved" if auto_approve else "pending"
 
             # Create thread
             thread = ForumThread.objects.create(
-                title=title, content=content, author=user_data, topic=topic
+                title=title, 
+                content=content, 
+                author=user_data, 
+                topic=topic,
+                approval_status=approval_status,
+                is_pinned=is_pinned if user_data.is_moderator() or user_data.user.is_staff else False
             )
 
             # Add tags
@@ -71,8 +85,30 @@ class CommunityForumController:
                 thread.tags.set(tags)
 
             # Update analytics
-            self._ensure_analytics().total_threads += 1
-            self._ensure_analytics().save()
+            analytics = self._ensure_analytics()
+            analytics.total_threads += 1
+            analytics.threads_today += 1
+            analytics.save()
+            
+            # Create notification for moderators if needs approval
+            if not auto_approve:
+                try:
+                    # Get all moderators
+                    moderator_group = Group.objects.get(name="PDA_Moderator")
+                    moderators = UserData.objects.filter(user__groups=moderator_group)
+                    
+                    # Notify moderators about new thread needing approval
+                    for moderator in moderators:
+                        notification_content = f"New thread '{title}' by {user_data.user.username} needs approval"
+                        ForumNotification.objects.create(
+                            user=moderator,
+                            notification_type='thread_approval',
+                            content=notification_content,
+                            thread=thread,
+                            from_user=user_data
+                        )
+                except Exception as notif_error:
+                    logger.error(f"Error creating moderator notifications: {str(notif_error)}")
 
             return {
                 "success": True,
@@ -164,7 +200,7 @@ class CommunityForumController:
                 "code": "FORUM_MODERATE_ERROR",
             }
 
-    def add_reply(self, thread_id, content, user_data, parent_reply_id=None, media_file=None):
+    def add_reply(self, thread_id, content, user_data, parent_reply_id=None, media_file=None, is_solution=False):
         """
         Add a reply to a thread or another reply
 
@@ -174,6 +210,7 @@ class CommunityForumController:
             user_data (UserData): User data of the replier
             parent_reply_id (int, optional): ID of parent reply if this is a nested reply
             media_file (File, optional): Media file attachment
+            is_solution (bool, optional): Whether this reply is marked as a solution
 
         Returns:
             dict: Response with reply details or error
@@ -192,6 +229,15 @@ class CommunityForumController:
                 thread = ForumThread.objects.get(
                     id=thread_id, approval_status="approved", is_deleted=False
                 )
+                
+                # Check if thread is locked
+                if thread.is_locked:
+                    return {
+                        "success": False,
+                        "error": "Thread is locked and cannot accept new replies",
+                        "code": "FORUM_THREAD_LOCKED",
+                    }
+                
             except ForumThread.DoesNotExist:
                 return {
                     "success": False,
@@ -217,62 +263,89 @@ class CommunityForumController:
                         "code": "FORUM_REPLY_NOT_FOUND",
                     }
 
-            # Create reply
-            reply = ForumReply.objects.create(
-                content=content, author=user_data, thread=thread, parent_reply=parent_reply
-            )
-
             # Handle media file if provided
             media_url = None
+            media_type = None
             if media_file:
                 fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/forum/")
-                filename = fs.save(f"reply_{reply.id}_{media_file.name}", media_file)
+                filename = fs.save(f"reply_{user_data.id}_{int(time.time())}_{media_file.name}", media_file)
                 media_url = fs.url(filename)
+                
+                # Determine media type based on file extension
+                file_extension = os.path.splitext(media_file.name)[1].lower()
+                if file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']:
+                    media_type = 'image'
+                elif file_extension in ['.mp4', '.webm', '.avi', '.mov', '.wmv']:
+                    media_type = 'video'
+                elif file_extension in ['.mp3', '.wav', '.ogg']:
+                    media_type = 'audio'
+                else:
+                    media_type = 'document'
 
-                # TODO: Store media URL in reply or related model
+            # Only allow marking as solution if user is thread author or moderator
+            can_mark_solution = user_data.id == thread.author.id or user_data.is_moderator() or user_data.user.is_staff
+            is_solution = is_solution and can_mark_solution
+            
+            # Create reply
+            reply = ForumReply.objects.create(
+                content=content, 
+                author=user_data, 
+                thread=thread, 
+                parent_reply=parent_reply,
+                media_url=media_url,
+                media_type=media_type,
+                is_solution=is_solution
+            )
 
             # Update thread last activity time
             thread.last_active = timezone.now()
             thread.save()
 
             # Update analytics
-            self._ensure_analytics().total_replies += 1
-            self._ensure_analytics().save()
+            analytics = self._ensure_analytics()
+            analytics.total_replies += 1
+            analytics.replies_today += 1
+            analytics.save()
 
-            # Send notification email to thread author if not the same as reply author
+            # Create notification for thread author if not the same as reply author
             if thread.author.id != user_data.id:
                 try:
-                    author_email = thread.author.user.email
-                    if author_email:
-                        send_mail(
-                            subject=f"New reply on your thread: {thread.title}",
-                            message=f"Hello {thread.author.user.username},\n\n{user_data.user.username} has replied to your thread '{thread.title}'.\n\nView the reply in the community forum.",
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[author_email],
-                            fail_silently=True,
-                        )
-                except Exception as email_err:
-                    logger.error(f"Failed to send reply notification email: {str(email_err)}")
+                    notification_content = f"{user_data.user.username} replied to your thread '{thread.title}'"
+                    ForumNotification.objects.create(
+                        user=thread.author,
+                        notification_type='reply',
+                        content=notification_content,
+                        thread=thread,
+                        reply=reply,
+                        from_user=user_data
+                    )
+                except Exception as notif_error:
+                    logger.error(f"Failed to create thread reply notification: {str(notif_error)}")
 
-            # Send notification to parent reply author if applicable
+            # Create notification for parent reply author if not the same as reply author
             if parent_reply and parent_reply.author.id != user_data.id:
                 try:
-                    parent_author_email = parent_reply.author.user.email
-                    if parent_author_email:
-                        send_mail(
-                            subject=f"New reply to your comment",
-                            message=f"Hello {parent_reply.author.user.username},\n\n{user_data.user.username} has replied to your comment in the thread '{thread.title}'.\n\nView the reply in the community forum.",
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[parent_author_email],
-                            fail_silently=True,
-                        )
-                except Exception as email_err:
-                    logger.error(f"Failed to send reply notification email: {str(email_err)}")
+                    notification_content = f"{user_data.user.username} replied to your comment in '{thread.title}'"
+                    ForumNotification.objects.create(
+                        user=parent_reply.author,
+                        notification_type='reply',
+                        content=notification_content,
+                        thread=thread,
+                        reply=reply,
+                        from_user=user_data
+                    )
+                except Exception as notif_error:
+                    logger.error(f"Failed to create parent reply notification: {str(notif_error)}")
+                
+            # Check for @mentions in content and create notifications
+            self._process_mentions(content, user_data, thread, reply)
 
             return {
                 "success": True,
                 "reply_id": reply.id,
                 "media_url": media_url,
+                "media_type": media_type,
+                "is_solution": reply.is_solution,
                 "code": "FORUM_REPLY_CREATED",
             }
 
@@ -283,6 +356,38 @@ class CommunityForumController:
                 "error": f"Error adding reply: {str(e)}",
                 "code": "FORUM_REPLY_ERROR",
             }
+            
+    def _process_mentions(self, content, from_user, thread, reply):
+        """Process @mentions in content and create notifications"""
+        import re
+        
+        # Find all @username mentions
+        mentions = re.findall(r'@(\w+)', content)
+        
+        if not mentions:
+            return
+            
+        # Create notifications for mentioned users
+        for username in set(mentions):  # Use set to avoid duplicate notifications
+            try:
+                # Find the mentioned user
+                mentioned_user = User.objects.filter(username=username).first()
+                
+                if mentioned_user and mentioned_user.id != from_user.user.id:
+                    user_data = UserData.objects.get(user=mentioned_user)
+                    
+                    notification_content = f"{from_user.user.username} mentioned you in a comment"
+                    ForumNotification.objects.create(
+                        user=user_data,
+                        notification_type='mention',
+                        content=notification_content,
+                        thread=thread,
+                        reply=reply,
+                        from_user=from_user
+                    )
+            except Exception as e:
+                logger.error(f"Error processing mention for {username}: {str(e)}")
+                # Continue processing other mentions even if one fails
 
     def toggle_like(self, user_data, thread_id=None, reply_id=None, like_type="like"):
         """
@@ -389,7 +494,7 @@ class CommunityForumController:
                 "code": "FORUM_LIKE_ERROR",
             }
 
-    def edit_thread(self, thread_id, user_data, title=None, content=None, tags=None):
+    def edit_thread(self, thread_id, user_data, title=None, content=None, tags=None, is_pinned=None, is_locked=None):
         """
         Edit an existing thread
 
@@ -399,6 +504,8 @@ class CommunityForumController:
             title (str, optional): New title
             content (str, optional): New content
             tags (list, optional): New list of tag IDs
+            is_pinned (bool, optional): Whether the thread should be pinned
+            is_locked (bool, optional): Whether the thread should be locked
 
         Returns:
             dict: Response with status
@@ -411,9 +518,8 @@ class CommunityForumController:
                 return {"success": False, "error": "Thread not found", "code": "FORUM_THREAD_NOT_FOUND"}
 
             # Check ownership or moderator status
-            if thread.author.id != user_data.id and not (
-                user_data.is_moderator() or user_data.user.is_staff
-            ):
+            is_moderator = user_data.is_moderator() or user_data.user.is_staff
+            if thread.author.id != user_data.id and not is_moderator:
                 return {
                     "success": False,
                     "error": "Permission denied. You can only edit your own threads.",
@@ -429,10 +535,39 @@ class CommunityForumController:
 
             if tags is not None:
                 thread.tags.set(tags)
+                
+            # Only moderators can pin/unlock threads
+            if is_moderator:
+                if is_pinned is not None:
+                    thread.is_pinned = is_pinned
+                    
+                if is_locked is not None:
+                    thread.is_locked = is_locked
+                    
+                    # Create notification for thread author about thread lock status
+                    if is_locked != thread.is_locked and thread.author.id != user_data.id:
+                        try:
+                            status_text = "locked" if is_locked else "unlocked"
+                            notification_content = f"Your thread '{thread.title}' has been {status_text} by a moderator"
+                            ForumNotification.objects.create(
+                                user=thread.author,
+                                notification_type='thread_status',
+                                content=notification_content,
+                                thread=thread,
+                                from_user=user_data
+                            )
+                        except Exception as notif_error:
+                            logger.error(f"Failed to create thread lock notification: {str(notif_error)}")
 
             thread.save()
 
-            return {"success": True, "thread_id": thread.id, "code": "FORUM_THREAD_UPDATED"}
+            return {
+                "success": True, 
+                "thread_id": thread.id, 
+                "is_pinned": thread.is_pinned,
+                "is_locked": thread.is_locked,
+                "code": "FORUM_THREAD_UPDATED"
+            }
 
         except Exception as e:
             logger.error(f"Error editing thread: {str(e)}")
@@ -702,6 +837,11 @@ class CommunityForumController:
             # Increment view count
             thread.view_count += 1
             thread.save()
+            
+            # Update analytics
+            analytics = self._ensure_analytics()
+            analytics.total_views += 1
+            analytics.save()
 
             # Get replies
             replies = ForumReply.objects.filter(
@@ -718,39 +858,90 @@ class CommunityForumController:
 
                 formatted_child_replies = []
                 for child in child_replies:
-                    like_count = ForumLike.objects.filter(reply=child).count()
+                    # Get likes for child reply
+                    like_count = ForumLike.objects.filter(reply=child, like_type="like").count()
+                    dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").count()
+                    
+                    # Check if user has liked the child reply
                     user_liked = False
+                    user_disliked = False
                     if user_data:
-                        user_liked = ForumLike.objects.filter(user=user_data, reply=child).exists()
+                        user_liked = ForumLike.objects.filter(user=user_data, reply=child, like_type="like").exists()
+                        user_disliked = ForumLike.objects.filter(user=user_data, reply=child, like_type="dislike").exists()
+                    
+                    # Get reactions for child reply
+                    child_reactions = self.get_reaction_counts(reply_id=child.id)
+                    
+                    # Calculate time ago
+                    time_ago = self._calculate_time_ago(child.created_at)
+                    
+                    # Get child author details
+                    child_author = {
+                        "username": child.author.user.username,
+                        "avatar": child.author.profile_image_url,
+                        "joinDate": child.author.user.date_joined.strftime("%B %Y"),
+                        "isVerified": child.author.is_verified or child.author.user.is_staff
+                    }
 
-                    formatted_child_replies.append(
-                        {
-                            "id": child.id,
-                            "content": child.content,
-                            "author": child.author.user.username,
-                            "created_at": child.created_at,
-                            "like_count": like_count,
-                            "user_liked": user_liked,
-                        }
-                    )
+                    formatted_child_replies.append({
+                        "id": child.id,
+                        "content": child.content,
+                        "author": child_author,
+                        "created_at": child.created_at,
+                        "timeAgo": time_ago,
+                        "likes": like_count,
+                        "dislikes": dislike_count,
+                        "reactions": child_reactions,
+                        "user_liked": user_liked,
+                        "user_disliked": user_disliked,
+                        "media_url": child.media_url,
+                        "media_type": child.media_type,
+                        "is_solution": child.is_solution,
+                    })
 
                 # Get like info for parent reply
-                like_count = ForumLike.objects.filter(reply=reply).count()
+                like_count = ForumLike.objects.filter(reply=reply, like_type="like").count()
+                dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").count()
+                
+                # Check if user has liked/disliked the parent reply
                 user_liked = False
+                user_disliked = False
                 if user_data:
-                    user_liked = ForumLike.objects.filter(user=user_data, reply=reply).exists()
+                    user_liked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="like").exists()
+                    user_disliked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="dislike").exists()
+                
+                # Get reactions for parent reply
+                reply_reactions = self.get_reaction_counts(reply_id=reply.id)
+                
+                # Calculate time ago for parent reply
+                time_ago = self._calculate_time_ago(reply.created_at)
+                
+                # Get parent reply author details
+                reply_author = {
+                    "username": reply.author.user.username,
+                    "avatar": reply.author.profile_image_url,
+                    "joinDate": reply.author.user.date_joined.strftime("%B %Y"),
+                    "postCount": self._get_user_post_count(reply.author),
+                    "isVerified": reply.author.is_verified or reply.author.user.is_staff
+                }
 
-                formatted_replies.append(
-                    {
-                        "id": reply.id,
-                        "content": reply.content,
-                        "author": reply.author.user.username,
-                        "created_at": reply.created_at,
-                        "replies": formatted_child_replies,
-                        "like_count": like_count,
-                        "user_liked": user_liked,
-                    }
-                )
+                formatted_replies.append({
+                    "id": reply.id,
+                    "content": reply.content,
+                    "author": reply_author,
+                    "created_at": reply.created_at,
+                    "updated_at": reply.updated_at,
+                    "timeAgo": time_ago,
+                    "replies": formatted_child_replies,
+                    "likes": like_count,
+                    "dislikes": dislike_count,
+                    "reactions": reply_reactions,
+                    "user_liked": user_liked,
+                    "user_disliked": user_disliked,
+                    "media_url": reply.media_url,
+                    "media_type": reply.media_type,
+                    "is_solution": reply.is_solution,
+                })
 
             # Check if user has liked or disliked the thread
             user_liked_thread = False
@@ -766,30 +957,67 @@ class CommunityForumController:
             # Get like and dislike counts for thread
             thread_like_count = ForumLike.objects.filter(thread=thread, like_type="like").count()
             thread_dislike_count = ForumLike.objects.filter(thread=thread, like_type="dislike").count()
+            
+            # Get reactions for thread
+            reactions = self.get_reaction_counts(thread_id=thread_id)
+            
+            # Format date strings
+            created_date = thread.created_at.strftime("%B %d, %Y")
+            time_ago = self._calculate_time_ago(thread.created_at)
+            
+            # Get author details including post count and join date
+            author = thread.author
+            author_details = {
+                "username": author.user.username,
+                "avatar": author.profile_image_url,
+                "joinDate": author.user.date_joined.strftime("%B %Y"),
+                "postCount": self._get_user_post_count(author),
+                "isVerified": author.is_verified or author.user.is_staff
+            }
+            
+            # Set thread status based on approval status and locked state
+            thread_status = "open"
+            if thread.approval_status == "pending":
+                thread_status = "pending"
+            elif thread.approval_status == "rejected":
+                thread_status = "closed"
+            elif thread.is_locked:
+                thread_status = "locked"
+            
+            # Get tag names
+            tags = [tag.name for tag in thread.tags.all()]
 
             # Format response
             thread_detail = {
                 "id": thread.id,
                 "title": thread.title,
                 "content": thread.content,
-                "author": thread.author.user.username,
+                "author": author_details,
+                "date": created_date,
+                "timeAgo": time_ago,
+                "views": thread.view_count,
+                "likes": thread_like_count,
+                "upvotes": thread_like_count,
+                "downvotes": thread_dislike_count,
+                "tags": tags,
+                "status": thread_status,
+                "reactions": reactions,
                 "created_at": thread.created_at,
                 "updated_at": thread.updated_at,
                 "last_active": thread.last_active,
                 "approval_status": thread.approval_status,
-                "view_count": thread.view_count,
+                "is_pinned": thread.is_pinned,
+                "is_locked": thread.is_locked,
                 "topic": {
                     "id": thread.topic.id,
                     "name": thread.topic.name,
                     "description": thread.topic.description,
+                    "icon": thread.topic.icon,
                 },
-                "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                 "replies": formatted_replies,
                 "reply_count": len(formatted_replies),
-                "like_count": thread_like_count,
-                "dislike_count": thread_dislike_count,
-                "user_liked": user_liked_thread,
-                "user_disliked": user_disliked_thread,
+                "user_liked": user_liked_thread if user_data else False,
+                "user_disliked": user_disliked_thread if user_data else False,
             }
 
             return {"success": True, "thread": thread_detail, "code": "FORUM_THREAD_FETCHED"}
@@ -801,6 +1029,37 @@ class CommunityForumController:
                 "error": f"Error fetching thread detail: {str(e)}",
                 "code": "FORUM_THREAD_DETAIL_ERROR",
             }
+
+    def _calculate_time_ago(self, timestamp):
+        """Helper method to calculate time ago string from timestamp"""
+        from django.utils import timezone
+        
+        now = timezone.now()
+        diff = now - timestamp
+        days = diff.days
+        hours = diff.seconds // 3600
+        minutes = (diff.seconds % 3600) // 60
+        
+        if days > 365:
+            years = days // 365
+            return f"{years} {'year' if years == 1 else 'years'} ago"
+        elif days > 30:
+            months = days // 30
+            return f"{months} {'month' if months == 1 else 'months'} ago"
+        elif days > 0:
+            return f"{days} {'day' if days == 1 else 'days'} ago"
+        elif hours > 0:
+            return f"{hours} {'hour' if hours == 1 else 'hours'} ago"
+        elif minutes > 0:
+            return f"{minutes} {'minute' if minutes == 1 else 'minutes'} ago"
+        else:
+            return "just now"
+    
+    def _get_user_post_count(self, user_data):
+        """Helper method to get total post count for a user"""
+        thread_count = ForumThread.objects.filter(author=user_data, is_deleted=False).count()
+        reply_count = ForumReply.objects.filter(author=user_data, is_deleted=False).count()
+        return thread_count + reply_count
 
     def get_topics(self):
         """
@@ -958,4 +1217,174 @@ class CommunityForumController:
                 "success": False,
                 "error": f"Error searching threads: {str(e)}",
                 "code": "FORUM_SEARCH_ERROR",
+            }
+
+    def get_reaction_counts(self, thread_id=None, reply_id=None):
+        """
+        Get reaction counts for a thread or reply
+
+        Args:
+            thread_id (int, optional): ID of thread
+            reply_id (int, optional): ID of reply
+
+        Returns:
+            list: List of reactions with counts and user lists
+        """
+        try:
+            if thread_id:
+                reactions = ForumReaction.objects.filter(thread_id=thread_id)
+            elif reply_id:
+                reactions = ForumReaction.objects.filter(reply_id=reply_id)
+            else:
+                return []
+            
+            # Group by reaction type and count
+            result = {}
+            for reaction in reactions:
+                reaction_type = reaction.reaction_type
+                if reaction_type not in result:
+                    result[reaction_type] = {
+                        "emoji": reaction_type,
+                        "count": 0,
+                        "users": []
+                    }
+                
+                result[reaction_type]["count"] += 1
+                # Add username to users list
+                result[reaction_type]["users"].append(reaction.user.user.username)
+            
+            return list(result.values())
+        
+        except Exception as e:
+            logger.error(f"Error getting reaction counts: {str(e)}")
+            return []
+
+    def add_reaction(self, user_data, reaction_type, thread_id=None, reply_id=None):
+        """
+        Add emoji reaction to a thread or reply
+
+        Args:
+            user_data (UserData): User data of the reactor
+            reaction_type (str): Type of reaction (emoji code)
+            thread_id (int, optional): ID of thread to react to
+            reply_id (int, optional): ID of reply to react to
+
+        Returns:
+            dict: Response with reaction status
+        """
+        try:
+            # Check if either thread_id or reply_id is provided
+            if (thread_id is None and reply_id is None) or (thread_id and reply_id):
+                return {
+                    "success": False,
+                    "error": "Must provide either thread_id or reply_id, not both",
+                    "code": "FORUM_INVALID_REACTION_TARGET",
+                }
+
+            # Validate reaction type (ensure it's one of the allowed emojis)
+            valid_reaction_types = dict(ForumReaction.REACTION_TYPES).keys()
+            if reaction_type not in valid_reaction_types:
+                return {
+                    "success": False,
+                    "error": f"Invalid reaction type. Must be one of: {', '.join(valid_reaction_types)}",
+                    "code": "FORUM_INVALID_REACTION_TYPE",
+                }
+
+            # Find the target object
+            if thread_id:
+                try:
+                    target = ForumThread.objects.get(
+                        id=thread_id, approval_status="approved", is_deleted=False
+                    )
+                except ForumThread.DoesNotExist:
+                    return {
+                        "success": False,
+                        "error": "Thread not found or not approved",
+                        "code": "FORUM_THREAD_NOT_FOUND",
+                    }
+            else:
+                try:
+                    target = ForumReply.objects.get(id=reply_id, is_deleted=False)
+                except ForumReply.DoesNotExist:
+                    return {
+                        "success": False,
+                        "error": "Reply not found",
+                        "code": "FORUM_REPLY_NOT_FOUND",
+                    }
+
+            # Check for existing reaction of the same type
+            if thread_id:
+                existing_reaction = ForumReaction.objects.filter(
+                    user=user_data, thread=target, reaction_type=reaction_type
+                ).first()
+            else:
+                existing_reaction = ForumReaction.objects.filter(
+                    user=user_data, reply=target, reaction_type=reaction_type
+                ).first()
+
+            # Toggle reaction
+            if existing_reaction:
+                # Remove the reaction (toggle off)
+                existing_reaction.delete()
+                action = "removed"
+                
+                # Update analytics
+                analytics = self._ensure_analytics()
+                analytics.total_reactions = max(0, analytics.total_reactions - 1)
+                analytics.save()
+            else:
+                # Create new reaction
+                if thread_id:
+                    ForumReaction.objects.create(
+                        user=user_data, thread=target, reaction_type=reaction_type
+                    )
+                else:
+                    ForumReaction.objects.create(
+                        user=user_data, reply=target, reaction_type=reaction_type
+                    )
+                action = "added"
+                
+                # Update analytics
+                analytics = self._ensure_analytics()
+                analytics.total_reactions += 1
+                analytics.save()
+                
+                # Create notification for the content author (if not the same as reactor)
+                content_author = target.author if thread_id else target.author
+                thread_ref = target if thread_id else target.thread
+                
+                if content_author.id != user_data.id:
+                    try:
+                        notification_content = f"{user_data.user.username} reacted with {reaction_type} to your {'thread' if thread_id else 'reply'}"
+                        ForumNotification.objects.create(
+                            user=content_author,
+                            notification_type='reaction',
+                            content=notification_content,
+                            thread=thread_ref,
+                            reply=None if thread_id else target,
+                            from_user=user_data
+                        )
+                    except Exception as notif_error:
+                        logger.error(f"Error creating reaction notification: {str(notif_error)}")
+
+            # Get updated reaction counts
+            if thread_id:
+                reaction_counts = self.get_reaction_counts(thread_id=thread_id)
+            else:
+                reaction_counts = self.get_reaction_counts(reply_id=reply_id)
+
+            return {
+                "success": True,
+                "action": action,
+                "reaction_type": reaction_type,
+                "reaction_counts": reaction_counts,
+                "code": f"FORUM_REACTION_{action.upper()}",
+            }
+
+        except Exception as e:
+            logger.error(f"Error adding reaction: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Error adding reaction: {str(e)}",
+                "code": "FORUM_REACTION_ERROR",
             }

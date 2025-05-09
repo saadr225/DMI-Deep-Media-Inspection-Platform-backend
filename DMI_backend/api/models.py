@@ -1,5 +1,5 @@
 from django.db import models
-from django.conf import settings
+from django.utils import timezone
 from django.contrib.auth.models import User
 from app.models import UserData
 from django.utils import timezone
@@ -158,10 +158,18 @@ class PDASubmissionProfiledFace(models.Model):
 
 class ForumTopic(models.Model):
     """Pre-defined topics for forum threads"""
-
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    icon = models.CharField(max_length=50, blank=True, null=True)  # For displaying topic icon
+    is_active = models.BooleanField(default=True)  # For disabling topics without deleting
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['is_active']),
+        ]
 
     def __str__(self):
         return self.name
@@ -169,8 +177,12 @@ class ForumTopic(models.Model):
 
 class ForumTag(models.Model):
     """Tags for forum threads"""
-
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
+    color = models.CharField(max_length=20, blank=True, null=True)  # For styling tags with colors
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['name']
 
     def __str__(self):
         return self.name
@@ -178,7 +190,6 @@ class ForumTag(models.Model):
 
 class ForumThread(models.Model):
     """Main forum discussion threads"""
-
     APPROVAL_STATUS = (
         ("pending", "Pending"),
         ("approved", "Approved"),
@@ -187,18 +198,30 @@ class ForumThread(models.Model):
 
     title = models.CharField(max_length=200)
     content = models.TextField()
-    author = models.ForeignKey(UserData, on_delete=models.CASCADE)
-    topic = models.ForeignKey(ForumTopic, on_delete=models.CASCADE)
-    tags = models.ManyToManyField(ForumTag, blank=True)
-
+    author = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_threads")
+    topic = models.ForeignKey(ForumTopic, on_delete=models.CASCADE, related_name="threads")
+    tags = models.ManyToManyField(ForumTag, blank=True, related_name="threads")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     last_active = models.DateTimeField(default=timezone.now)
 
     approval_status = models.CharField(max_length=20, choices=APPROVAL_STATUS, default="pending")
     is_deleted = models.BooleanField(default=False)
-
+    is_pinned = models.BooleanField(default=False)  # For pinning important threads
+    is_locked = models.BooleanField(default=False)  # For preventing new replies
+    
     view_count = models.IntegerField(default=0)
+    
+    class Meta:
+        ordering = ['-last_active']
+        indexes = [
+            models.Index(fields=['approval_status', 'is_deleted']),
+            models.Index(fields=['author']),
+            models.Index(fields=['topic']),
+            models.Index(fields=['is_pinned']),
+            models.Index(fields=['created_at']),
+        ]
 
     def __str__(self):
         return self.title
@@ -206,18 +229,32 @@ class ForumThread(models.Model):
 
 class ForumReply(models.Model):
     """Replies to forum threads or other replies"""
-
     content = models.TextField()
-    author = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    author = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_replies")
     thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, related_name="replies")
     parent_reply = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="child_replies"
     )
-
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
     is_deleted = models.BooleanField(default=False)
+    is_solution = models.BooleanField(default=False)  # Mark as solution to thread question
+    
+    # Media attachment for reply
+    media_url = models.CharField(max_length=255, blank=True, null=True)
+    media_type = models.CharField(max_length=50, blank=True, null=True)  # image, video, document
+    
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['thread', 'is_deleted']),
+            models.Index(fields=['parent_reply']),
+            models.Index(fields=['author']),
+            models.Index(fields=['is_solution']),
+        ]
+        verbose_name_plural = "Forum replies"
 
     def __str__(self):
         return f"Reply by {self.author.user.username} on {self.created_at.strftime('%Y-%m-%d')}"
@@ -225,13 +262,12 @@ class ForumReply(models.Model):
 
 class ForumLike(models.Model):
     """Likes/upvotes/downvotes for threads and replies"""
-
     LIKE_TYPES = [
         ('like', 'Like'),
         ('dislike', 'Dislike'),
     ]
 
-    user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_likes")
     thread = models.ForeignKey(
         ForumThread, on_delete=models.CASCADE, null=True, blank=True, related_name="likes"
     )
@@ -251,15 +287,20 @@ class ForumLike(models.Model):
                 name="like_either_thread_or_reply",
             ),
             models.UniqueConstraint(
-                fields=["user", "thread"],
-                name="unique_thread_like",
+                fields=["user", "thread", "like_type"],
+                name="unique_thread_like_per_user",
                 condition=models.Q(thread__isnull=False),
             ),
             models.UniqueConstraint(
-                fields=["user", "reply"],
-                name="unique_reply_like",
+                fields=["user", "reply", "like_type"],
+                name="unique_reply_like_per_user",
                 condition=models.Q(reply__isnull=False),
             ),
+        ]
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['thread', 'like_type']),
+            models.Index(fields=['reply', 'like_type']),
         ]
 
     def __str__(self):
@@ -268,31 +309,22 @@ class ForumLike(models.Model):
             return f"{action} on thread by {self.user.user.username}"
         return f"{action} on reply by {self.user.user.username}"
 
-class ForumAnalytics(models.Model):
-    """Analytics for the forum"""
-
-    total_threads = models.IntegerField(default=0)
-    total_replies = models.IntegerField(default=0)
-    total_likes = models.IntegerField(default=0)
-
-    last_updated = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"Forum Analytics - Last updated: {self.last_updated.strftime('%Y-%m-%d %H:%M')}"
 
 class ForumReaction(models.Model):
     """Emoji reactions for threads and replies"""
-    
     REACTION_TYPES = [
-        ('like', 'Like'),
-        ('love', 'Love'),
-        ('laugh', 'Laugh'),
-        ('wow', 'Wow'),
-        ('sad', 'Sad'),
-        ('angry', 'Angry'),
+        ('👍', 'Thumbs Up'),
+        ('❤️', 'Heart'),
+        ('😂', 'Laugh'),
+        ('😮', 'Wow'),
+        ('😢', 'Sad'),
+        ('😡', 'Angry'),
+        ('🔥', 'Fire'),
+        ('👏', 'Clap'),
+        ('🧠', 'Brain'),
     ]
     
-    user = models.ForeignKey(UserData, on_delete=models.CASCADE)
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_reactions")
     thread = models.ForeignKey(
         ForumThread, on_delete=models.CASCADE, null=True, blank=True, related_name="reactions"
     )
@@ -304,6 +336,13 @@ class ForumReaction(models.Model):
 
     class Meta:
         constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(thread__isnull=False, reply__isnull=True)
+                    | models.Q(thread__isnull=True, reply__isnull=False)
+                ),
+                name="reaction_either_thread_or_reply",
+            ),
             models.UniqueConstraint(
                 fields=['user', 'thread', 'reaction_type'],
                 name='unique_thread_reaction_per_user',
@@ -316,6 +355,7 @@ class ForumReaction(models.Model):
             ),
         ]
         indexes = [
+            models.Index(fields=['user']),
             models.Index(fields=['thread', 'reaction_type']),
             models.Index(fields=['reply', 'reaction_type']),
         ]
@@ -323,11 +363,58 @@ class ForumReaction(models.Model):
     def __str__(self):
         target = f"thread {self.thread.id}" if self.thread else f"reply {self.reply.id}"
         return f"{self.user.user.username} - {self.reaction_type} on {target}"
-# class CommunityFeedback(models.Model):
-#     media = models.ForeignKey(MediaUpload, on_delete=models.CASCADE)
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)
-#     feedback = models.TextField()
-#     feedback_date = models.DateTimeField(auto_now_add=True)
 
-#     def __str__(self):
-#         return f"{self.user.username} - {self.media.file.name}"
+
+class ForumAnalytics(models.Model):
+    """Analytics for the forum"""
+    total_threads = models.IntegerField(default=0)
+    total_replies = models.IntegerField(default=0)
+    total_likes = models.IntegerField(default=0)
+    total_reactions = models.IntegerField(default=0)
+    total_views = models.IntegerField(default=0)
+    active_users = models.IntegerField(default=0)
+    
+    # Daily stats
+    threads_today = models.IntegerField(default=0)
+    replies_today = models.IntegerField(default=0)
+    
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Forum analytics"
+
+    def __str__(self):
+        return f"Forum Analytics - Last updated: {self.last_updated.strftime('%Y-%m-%d %H:%M')}"
+
+
+class ForumNotification(models.Model):
+    """Notifications for forum activities"""
+    NOTIFICATION_TYPES = [
+        ('reply', 'New Reply'),
+        ('like', 'New Like'),
+        ('reaction', 'New Reaction'),
+        ('mention', 'Mention'),
+        ('solution', 'Solution Marked'),
+    ]
+    
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_notifications")
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    content = models.TextField()
+    
+    # References to related content
+    thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, null=True, blank=True)
+    reply = models.ForeignKey(ForumReply, on_delete=models.CASCADE, null=True, blank=True)
+    from_user = models.ForeignKey(UserData, on_delete=models.SET_NULL, null=True, related_name="sent_notifications")
+    
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_read']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f"Notification for {self.user.user.username} - {self.notification_type}" 
