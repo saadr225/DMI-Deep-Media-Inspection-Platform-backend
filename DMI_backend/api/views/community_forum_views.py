@@ -624,6 +624,10 @@ def get_threads(request):
         if request.user.is_authenticated:
             if request.query_params.get("my_threads") == "true":
                 user_data = UserData.objects.get(user=request.user)
+            else:
+                # Even if not filtering by user threads, still pass user_data 
+                # for checking likes/dislikes
+                user_data = UserData.objects.get(user=request.user)
 
         result = forum_controller.get_threads(
             topic_id=topic_id,
@@ -782,8 +786,18 @@ def search_threads(request):
 
         # Limit items per page to prevent overload
         items_per_page = min(items_per_page, 50)
+        
+        # Check if user is authenticated
+        user_data = None
+        if request.user.is_authenticated:
+            user_data = UserData.objects.get(user=request.user)
 
-        result = forum_controller.search_threads(query=query, page=page, items_per_page=items_per_page)
+        result = forum_controller.search_threads(
+            query=query, 
+            page=page, 
+            items_per_page=items_per_page,
+            user_data=user_data
+        )
 
         if result["success"]:
             return JsonResponse(

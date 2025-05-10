@@ -803,6 +803,17 @@ class CommunityForumController:
                     
                 # Calculate net count
                 net_count = thread.like_count - thread.dislike_count
+                
+                # Check if user has liked or disliked the thread
+                user_liked = False
+                user_disliked = False
+                if user_data:
+                    user_liked = ForumLike.objects.filter(
+                        user=user_data, thread=thread, like_type="like"
+                    ).exists()
+                    user_disliked = ForumLike.objects.filter(
+                        user=user_data, thread=thread, like_type="dislike"
+                    ).exists()
 
                 result_threads.append(
                     {
@@ -815,6 +826,8 @@ class CommunityForumController:
                         "like_count": thread.like_count,
                         "dislike_count": thread.dislike_count,
                         "net_count": net_count,
+                        "user_liked": user_liked,
+                        "user_disliked": user_disliked,
                         "topic": {"id": thread.topic.id, "name": thread.topic.name},
                         "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                         "approval_status": thread.approval_status,
@@ -1050,8 +1063,6 @@ class CommunityForumController:
                 "likes": thread_like_count,
                 "dislikes": thread_dislike_count,
                 "net_count": thread_net_count,
-                "upvotes": thread_like_count,
-                "downvotes": thread_dislike_count,
                 "tags": tags,
                 "status": thread_status,
                 "reactions": reactions,
@@ -1179,7 +1190,7 @@ class CommunityForumController:
                 "code": "FORUM_TAGS_ERROR",
             }
 
-    def search_threads(self, query, page=1, items_per_page=20):
+    def search_threads(self, query, page=1, items_per_page=20, user_data=None):
         """
         Search threads by keywords or phrases
 
@@ -1187,6 +1198,7 @@ class CommunityForumController:
             query (str): Search query
             page (int): Page number
             items_per_page (int): Items per page
+            user_data (UserData, optional): Current user data
 
         Returns:
             dict: Response with search results
@@ -1245,6 +1257,17 @@ class CommunityForumController:
                 # Calculate net count
                 net_count = thread.like_count - thread.dislike_count
                 
+                # Check if user has liked or disliked the thread
+                user_liked = False
+                user_disliked = False
+                if user_data:
+                    user_liked = ForumLike.objects.filter(
+                        user=user_data, thread=thread, like_type="like"
+                    ).exists()
+                    user_disliked = ForumLike.objects.filter(
+                        user=user_data, thread=thread, like_type="dislike"
+                    ).exists()
+                
                 result_threads.append(
                     {
                         "id": thread.id,
@@ -1256,6 +1279,8 @@ class CommunityForumController:
                         "like_count": thread.like_count,
                         "dislike_count": thread.dislike_count,
                         "net_count": net_count,
+                        "user_liked": user_liked,
+                        "user_disliked": user_disliked,
                         "topic": {"id": thread.topic.id, "name": thread.topic.name},
                         "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                         # Include a small content preview
@@ -1548,8 +1573,7 @@ class CommunityForumController:
                         "date": created_date,
                         "timeAgo": time_ago,
                         "likes": like_count,
-                        "upvotes": like_count,
-                        "downvotes": dislike_count,
+                        "dislikes": dislike_count,
                         "net_count": net_count,
                         "isVerified": child.author.is_verified or child.author.user.is_staff,
                         "media": {
@@ -1598,8 +1622,7 @@ class CommunityForumController:
                     "date": created_date,
                     "timeAgo": time_ago,
                     "likes": like_count,
-                    "upvotes": like_count,
-                    "downvotes": dislike_count,
+                    "dislikes": dislike_count,
                     "net_count": net_count,
                     "isVerified": reply.author.is_verified or reply.author.user.is_staff,
                     "media": {
