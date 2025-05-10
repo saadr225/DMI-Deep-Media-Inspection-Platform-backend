@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import uuid
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -21,6 +22,7 @@ from api.models import (
     ForumNotification,
 )
 from app.models import UserData
+from app.controllers.HelpersController import URLHelper
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -75,29 +77,28 @@ class CommunityForumController:
             media_url = None
             media_type = None
             if media_file:
-                # Create proper directory structure
+                # Similar approach as for replies but for threads
                 from django.conf import settings
                 import os
+                import uuid
+                import time
+                from django.core.files.storage import FileSystemStorage
                 
                 # Create forum media directory if it doesn't exist
                 media_dir = os.path.join(settings.MEDIA_ROOT, 'forum')
                 if not os.path.exists(media_dir):
                     os.makedirs(media_dir, exist_ok=True)
                     
-                # Create year/month subdirectories for better organization
-                now = timezone.now()
-                year_month_dir = os.path.join(media_dir, f"{now.year}/{now.month:02d}")
-                if not os.path.exists(year_month_dir):
-                    os.makedirs(year_month_dir, exist_ok=True)
-                    
-                # Use FileSystemStorage to save the file to the year/month directory
-                fs = FileSystemStorage(location=year_month_dir)
-                # Create a unique filename including user ID and timestamp
-                filename = fs.save(f"thread_{user_data.id}_{int(time.time())}_{media_file.name}", media_file)
+                # Create a unique identifier and filename similar to PDA
+                thread_identifier = f"forum-thread-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+                original_filename = media_file.name
+                
+                # Use FileSystemStorage to save the file directly to the forum directory
+                fs = FileSystemStorage(location=media_dir)
+                filename = fs.save(f"{thread_identifier}-{original_filename}", media_file)
                 
                 # Store the relative path from MEDIA_ROOT
-                relative_path = f"forum/{now.year}/{now.month:02d}/{filename}"
-                media_url = relative_path
+                media_url = f"forum/{filename}"
                 
                 # Determine media type based on file extension
                 file_extension = os.path.splitext(media_file.name)[1].lower()
@@ -340,29 +341,28 @@ class CommunityForumController:
             media_url = None
             media_type = None
             if media_file:
-                # Create proper directory structure
+                # Create proper directory structure but without subfolders
                 from django.conf import settings
                 import os
+                import uuid
+                import time
+                from django.core.files.storage import FileSystemStorage
                 
                 # Create forum media directory if it doesn't exist
                 media_dir = os.path.join(settings.MEDIA_ROOT, 'forum')
                 if not os.path.exists(media_dir):
                     os.makedirs(media_dir, exist_ok=True)
                     
-                # Create year/month subdirectories for better organization
-                now = timezone.now()
-                year_month_dir = os.path.join(media_dir, f"{now.year}/{now.month:02d}")
-                if not os.path.exists(year_month_dir):
-                    os.makedirs(year_month_dir, exist_ok=True)
-                    
-                # Use FileSystemStorage to save the file to the year/month directory
-                fs = FileSystemStorage(location=year_month_dir)
-                # Create a unique filename including user ID and timestamp
-                filename = fs.save(f"reply_{user_data.id}_{int(time.time())}_{media_file.name}", media_file)
+                # Create a unique identifier and filename similar to PDA
+                reply_identifier = f"forum-reply-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+                original_filename = media_file.name
+                
+                # Use FileSystemStorage to save the file directly to the forum directory
+                fs = FileSystemStorage(location=media_dir)
+                filename = fs.save(f"{reply_identifier}-{original_filename}", media_file)
                 
                 # Store the relative path from MEDIA_ROOT
-                relative_path = f"forum/{now.year}/{now.month:02d}/{filename}"
-                media_url = relative_path
+                media_url = f"forum/{filename}"
                 
                 # Determine media type based on file extension
                 file_extension = os.path.splitext(media_file.name)[1].lower()
@@ -1739,10 +1739,15 @@ class CommunityForumController:
         if media_url.startswith('http'):
             return media_url
         
-        # Otherwise, make sure it uses the correct media URL from settings
-        if media_url.startswith('/'):
-            media_url = media_url[1:]  # Remove leading slash if present
-        
-        # Join with MEDIA_URL from settings
+        # Use URLHelper from HelpersController for generating public URLs
         from django.conf import settings
-        return f"{settings.MEDIA_URL}{media_url}"
+        
+        # If the media_url is a relative path, we need to convert it to an absolute path
+        import os
+        
+        if not os.path.isabs(media_url):
+            absolute_path = os.path.join(settings.MEDIA_ROOT, media_url)
+        else:
+            absolute_path = media_url
+        
+        return URLHelper.convert_to_public_url(file_path=absolute_path)
