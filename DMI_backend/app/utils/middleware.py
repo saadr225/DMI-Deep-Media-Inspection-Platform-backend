@@ -29,15 +29,43 @@ class RoleMiddleware:
             request.is_admin = False
 
         # Check if this is a moderation panel URL
-        current_url = resolve(request.path_info).url_name
-        if current_url and current_url.startswith('moderation_') or current_url in [
-            'pda_moderation', 'user_management', 'forum_moderation', 
-            'analytics_dashboard', 'moderation_settings', 'thread_detail'
-        ]:
-            # Check if user has access to moderation panel
-            if not (request.is_moderator or request.is_admin):
-                messages.error(request, "You do not have permission to access the moderation panel.")
-                return redirect('home')
+        try:
+            current_url = resolve(request.path_info).url_name
+            
+            # Skip login check for login pages
+            if current_url in ['moderation_login', 'custom_admin_login']:
+                return self.get_response(request)
+                
+            # Moderation panel URLs
+            if current_url and (current_url.startswith('moderation_') or current_url in [
+                'pda_moderation', 'pda_detail', 'pda_approve', 'pda_reject',
+                'forum_moderation', 'thread_detail', 'thread_approve', 'thread_reject',
+                'analytics_dashboard', 'moderation_settings', 'reported_content'
+            ]):
+                # Check if user is authenticated
+                if not request.user.is_authenticated:
+                    messages.info(request, "Please log in to access the moderation panel.")
+                    return redirect('moderation_login')
+                    
+                # Check if user has access to moderation panel
+                if not (request.is_moderator or request.is_admin):
+                    messages.error(request, "You do not have permission to access the moderation panel.")
+                    return redirect('moderation_login')
+                    
+            # Admin panel URLs
+            if current_url and (current_url.startswith('custom_admin_') or current_url == 'custom_admin_dashboard'):
+                # Check if user is authenticated
+                if not request.user.is_authenticated:
+                    messages.info(request, "Please log in to access the admin panel.")
+                    return redirect('custom_admin_login')
+                    
+                # Check if user has admin access
+                if not request.is_admin:
+                    messages.error(request, "You do not have permission to access the admin panel.")
+                    return redirect('custom_admin_login')
+        except:
+            # If URL resolution fails, just continue
+            pass
 
         response = self.get_response(request)
         return response 

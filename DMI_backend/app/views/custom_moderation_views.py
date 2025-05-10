@@ -45,11 +45,12 @@ def moderator_required(view_func):
     """Decorator for views that require moderator privileges"""
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
+            messages.info(request, "Please log in to access the moderation panel.")
             return redirect('moderation_login')
         
         if not is_moderator(request.user):
             messages.error(request, "You do not have moderator privileges to access this page.")
-            return redirect('home')
+            return redirect('moderation_login')
         
         return view_func(request, *args, **kwargs)
     
@@ -83,8 +84,12 @@ def log_moderation_action(moderator, action_type, content_type, content_object=N
 def moderation_login_view(request):
     """Login view for moderation panel"""
     # If already logged in and is moderator, redirect to dashboard
-    if request.user.is_authenticated and is_moderator(request.user):
-        return redirect('moderation_dashboard')
+    if request.user.is_authenticated:
+        if is_moderator(request.user):
+            return redirect('moderation_dashboard')
+        else:
+            error_message = "You do not have moderator privileges."
+            return render(request, 'custom_moderation/login.html', {'error_message': error_message})
     
     error_message = None
     
