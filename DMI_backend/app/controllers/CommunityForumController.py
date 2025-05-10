@@ -153,15 +153,19 @@ class CommunityForumController:
                 except Exception as notif_error:
                     logger.error(f"Error creating moderator notifications: {str(notif_error)}")
                 
-            # Get full media URL for response
-            full_media_url = self._get_full_media_url(media_url) if media_url else None
+            # Prepare media data for response using standardized format
+            media = None
+            if media_url:
+                media = {
+                    "url": self._get_full_media_url(media_url),
+                    "type": media_type
+                }
 
             return {
                 "success": True,
                 "thread_id": thread.id,
                 "approval_status": thread.approval_status,
-                "media_url": full_media_url,
-                "media_type": media_type,
+                "media": media,
                 "code": "FORUM_THREAD_CREATED",
             }
 
@@ -433,14 +437,18 @@ class CommunityForumController:
             # Check for @mentions in content and create notifications
             self._process_mentions(content, user_data, thread, reply)
             
-            # Get full media URL for response
-            full_media_url = self._get_full_media_url(media_url) if media_url else None
+            # Prepare media data for response using standardized format
+            media = None
+            if media_url:
+                media = {
+                    "url": self._get_full_media_url(media_url),
+                    "type": media_type
+                }
 
             return {
                 "success": True,
                 "reply_id": reply.id,
-                "media_url": full_media_url,
-                "media_type": media_type,
+                "media": media,
                 "is_solution": reply.is_solution,
                 "code": "FORUM_REPLY_CREATED",
             }
@@ -888,6 +896,14 @@ class CommunityForumController:
                     user_disliked = ForumLike.objects.filter(
                         user=user_data, thread=thread, like_type="dislike"
                     ).exists()
+                
+                # Format media URL if it exists
+                media = None
+                if hasattr(thread, 'media_url') and thread.media_url:
+                    media = {
+                        "url": self._get_full_media_url(thread.media_url),
+                        "type": thread.media_type if hasattr(thread, 'media_type') else 'image'
+                    }
 
                 result_threads.append(
                     {
@@ -907,6 +923,7 @@ class CommunityForumController:
                         "approval_status": thread.approval_status,
                         "view_count": thread.view_count,
                         "content_preview": content_preview,
+                        "media": media,
                     }
                 )
 
@@ -1313,6 +1330,14 @@ class CommunityForumController:
                         user=user_data, thread=thread, like_type="dislike"
                     ).exists()
                 
+                # Format media URL if it exists
+                media = None
+                if hasattr(thread, 'media_url') and thread.media_url:
+                    media = {
+                        "url": self._get_full_media_url(thread.media_url),
+                        "type": thread.media_type if hasattr(thread, 'media_type') else 'image'
+                    }
+                
                 result_threads.append(
                     {
                         "id": thread.id,
@@ -1330,6 +1355,7 @@ class CommunityForumController:
                         "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                         # Include a small content preview
                         "preview": thread.content[:150] + ("..." if len(thread.content) > 150 else ""),
+                        "media": media,
                     }
                 )
 
