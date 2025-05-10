@@ -3,196 +3,393 @@
 
 {% block extrastyle %}
 <style>
+    :root {
+        --primary: #6c63ff;
+        --primary-light: #8a84ff;
+        --primary-dark: #5046e5;
+        --primary-bg: #f0f0ff;
+        --card-shadow: 0 4px 20px rgba(108, 99, 255, 0.1);
+    }
+
     .settings-section {
-        margin-bottom: 2rem;
+        margin-bottom: 2.5rem;
     }
     
     .settings-section-title {
-        border-bottom: 1px solid #e3e6f0;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1rem;
+        color: var(--primary-dark);
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1.2rem;
+        padding-bottom: 0.7rem;
+        border-bottom: 2px solid var(--primary-light);
     }
     
     .settings-description {
-        color: #858796;
+        color: #666;
         margin-bottom: 1.5rem;
+        font-size: 0.95rem;
     }
     
-    .form-switch {
-        padding-left: 2.5em;
+    .setting-card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+        padding: 1.8rem;
+        margin-bottom: 1.5rem;
+        border-top: 4px solid var(--primary);
     }
-    
-    .form-switch .form-check-input {
-        margin-left: -2.5em;
-        width: 2em;
+
+    .setting-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(108, 99, 255, 0.15);
     }
     
     .setting-item {
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
+        margin-bottom: 1.3rem;
+        padding-bottom: 1.3rem;
         border-bottom: 1px solid rgba(0,0,0,.05);
     }
     
     .setting-item:last-child {
         border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .form-switch {
+        padding-left: 3em;
+    }
+    
+    .form-switch .form-check-input {
+        margin-left: -3em;
+        width: 2.5em;
+        height: 1.25em;
+        background-color: #e6e6f5;
+        border-color: #d9d9e9;
+    }
+    
+    .form-switch .form-check-input:checked {
+        background-color: var(--primary);
+        border-color: var(--primary-dark);
+    }
+    
+    .form-select {
+        border-radius: 8px;
+        border: 1px solid #d9d9e9;
+        padding: 0.5rem 1rem;
+        background-color: #f9f9fd;
+    }
+    
+    .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(108, 99, 255, 0.25);
+        border-color: var(--primary-light);
+    }
+    
+    .page-title {
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-subtitle {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        border-radius: 8px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        box-shadow: 0 4px 10px rgba(108, 99, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+        border-color: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(108, 99, 255, 0.3);
+    }
+
+    .guidelines-section {
+        background-color: var(--primary-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    
+    .guidelines-icon {
+        color: var(--primary);
+        margin-right: 0.5rem;
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1.2rem;
+    }
+
+    .feature-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--primary-light);
+        color: white;
+        border-radius: 50%;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .feature-content {
+        flex-grow: 1;
+    }
+
+    .feature-title {
+        font-weight: 600;
+        margin-bottom: 0.3rem;
+    }
+
+    .feature-description {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+    }
+
+    .alert-success {
+        background-color: #e6fffa;
+        color: #047481;
+    }
+
+    .alert-danger {
+        background-color: #fff5f5;
+        color: #c53030;
+    }
+
+    .alert-info {
+        background-color: #ebf8ff;
+        color: #2b6cb0;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Moderation Settings</h1>
+<div class="d-sm-flex flex-column mb-4">
+    <h1 class="page-title">Moderation Settings</h1>
+    <p class="page-subtitle">Configure your preferences for the moderation experience</p>
 </div>
 
 {% if success_message %}
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-    {{ success_message }}
+<div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+    <i class="fas fa-check-circle me-2"></i> {{ success_message }}
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 {% endif %}
 
 {% if error_message %}
-<div class="alert alert-danger alert-dismissible fade show" role="alert">
-    {{ error_message }}
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <i class="fas fa-exclamation-circle me-2"></i> {{ error_message }}
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 {% endif %}
 
 <div class="row">
     <div class="col-xl-8 col-lg-10">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Your Preferences</h6>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="setting-card">
+                <div class="settings-section">
+                    <h5 class="settings-section-title">
+                        <i class="fas fa-bell me-2"></i> Notification Settings
+                    </h5>
+                    <p class="settings-description">Control when and how you receive notifications about moderation activities</p>
                     
-                    <div class="settings-section">
-                        <h5 class="settings-section-title">Notification Settings</h5>
-                        <p class="settings-description">Control when and how you receive notifications about moderation activities</p>
-                        
-                        <div class="setting-item">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="email_notifications" name="email_notifications" {% if notification_settings.email_notifications %}checked{% endif %}>
-                                <label class="form-check-label" for="email_notifications">
-                                    <strong>Email Notifications</strong>
-                                </label>
-                                <div class="text-muted">
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-envelope fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="email_notifications" name="email_notifications" {% if notification_settings.email_notifications %}checked{% endif %}>
+                                    <label class="form-check-label feature-title" for="email_notifications">
+                                        Email Notifications
+                                    </label>
+                                </div>
+                                <div class="feature-description">
                                     Receive email notifications for moderation activities
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="setting-item">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="browser_notifications" name="browser_notifications" {% if notification_settings.browser_notifications %}checked{% endif %}>
-                                <label class="form-check-label" for="browser_notifications">
-                                    <strong>Browser Notifications</strong>
-                                </label>
-                                <div class="text-muted">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-desktop fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="browser_notifications" name="browser_notifications" {% if notification_settings.browser_notifications %}checked{% endif %}>
+                                    <label class="form-check-label feature-title" for="browser_notifications">
+                                        Browser Notifications
+                                    </label>
+                                </div>
+                                <div class="feature-description">
                                     Receive browser notifications when you're on the site
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="setting-item">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="notify_on_new_pda" name="notify_on_new_pda" {% if notification_settings.notify_on_new_pda %}checked{% endif %}>
-                                <label class="form-check-label" for="notify_on_new_pda">
-                                    <strong>PDA Submission Notifications</strong>
-                                </label>
-                                <div class="text-muted">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-photo-video fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="notify_on_new_pda" name="notify_on_new_pda" {% if notification_settings.notify_on_new_pda %}checked{% endif %}>
+                                    <label class="form-check-label feature-title" for="notify_on_new_pda">
+                                        PDA Submission Notifications
+                                    </label>
+                                </div>
+                                <div class="feature-description">
                                     Receive notifications when new PDA submissions require moderation
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="setting-item">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="notify_on_new_thread" name="notify_on_new_thread" {% if notification_settings.notify_on_new_thread %}checked{% endif %}>
-                                <label class="form-check-label" for="notify_on_new_thread">
-                                    <strong>Forum Content Notifications</strong>
-                                </label>
-                                <div class="text-muted">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-comments fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="notify_on_new_thread" name="notify_on_new_thread" {% if notification_settings.notify_on_new_thread %}checked{% endif %}>
+                                    <label class="form-check-label feature-title" for="notify_on_new_thread">
+                                        Forum Content Notifications
+                                    </label>
+                                </div>
+                                <div class="feature-description">
                                     Receive notifications when new forum threads or replies require moderation
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="setting-item">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="notify_on_reports" name="notify_on_reports" {% if notification_settings.notify_on_reports %}checked{% endif %}>
-                                <label class="form-check-label" for="notify_on_reports">
-                                    <strong>Content Report Notifications</strong>
-                                </label>
-                                <div class="text-muted">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-flag fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="notify_on_reports" name="notify_on_reports" {% if notification_settings.notify_on_reports %}checked{% endif %}>
+                                    <label class="form-check-label feature-title" for="notify_on_reports">
+                                        Content Report Notifications
+                                    </label>
+                                </div>
+                                <div class="feature-description">
                                     Receive notifications when users report content for moderation
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="settings-section">
-                        <h5 class="settings-section-title">Dashboard Preferences</h5>
-                        <p class="settings-description">Customize how your moderation dashboard displays information</p>
-                        
-                        <div class="setting-item">
-                            <div class="mb-3">
-                                <label for="dashboard_items" class="form-label"><strong>Items per page</strong></label>
-                                <select class="form-select" id="dashboard_items" name="dashboard_items">
-                                    <option value="10" selected>10 items</option>
-                                    <option value="25">25 items</option>
-                                    <option value="50">50 items</option>
-                                    <option value="100">100 items</option>
-                                </select>
-                                <div class="text-muted">
-                                    Number of items to display per page in moderation queues
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="setting-item">
-                            <div class="mb-3">
-                                <label for="default_view" class="form-label"><strong>Default view</strong></label>
-                                <select class="form-select" id="default_view" name="default_view">
-                                    <option value="pda" selected>PDA Queue</option>
-                                    <option value="forum">Forum Queue</option>
-                                    <option value="reports">Reported Content</option>
-                                    <option value="all">All Pending Items</option>
-                                </select>
-                                <div class="text-muted">
-                                    Default view to show when accessing the moderation dashboard
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="text-end">
-                        <button type="submit" class="btn btn-primary">Save Settings</button>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+            
+            <div class="setting-card">
+                <div class="settings-section">
+                    <h5 class="settings-section-title">
+                        <i class="fas fa-columns me-2"></i> Dashboard Preferences
+                    </h5>
+                    <p class="settings-description">Customize how your moderation dashboard displays information</p>
+                    
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-list fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="mb-3">
+                                    <label for="dashboard_items" class="form-label feature-title">Items per page</label>
+                                    <select class="form-select" id="dashboard_items" name="dashboard_items">
+                                        <option value="10" selected>10 items</option>
+                                        <option value="25">25 items</option>
+                                        <option value="50">50 items</option>
+                                        <option value="100">100 items</option>
+                                    </select>
+                                    <div class="feature-description mt-2">
+                                        Number of items to display per page in moderation queues
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="feature-item">
+                            <div class="feature-icon">
+                                <i class="fas fa-th-large fa-sm"></i>
+                            </div>
+                            <div class="feature-content">
+                                <div class="mb-3">
+                                    <label for="default_view" class="form-label feature-title">Default view</label>
+                                    <select class="form-select" id="default_view" name="default_view">
+                                        <option value="pda" selected>PDA Queue</option>
+                                        <option value="forum">Forum Queue</option>
+                                        <option value="reports">Reported Content</option>
+                                        <option value="all">All Pending Items</option>
+                                    </select>
+                                    <div class="feature-description mt-2">
+                                        Default view to show when accessing the moderation dashboard
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i> Save Settings
+                    </button>
+                </div>
+            </div>
+        </form>
         
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Moderation Guidelines</h6>
-            </div>
-            <div class="card-body">
+        <div class="setting-card guidelines-section">
+            <div class="settings-section">
+                <h5 class="settings-section-title">
+                    <i class="fas fa-clipboard-list me-2"></i> Moderation Guidelines
+                </h5>
                 <p>This section contains guidelines and best practices for performing moderation duties.</p>
                 
-                <h5 class="mt-4">Content Guidelines</h5>
-                <ul>
-                    <li><strong>Approve content</strong> that:
-                        <ul>
+                <h5 class="mt-4">
+                    <i class="guidelines-icon fas fa-check-circle"></i> Content Guidelines
+                </h5>
+                <ul class="mt-3">
+                    <li class="mb-3"><strong>Approve content</strong> that:
+                        <ul class="mt-2">
                             <li>Follows community guidelines</li>
                             <li>Provides valuable information or discussion</li>
                             <li>Is properly labeled and categorized</li>
                         </ul>
                     </li>
-                    <li><strong>Reject content</strong> that:
-                        <ul>
+                    <li class="mb-2"><strong>Reject content</strong> that:
+                        <ul class="mt-2">
                             <li>Contains harassment, hate speech, or bullying</li>
                             <li>Includes personal information without consent</li>
                             <li>Promotes illegal activities</li>
@@ -201,8 +398,10 @@
                     </li>
                 </ul>
                 
-                <h5 class="mt-4">Moderation Etiquette</h5>
-                <ul>
+                <h5 class="mt-4">
+                    <i class="guidelines-icon fas fa-handshake"></i> Moderation Etiquette
+                </h5>
+                <ul class="mt-3">
                     <li>Be respectful and professional in all interactions</li>
                     <li>Provide clear reasons when rejecting content</li>
                     <li>Apply guidelines consistently across all users</li>

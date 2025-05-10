@@ -1,0 +1,397 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .settings-card {
+        transition: all 0.3s ease;
+        border-radius: 15px;
+    }
+    
+    .settings-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .settings-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+        padding: 1.5rem;
+    }
+    
+    .settings-icon {
+        font-size: 2rem;
+        color: var(--primary);
+        margin-bottom: 1rem;
+    }
+    
+    .settings-title {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    
+    .settings-description {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .form-section {
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    
+    .form-section-title {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--dark-color);
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: var(--primary);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">System Settings</h1>
+    <div>
+        <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- General Settings -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow settings-card">
+            <div class="settings-header text-center">
+                <div class="settings-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <h5 class="settings-title">General Settings</h5>
+                <p class="settings-description">Configure basic system settings and preferences</p>
+            </div>
+            <div class="card-body p-0">
+                <form method="post" action="{% url 'custom_admin_settings' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="general_settings">
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">Site Information</h6>
+                        <div class="mb-3">
+                            <label for="site_name" class="form-label">Site Name</label>
+                            <input type="text" class="form-control" id="site_name" name="site_name" value="Deep Media Inspection">
+                        </div>
+                        <div class="mb-3">
+                            <label for="site_description" class="form-label">Site Description</label>
+                            <textarea class="form-control" id="site_description" name="site_description" rows="2">Platform for deepfake detection and awareness</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">Contact Information</h6>
+                        <div class="mb-3">
+                            <label for="admin_email" class="form-label">Admin Email</label>
+                            <input type="email" class="form-control" id="admin_email" name="admin_email" value="admin@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label for="support_email" class="form-label">Support Email</label>
+                            <input type="email" class="form-control" id="support_email" name="support_email" value="support@example.com">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">UI Settings</h6>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="dark_mode" name="dark_mode">
+                            <label class="form-check-label" for="dark_mode">Enable Dark Mode</label>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="compact_layout" name="compact_layout">
+                            <label class="form-check-label" for="compact_layout">Use Compact Layout</label>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-light text-end">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moderation Settings -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow settings-card">
+            <div class="settings-header text-center">
+                <div class="settings-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h5 class="settings-title">Moderation Settings</h5>
+                <p class="settings-description">Configure content moderation and review processes</p>
+            </div>
+            <div class="card-body p-0">
+                <form method="post" action="{% url 'custom_admin_settings' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="moderation_settings">
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">PDA Submission Settings</h6>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="require_pda_approval" name="require_pda_approval" checked>
+                            <label class="form-check-label" for="require_pda_approval">Require Approval for PDA Submissions</label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="max_pda_file_size" class="form-label">Maximum File Size (MB)</label>
+                            <input type="number" class="form-control" id="max_pda_file_size" name="max_pda_file_size" value="100">
+                        </div>
+                        <div class="mb-3">
+                            <label for="allowed_file_types" class="form-label">Allowed File Types</label>
+                            <input type="text" class="form-control" id="allowed_file_types" name="allowed_file_types" value="jpg,jpeg,png,mp4,webm">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">Forum Moderation</h6>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="pre_moderation" name="pre_moderation" checked>
+                            <label class="form-check-label" for="pre_moderation">Pre-moderation for New Threads</label>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="auto_approve_trusted" name="auto_approve_trusted">
+                            <label class="form-check-label" for="auto_approve_trusted">Auto-approve from Trusted Users</label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="min_post_length" class="form-label">Minimum Post Length</label>
+                            <input type="number" class="form-control" id="min_post_length" name="min_post_length" value="10">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">Content Filters</h6>
+                        <div class="mb-3">
+                            <label for="banned_words" class="form-label">Banned Words/Phrases</label>
+                            <textarea class="form-control" id="banned_words" name="banned_words" rows="3"></textarea>
+                            <div class="form-text">Enter words or phrases separated by commas</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-light text-end">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Security Settings -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow settings-card">
+            <div class="settings-header text-center">
+                <div class="settings-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h5 class="settings-title">Security Settings</h5>
+                <p class="settings-description">Configure system security and access controls</p>
+            </div>
+            <div class="card-body p-0">
+                <form method="post" action="{% url 'custom_admin_settings' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="security_settings">
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">Account Security</h6>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="two_factor_auth" name="two_factor_auth">
+                            <label class="form-check-label" for="two_factor_auth">Enable Two-Factor Authentication</label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_expiry" class="form-label">Password Expiry (days)</label>
+                            <input type="number" class="form-control" id="password_expiry" name="password_expiry" value="90">
+                            <div class="form-text">Set to 0 for no expiry</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_min_length" class="form-label">Minimum Password Length</label>
+                            <input type="number" class="form-control" id="password_min_length" name="password_min_length" value="8">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">Session Settings</h6>
+                        <div class="mb-3">
+                            <label for="session_timeout" class="form-label">Session Timeout (minutes)</label>
+                            <input type="number" class="form-control" id="session_timeout" name="session_timeout" value="30">
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="limit_concurrent_sessions" name="limit_concurrent_sessions" checked>
+                            <label class="form-check-label" for="limit_concurrent_sessions">Limit Concurrent Sessions</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">IP Restrictions</h6>
+                        <div class="mb-3">
+                            <label for="allowed_ips" class="form-label">Allowed IP Addresses</label>
+                            <textarea class="form-control" id="allowed_ips" name="allowed_ips" rows="2"></textarea>
+                            <div class="form-text">Leave empty to allow all IPs. Separate multiple IPs with commas.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-light text-end">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Settings -->
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow settings-card">
+            <div class="settings-header text-center">
+                <div class="settings-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h5 class="settings-title">API Settings</h5>
+                <p class="settings-description">Configure external API connections and preferences</p>
+            </div>
+            <div class="card-body p-0">
+                <form method="post" action="{% url 'custom_admin_settings' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="api_settings">
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">API Access</h6>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enable_api" name="enable_api" checked>
+                            <label class="form-check-label" for="enable_api">Enable API Access</label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="api_rate_limit" class="form-label">API Rate Limit (requests per minute)</label>
+                            <input type="number" class="form-control" id="api_rate_limit" name="api_rate_limit" value="60">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h6 class="form-section-title">External Services</h6>
+                        <div class="mb-3">
+                            <label for="ml_api_url" class="form-label">Machine Learning API URL</label>
+                            <input type="text" class="form-control" id="ml_api_url" name="ml_api_url" value="https://api.example.com/ml">
+                        </div>
+                        <div class="mb-3">
+                            <label for="ml_api_key" class="form-label">API Key</label>
+                            <input type="password" class="form-control" id="ml_api_key" name="ml_api_key" value="********">
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enable_external_storage" name="enable_external_storage">
+                            <label class="form-check-label" for="enable_external_storage">Use External Storage</label>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer bg-light text-end">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form submission handling with AJAX (can be implemented as needed)
+    const forms = document.querySelectorAll('form');
+    
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            // Uncomment for AJAX implementation
+            /*
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    console.log('Settings saved successfully');
+                } else {
+                    // Show error message
+                    console.error('Error saving settings');
+                }
+            });
+            */
+        });
+    });
+});
+</script>
+{% endblock %} 

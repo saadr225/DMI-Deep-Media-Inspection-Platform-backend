@@ -1,0 +1,329 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Pending Moderation{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .pending-item {
+        border-left: 4px solid transparent;
+        margin-bottom: 1rem;
+        transition: all 0.2s;
+    }
+    
+    .pending-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .pending-item.pda {
+        border-left-color: #4e73df;
+    }
+    
+    .pending-item.forum {
+        border-left-color: #36b9cc;
+    }
+    
+    .pending-item-header {
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fc;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .pending-item-body {
+        padding: 1rem;
+    }
+    
+    .pending-item-footer {
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fc;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .pending-item-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .pending-item-meta {
+        color: #6c757d;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
+    .pending-item-meta span {
+        display: flex;
+        align-items: center;
+    }
+    
+    .pending-item-meta i {
+        margin-right: 0.35rem;
+    }
+    
+    .pending-item-type {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.65rem;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    
+    .pending-item-type i {
+        margin-right: 0.35rem;
+    }
+    
+    .pending-item-type.pda {
+        background-color: rgba(78, 115, 223, 0.1);
+        color: #4e73df;
+    }
+    
+    .pending-item-type.forum {
+        background-color: rgba(54, 185, 204, 0.1);
+        color: #36b9cc;
+    }
+    
+    .pending-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Pending Moderation</h1>
+    <div>
+        <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Total Pending Items</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pending }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tasks fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            PDA Submissions</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pda_pending_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-photo-video fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Forum Threads</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ forum_pending_count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="card shadow filter-container mb-4">
+    <form method="get" action="{% url 'custom_admin_pending' %}">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="type" class="form-label">Content Type</label>
+                <select class="form-select" id="type" name="type">
+                    <option value="all" {% if type == 'all' %}selected{% endif %}>All Types</option>
+                    <option value="pda" {% if type == 'pda' %}selected{% endif %}>PDA Submissions</option>
+                    <option value="forum" {% if type == 'forum' %}selected{% endif %}>Forum Threads</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="sort" class="form-label">Sort By</label>
+                <select class="form-select" id="sort" name="sort">
+                    <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest First</option>
+                    <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest First</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-1"></i> Apply Filters
+                </button>
+                <a href="{% url 'custom_admin_pending' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-sync-alt me-1"></i> Reset
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-tasks me-1"></i> Pending Items
+        </h6>
+    </div>
+    <div class="card-body">
+        {% if pending_items %}
+            {% for item in pending_items %}
+            <div class="card pending-item {% if item.type == 'PDA Submission' %}pda{% else %}forum{% endif %}">
+                <div class="pending-item-header">
+                    <div>
+                        <span class="pending-item-type {% if item.type == 'PDA Submission' %}pda{% else %}forum{% endif %}">
+                            <i class="fas fa-{% if item.type == 'PDA Submission' %}photo-video{% else %}comment-alt{% endif %}"></i>
+                            {{ item.type }}
+                        </span>
+                    </div>
+                    <div class="pending-item-meta">
+                        <span><i class="fas fa-calendar"></i> {{ item.date|date:"M d, Y" }}</span>
+                        <span><i class="fas fa-clock"></i> {{ item.date|time:"g:i A" }}</span>
+                    </div>
+                </div>
+                <div class="pending-item-body">
+                    <h5 class="pending-item-title">{{ item.title }}</h5>
+                    <div class="pending-item-meta mb-3">
+                        <span><i class="fas fa-user"></i> {{ item.author }}</span>
+                        <span><i class="fas fa-id-card"></i> ID: {{ item.id }}</span>
+                    </div>
+                    
+                    <div class="pending-item-actions">
+                        <a href="{{ item.details_url }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye me-1"></i> View Details
+                        </a>
+                        <a href="{{ item.approve_url }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-check me-1"></i> Approve
+                        </a>
+                        <a href="{{ item.reject_url }}" class="btn btn-danger btn-sm">
+                            <i class="fas fa-ban me-1"></i> Reject
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="mt-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">
+                        Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} items
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;&laquo;</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                            {% endif %}
+                            
+                            {% for i in paginator.page_range %}
+                                {% if i == page_obj.number %}
+                                    <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                                {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paginator.num_pages }}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;&raquo;</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+            <h4>All Caught Up!</h4>
+            <p class="text-muted">There are no pending items requiring your review at this time.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

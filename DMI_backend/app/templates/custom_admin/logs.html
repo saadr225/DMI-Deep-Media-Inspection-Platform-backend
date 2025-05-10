@@ -1,0 +1,314 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Activity Logs{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .logs-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .logs-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .log-item {
+        border-left: 4px solid transparent;
+        transition: all 0.2s;
+    }
+    
+    .log-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .log-approve {
+        border-left-color: #1cc88a;
+    }
+    
+    .log-reject {
+        border-left-color: #e74a3b;
+    }
+    
+    .log-modify {
+        border-left-color: #4e73df;
+    }
+    
+    .log-delete {
+        border-left-color: #e74a3b;
+    }
+    
+    .log-create {
+        border-left-color: #1cc88a;
+    }
+    
+    .log-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 30px;
+    }
+    
+    .badge-approve {
+        background-color: rgba(28, 200, 138, 0.1);
+        color: #1cc88a;
+    }
+    
+    .badge-reject {
+        background-color: rgba(231, 74, 59, 0.1);
+        color: #e74a3b;
+    }
+    
+    .badge-modify {
+        background-color: rgba(78, 115, 223, 0.1);
+        color: #4e73df;
+    }
+    
+    .badge-delete {
+        background-color: rgba(231, 74, 59, 0.1);
+        color: #e74a3b;
+    }
+    
+    .badge-create {
+        background-color: rgba(28, 200, 138, 0.1);
+        color: #1cc88a;
+    }
+    
+    .badge-pda {
+        background-color: rgba(54, 185, 204, 0.1);
+        color: #36b9cc;
+    }
+    
+    .badge-thread {
+        background-color: rgba(246, 194, 62, 0.1);
+        color: #f6c23e;
+    }
+    
+    .badge-user {
+        background-color: rgba(133, 135, 150, 0.1);
+        color: #858796;
+    }
+    
+    .badge-settings {
+        background-color: rgba(78, 115, 223, 0.1);
+        color: #4e73df;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Activity Logs</h1>
+    <div>
+        <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Filter Controls -->
+<div class="card shadow filter-container mb-4">
+    <form method="get" action="{% url 'custom_admin_logs' %}">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="action_type" class="form-label">Action Type</label>
+                <select class="form-select" id="action_type" name="action_type">
+                    <option value="" {% if not action_type %}selected{% endif %}>All Actions</option>
+                    <option value="approve" {% if action_type == 'approve' %}selected{% endif %}>Approve</option>
+                    <option value="reject" {% if action_type == 'reject' %}selected{% endif %}>Reject</option>
+                    <option value="modify" {% if action_type == 'modify' %}selected{% endif %}>Modify</option>
+                    <option value="delete" {% if action_type == 'delete' %}selected{% endif %}>Delete</option>
+                    <option value="create" {% if action_type == 'create' %}selected{% endif %}>Create</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="content_type" class="form-label">Content Type</label>
+                <select class="form-select" id="content_type" name="content_type">
+                    <option value="" {% if not content_type %}selected{% endif %}>All Content</option>
+                    <option value="pda" {% if content_type == 'pda' %}selected{% endif %}>PDA Submission</option>
+                    <option value="thread" {% if content_type == 'thread' %}selected{% endif %}>Forum Thread</option>
+                    <option value="user" {% if content_type == 'user' %}selected{% endif %}>User</option>
+                    <option value="settings" {% if content_type == 'settings' %}selected{% endif %}>Settings</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="user_id" class="form-label">User</label>
+                <select class="form-select" id="user_id" name="user_id">
+                    <option value="" {% if not user_id %}selected{% endif %}>All Users</option>
+                    {% for moderator in moderators %}
+                    <option value="{{ moderator.id }}" {% if user_id == moderator.id|stringformat:"i" %}selected{% endif %}>
+                        {{ moderator.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-1"></i> Apply Filters
+                </button>
+                <a href="{% url 'custom_admin_logs' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-sync-alt me-1"></i> Reset
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Logs List -->
+<div class="card shadow logs-card">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-history me-1"></i> Activity Logs
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th scope="col">Timestamp</th>
+                        <th scope="col">User</th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Content Type</th>
+                        <th scope="col">Content Identifier</th>
+                        <th scope="col">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if actions %}
+                        {% for action in actions %}
+                        <tr class="log-item log-{{ action.action_type }}">
+                            <td>
+                                <div>{{ action.timestamp|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ action.timestamp|time:"g:i A" }}</small>
+                            </td>
+                            <td>
+                                <a href="{% url 'custom_admin_user_detail' action.moderator.id %}" class="text-decoration-none">
+                                    {{ action.moderator.username }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="log-badge badge-{{ action.action_type }}">
+                                    <i class="fas fa-{% if action.action_type == 'approve' %}check{% elif action.action_type == 'reject' %}ban{% elif action.action_type == 'modify' %}edit{% elif action.action_type == 'delete' %}trash{% else %}plus{% endif %}"></i>
+                                    {{ action.action_type|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="log-badge badge-{{ action.content_type }}">
+                                    <i class="fas fa-{% if action.content_type == 'pda' %}photo-video{% elif action.content_type == 'thread' %}comments{% elif action.content_type == 'user' %}user{% else %}cog{% endif %}"></i>
+                                    {{ action.content_type|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="text-truncate" style="max-width: 200px;">{{ action.content_identifier }}</div>
+                            </td>
+                            <td>
+                                {% if action.notes %}
+                                <div class="text-truncate" style="max-width: 200px;">{{ action.notes }}</div>
+                                {% else %}
+                                <span class="text-muted">No notes</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="fas fa-history fa-3x text-gray-300 mb-3"></i>
+                                    <h5>No Activity Logs Found</h5>
+                                    <p class="text-muted">No logs match your current filter criteria.</p>
+                                    {% if action_type or user_id or content_type %}
+                                    <a href="{% url 'custom_admin_logs' %}" class="btn btn-outline-primary btn-sm mt-2">
+                                        <i class="fas fa-sync-alt me-1"></i> Clear Filters
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if actions.has_other_pages %}
+    <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+                Showing {{ actions.start_index }} to {{ actions.end_index }} of {{ paginator.count }} logs
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if actions.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if action_type %}action_type={{ action_type }}&{% endif %}{% if content_type %}content_type={{ content_type }}&{% endif %}{% if user_id %}user_id={{ user_id }}&{% endif %}page=1" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if action_type %}action_type={{ action_type }}&{% endif %}{% if content_type %}content_type={{ content_type }}&{% endif %}{% if user_id %}user_id={{ user_id }}&{% endif %}page={{ actions.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;&laquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in paginator.page_range %}
+                        {% if i == actions.number %}
+                            <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% elif i > actions.number|add:"-3" and i < actions.number|add:"3" %}
+                            <li class="page-item"><a class="page-link" href="?{% if action_type %}action_type={{ action_type }}&{% endif %}{% if content_type %}content_type={{ content_type }}&{% endif %}{% if user_id %}user_id={{ user_id }}&{% endif %}page={{ i }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if actions.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if action_type %}action_type={{ action_type }}&{% endif %}{% if content_type %}content_type={{ content_type }}&{% endif %}{% if user_id %}user_id={{ user_id }}&{% endif %}page={{ actions.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if action_type %}action_type={{ action_type }}&{% endif %}{% if content_type %}content_type={{ content_type }}&{% endif %}{% if user_id %}user_id={{ user_id }}&{% endif %}page={{ paginator.num_pages }}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

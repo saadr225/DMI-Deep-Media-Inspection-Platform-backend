@@ -3,146 +3,278 @@
 
 {% block extrastyle %}
 <style>
-    .stat-card {
-        border-radius: 0.5rem;
-        transition: transform 0.3s;
+    .statistics-overview {
+        margin-bottom: 1.5rem;
     }
     
-    .stat-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .stat-count {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    
-    .stat-label {
-        font-size: 0.9rem;
+    .progress-label {
+        font-size: 0.85rem;
         font-weight: 600;
-        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
     }
     
-    .chart-container {
+    .progress {
+        height: 8px;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    
+    .performance-indicator {
+        background-color: var(--primary-bg);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .performance-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+    
+    .performance-label {
+        color: #718096;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .time-filter {
+        background-color: #fff;
+        border-radius: 10px;
+        padding: 0.35rem;
+        display: inline-flex;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .time-filter a {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        color: #718096;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .time-filter a:hover {
+        color: var(--primary);
+    }
+    
+    .time-filter a.active {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .chart-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 1rem;
+    }
+    
+    .chart-description {
+        font-size: 0.85rem;
+        color: #718096;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Timeline */
+    .timeline {
         position: relative;
-        height: 300px;
+        padding-left: 2rem;
+        margin-top: 1rem;
     }
     
-    .progress-small {
-        height: 5px;
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background-color: var(--primary-transparent);
     }
     
-    .activity-item {
-        padding: 0.75rem 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
     }
     
-    .activity-item:last-child {
-        border-bottom: none;
+    .timeline-item:last-child {
+        padding-bottom: 0;
     }
     
-    .activity-date {
+    .timeline-dot {
+        position: absolute;
+        left: -2.35rem;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: var(--primary-light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+    }
+    
+    .timeline-content {
+        background-color: white;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+    
+    .timeline-date {
         font-size: 0.8rem;
-        color: #6c757d;
+        color: #718096;
+        margin-bottom: 0.5rem;
+    }
+    
+    .timeline-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Activity Feed */
+    .activity-feed {
+        margin-top: 0.5rem;
+    }
+    
+    .activity-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Table Styling */
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table th {
+        background-color: var(--primary-bg);
+        color: var(--primary-dark);
+        font-weight: 600;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+    
+    .table td {
+        padding: 1rem 1.5rem;
+        vertical-align: middle;
+        border-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .table tbody tr:hover {
+        background-color: var(--primary-bg);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+<!-- Page Heading -->
+<div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <div class="btn-group">
-            <a href="?days=7" class="btn btn-sm btn-outline-primary {% if days == 7 %}active{% endif %}">Last 7 days</a>
-            <a href="?days=30" class="btn btn-sm btn-outline-primary {% if days == 30 %}active{% endif %}">Last 30 days</a>
-            <a href="?days=90" class="btn btn-sm btn-outline-primary {% if days == 90 %}active{% endif %}">Last 90 days</a>
+        <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+        <p class="text-muted mb-0">Track and analyze platform activity and moderation metrics</p>
+    </div>
+    <div class="d-flex align-items-center">
+        <div class="time-filter me-3">
+            <a href="?days=7" class="{% if days == 7 %}active{% endif %}">7 Days</a>
+            <a href="?days=30" class="{% if days == 30 %}active{% endif %}">30 Days</a>
+            <a href="?days=90" class="{% if days == 90 %}active{% endif %}">90 Days</a>
+            <a href="?days=365" class="{% if days == 365 %}active{% endif %}">Year</a>
         </div>
-        <a href="#" class="btn btn-sm btn-primary ms-2" onclick="window.print();">
-            <i class="fas fa-download fa-sm"></i> Export Report
+        <a href="#" class="btn btn-sm btn-primary" onclick="window.print();">
+            <i class="fas fa-download me-1"></i> Export Report
         </a>
     </div>
 </div>
 
-<!-- Quick Stats Row -->
-<div class="row">
+<!-- Stats Cards Row -->
+<div class="row mb-4">
+    <!-- PDA Submissions -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2 stat-card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total PDA</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pda }}</div>
-                        <div class="text-xs text-{% if new_pda > 0 %}success{% else %}muted{% endif %}">
-                            <i class="fas fa-{% if new_pda > 0 %}arrow-up{% else %}minus{% endif %}"></i> 
-                            {{ new_pda }} new in selected period
-                        </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary">
+                        <i class="fas fa-photo-video"></i>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-photo-video fa-2x text-gray-300"></i>
+                    <div class="stat-label">Total PDA Submissions</div>
+                    <div class="stat-value">{{ total_pda }}</div>
+                    <div class="stat-change {% if new_pda > 0 %}positive{% else %}negative{% endif %}">
+                        <i class="fas fa-{% if new_pda > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+                        {{ new_pda }} new in selected period
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
+    <!-- Approved PDA -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2 stat-card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Approved PDA</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ approved_pda }}</div>
-                        <div class="text-xs">
-                            {% with approval_rate=approved_pda|floatformat:0|default:0|add:0 %}
-                            {% with total=total_pda|floatformat:0|default:1|add:0 %}
-                            {% widthratio approval_rate total 100 as approval_percent %}
-                            {{ approval_percent }}% approval rate
-                            {% endwith %}
-                            {% endwith %}
-                        </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-success">
+                        <i class="fas fa-check-circle"></i>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    <div class="stat-label">Approved PDA Submissions</div>
+                    <div class="stat-value">{{ approved_pda }}</div>
+                    <div class="stat-change">
+                        {% with approval_rate=approved_pda|floatformat:0|default:0|add:0 %}
+                        {% with total=total_pda|floatformat:0|default:1|add:0 %}
+                        {% widthratio approval_rate total 100 as approval_percent %}
+                        {{ approval_percent }}% approval rate
+                        {% endwith %}
+                        {% endwith %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
+    <!-- Forum Threads -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2 stat-card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Forum Threads</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_threads }}</div>
-                        <div class="text-xs text-{% if new_threads > 0 %}success{% else %}muted{% endif %}">
-                            <i class="fas fa-{% if new_threads > 0 %}arrow-up{% else %}minus{% endif %}"></i> 
-                            {{ new_threads }} new in selected period
-                        </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-info">
+                        <i class="fas fa-comments"></i>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    <div class="stat-label">Forum Threads</div>
+                    <div class="stat-value">{{ total_threads }}</div>
+                    <div class="stat-change {% if new_threads > 0 %}positive{% else %}negative{% endif %}">
+                        <i class="fas fa-{% if new_threads > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+                        {{ new_threads }} new in selected period
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
+    <!-- Forum Replies -->
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2 stat-card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Forum Replies</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_replies }}</div>
-                        <div class="text-xs text-{% if new_replies > 0 %}success{% else %}muted{% endif %}">
-                            <i class="fas fa-{% if new_replies > 0 %}arrow-up{% else %}minus{% endif %}"></i> 
-                            {{ new_replies }} new in selected period
-                        </div>
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning">
+                        <i class="fas fa-reply"></i>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-reply fa-2x text-gray-300"></i>
+                    <div class="stat-label">Forum Replies</div>
+                    <div class="stat-value">{{ total_replies }}</div>
+                    <div class="stat-change {% if new_replies > 0 %}positive{% else %}negative{% endif %}">
+                        <i class="fas fa-{% if new_replies > 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+                        {{ new_replies }} new in selected period
                     </div>
                 </div>
             </div>
@@ -150,13 +282,28 @@
     </div>
 </div>
 
-<!-- Charts Row -->
+<!-- Activity Overview and Moderation Stats Row -->
 <div class="row">
-    <!-- Activity Overview Chart -->
-    <div class="col-xl-8 col-lg-7">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Activity Overview</h6>
+    <!-- Platform Activity Chart -->
+    <div class="col-xl-8 col-lg-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">Platform Activity</div>
+                <div class="card-tools">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="activityDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            Chart Options
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="activityDropdown">
+                            <li><a class="dropdown-item" href="#" onclick="toggleChartType('bar'); return false;">Bar Chart</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="toggleChartType('line'); return false;">Line Chart</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="setDataFormat('day'); return false;">Daily</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="setDataFormat('week'); return false;">Weekly</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="setDataFormat('month'); return false;">Monthly</a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="chart-container">
@@ -165,57 +312,64 @@
             </div>
         </div>
     </div>
-
-    <!-- Moderation Stats -->
-    <div class="col-xl-4 col-lg-5">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Your Moderation Stats</h6>
+    
+    <!-- Moderation Performance -->
+    <div class="col-xl-4 col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">Your Moderation Stats</div>
             </div>
             <div class="card-body">
-                <div class="mb-4">
-                    <h4 class="small font-weight-bold">Total Actions <span class="float-end">{{ total_actions }}</span></h4>
+                <div class="performance-indicator mb-4">
+                    <div class="performance-label">Total Actions Completed</div>
+                    <div class="performance-value">{{ total_actions }}</div>
+                    <p class="text-muted small mb-0">For the selected time period</p>
                 </div>
                 
-                <div class="mb-4">
-                    <h4 class="small font-weight-bold">Approvals <span class="float-end">{{ approve_count }}</span></h4>
-                    <div class="progress progress-small mb-2">
+                <div class="statistics-overview">
+                    <div class="progress-label">
+                        <span>Approvals</span>
+                        <span>{{ approve_count }}</span>
+                    </div>
+                    <div class="progress">
                         <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio approve_count total_actions 100 %}%" 
                              aria-valuenow="{% widthratio approve_count total_actions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h4 class="small font-weight-bold">Rejections <span class="float-end">{{ reject_count }}</span></h4>
-                    <div class="progress progress-small mb-2">
+                    
+                    <div class="progress-label">
+                        <span>Rejections</span>
+                        <span>{{ reject_count }}</span>
+                    </div>
+                    <div class="progress">
                         <div class="progress-bar bg-danger" role="progressbar" style="width: {% widthratio reject_count total_actions 100 %}%" 
                              aria-valuenow="{% widthratio reject_count total_actions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h4 class="small font-weight-bold">Deletions <span class="float-end">{{ delete_count }}</span></h4>
-                    <div class="progress progress-small mb-2">
+                    
+                    <div class="progress-label">
+                        <span>Deletions</span>
+                        <span>{{ delete_count }}</span>
+                    </div>
+                    <div class="progress">
                         <div class="progress-bar bg-warning" role="progressbar" style="width: {% widthratio delete_count total_actions 100 %}%" 
                              aria-valuenow="{% widthratio delete_count total_actions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
                 
-                <div class="text-center mt-5">
-                    <i class="fas fa-chart-line fa-3x text-gray-300 mb-3"></i>
-                    <p>Statistics based on your moderation activity for the past {{ days }} days.</p>
+                <div class="mt-4">
+                    <canvas id="moderationPieChart" style="width:100%; height:200px;"></canvas>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Timeline Row -->
+<!-- Activity Timeline Row -->
 <div class="row">
-    <div class="col-lg-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Activity Timeline</h6>
+    <!-- Activity Timeline -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">Activity Timeline</div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -239,8 +393,77 @@
                                 <td>{{ day.replies }}</td>
                             </tr>
                             {% endfor %}
+                            {% if not timeline_data %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <i class="fas fa-calendar-times text-muted fa-2x mb-3 d-block"></i>
+                                    <p class="mb-0">No timeline data available for the selected period</p>
+                                </td>
+                            </tr>
+                            {% endif %}
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">Recent Activity</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="timeline p-4">
+                    {% for activity in recent_activities %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot">
+                            <i class="fas fa-{% if activity.type == 'pda' %}photo-video{% elif activity.type == 'thread' %}comment-alt{% elif activity.type == 'reply' %}reply{% else %}check{% endif %}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">{{ activity.date }}</div>
+                            <div class="timeline-title">{{ activity.title }}</div>
+                            <p class="mb-0 small text-muted">{{ activity.description }}</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center p-4">
+                        <i class="fas fa-history text-muted fa-3x mb-3"></i>
+                        <p>No recent activity to display.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Analytics Section -->
+<div class="row">
+    <!-- Content Distribution Chart -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">Content Distribution</div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="distributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Activity Trend -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <div class="card-title">User Activity Trend</div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="userActivityChart"></canvas>
                 </div>
             </div>
         </div>
@@ -248,118 +471,264 @@
 </div>
 {% endblock %}
 
-{% block extrascripts %}
+{% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Activity Chart
-    const activityCtx = document.getElementById('activityChart').getContext('2d');
-    const activityChart = new Chart(activityCtx, {
-        type: 'line',
-        data: {
-            labels: {{ chart_labels|safe }},
-            datasets: [
-                {
-                    label: 'PDA Submissions',
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                    data: {{ pda_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#4e73df',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sample data for initial graphs
+        // In a real application, this would come from your Django views
+        const dateLabels = {{ date_labels|safe|default:'["Today", "Yesterday", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"]' }};
+        const pdaData = {{ pda_data|safe|default:'[5, 8, 3, 7, 9, 4, 6]' }};
+        const threadsData = {{ thread_data|safe|default:'[12, 8, 15, 9, 7, 10, 14]' }};
+        const repliesData = {{ reply_data|safe|default:'[25, 18, 30, 22, 15, 20, 28]' }};
+        
+        // Activity Chart
+        let activityChart;
+        let chartType = 'line';
+        let dataFormat = 'day';
+        
+        initActivityChart();
+        initModerationPieChart();
+        initDistributionChart();
+        initUserActivityChart();
+        
+        function initActivityChart() {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            activityChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: dateLabels,
+                    datasets: [
+                        {
+                            label: 'PDA Submissions',
+                            data: pdaData,
+                            borderColor: '#6c63ff',
+                            backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#6c63ff',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Forum Threads',
+                            data: threadsData,
+                            borderColor: '#0acf97',
+                            backgroundColor: 'rgba(10, 207, 151, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#0acf97',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Forum Replies',
+                            data: repliesData,
+                            borderColor: '#fa5c7c',
+                            backgroundColor: 'rgba(250, 92, 124, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#fa5c7c',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
                 },
-                {
-                    label: 'PDA Approvals',
-                    borderColor: '#1cc88a',
-                    backgroundColor: 'rgba(28, 200, 138, 0.05)',
-                    data: {{ pda_approvals_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#1cc88a',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Forum Threads',
-                    borderColor: '#36b9cc',
-                    backgroundColor: 'rgba(54, 185, 204, 0.05)',
-                    data: {{ threads_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#36b9cc',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Forum Replies',
-                    borderColor: '#f6c23e',
-                    backgroundColor: 'rgba(246, 194, 62, 0.05)',
-                    data: {{ replies_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#f6c23e',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 25,
-                    top: 25,
-                    bottom: 0
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: "rgba(0, 0, 0, 0.05)",
-                        drawBorder: false
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#2d3748',
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            padding: 12,
+                            cornerRadius: 8
+                        }
                     },
-                    ticks: {
-                        maxTicksLimit: 5
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 4],
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
                     }
                 }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyColor: "#858796",
-                    titleColor: "#6e707e",
-                    titleMarginBottom: 10,
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    padding: 15,
-                    displayColors: false,
-                    intersect: false,
-                    mode: 'index'
-                }
-            }
+            });
         }
+        
+        function initModerationPieChart() {
+            const ctx = document.getElementById('moderationPieChart').getContext('2d');
+            
+            // Get Django template values or use defaults
+            const approveCount = {{ approve_count|default:65 }};
+            const rejectCount = {{ reject_count|default:25 }};
+            const deleteCount = {{ delete_count|default:10 }};
+            
+            const moderationPieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Approvals', 'Rejections', 'Deletions'],
+                    datasets: [{
+                        data: [approveCount, rejectCount, deleteCount],
+                        backgroundColor: [
+                            '#0acf97', // success 
+                            '#fa5c7c', // danger
+                            '#ffbc00'  // warning
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                boxWidth: 12
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#2d3748',
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function initDistributionChart() {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            const distributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Images', 'Videos', 'Documents', 'Other'],
+                    datasets: [{
+                        data: [45, 30, 15, 10],
+                        backgroundColor: [
+                            '#6c63ff', // primary
+                            '#4dc9f6', // info
+                            '#f59e0b', // orange
+                            '#8b5cf6'  // purple
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                boxWidth: 12
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function initUserActivityChart() {
+            const ctx = document.getElementById('userActivityChart').getContext('2d');
+            const userActivityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['New Users', 'Active Users', 'Moderators', 'Contributors'],
+                    datasets: [{
+                        label: 'Last Period',
+                        data: [25, 40, 5, 20],
+                        backgroundColor: 'rgba(108, 99, 255, 0.2)',
+                        borderColor: '#6c63ff',
+                        borderWidth: 2
+                    }, {
+                        label: 'Current Period',
+                        data: [35, 60, 7, 30],
+                        backgroundColor: 'rgba(10, 207, 151, 0.2)',
+                        borderColor: '#0acf97',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 4],
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    
+        // Make functions available globally
+        window.toggleChartType = function(type) {
+            if (activityChart) {
+                chartType = type;
+                activityChart.destroy();
+                initActivityChart();
+            }
+        };
+        
+        window.setDataFormat = function(format) {
+            dataFormat = format;
+            // Here you would typically fetch new data using AJAX based on the format
+            // For now, we'll just update the chart title
+            console.log(`Data format set to: ${format}`);
+        };
     });
-});
 </script>
 {% endblock %} 

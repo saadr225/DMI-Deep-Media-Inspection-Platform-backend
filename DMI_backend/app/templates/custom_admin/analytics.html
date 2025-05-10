@@ -1,0 +1,453 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Analytics{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .analytics-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .analytics-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stats-card {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: 15px;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stats-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+    
+    .stats-users {
+        background-color: rgba(78, 115, 223, 0.1);
+        color: #4e73df;
+    }
+    
+    .stats-pda {
+        background-color: rgba(28, 200, 138, 0.1);
+        color: #1cc88a;
+    }
+    
+    .stats-forum {
+        background-color: rgba(54, 185, 204, 0.1);
+        color: #36b9cc;
+    }
+    
+    .stats-comments {
+        background-color: rgba(246, 194, 62, 0.1);
+        color: #f6c23e;
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    
+    .stats-label {
+        color: #5a5c69;
+        font-size: 0.875rem;
+        margin-bottom: 0;
+    }
+    
+    .stats-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+    
+    .topic-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .topic-item:last-child {
+        border-bottom: none;
+    }
+    
+    .topic-name {
+        font-weight: 500;
+    }
+    
+    .topic-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 30px;
+        height: 30px;
+        border-radius: 30px;
+        background-color: rgba(78, 115, 223, 0.1);
+        color: #4e73df;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 0 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+    <div>
+        <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Time Range Filter -->
+<div class="card shadow filter-container mb-4">
+    <form method="get" action="{% url 'custom_admin_analytics' %}">
+        <div class="row align-items-end">
+            <div class="col-md-6">
+                <label for="days" class="form-label">Time Range</label>
+                <select class="form-select" id="days" name="days" onchange="this.form.submit()">
+                    <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                    <option value="60" {% if days == 60 %}selected{% endif %}>Last 60 days</option>
+                    <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+                    <option value="180" {% if days == 180 %}selected{% endif %}>Last 6 months</option>
+                    <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+                </select>
+            </div>
+            <div class="col-md-6 text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-1"></i> Apply Filter
+                </button>
+                <a href="{% url 'custom_admin_analytics' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-sync-alt me-1"></i> Reset
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <!-- Users Stats -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="stats-card">
+                    <div class="stats-icon stats-users">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stats-number">{{ total_users }}</div>
+                    <div class="stats-label">Total Users</div>
+                    <div class="stats-meta">{{ new_users }} new in last {{ days }} days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PDA Stats -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="stats-card">
+                    <div class="stats-icon stats-pda">
+                        <i class="fas fa-photo-video"></i>
+                    </div>
+                    <div class="stats-number">{{ total_pda }}</div>
+                    <div class="stats-label">PDA Submissions</div>
+                    <div class="stats-meta">{{ new_pda }} new in last {{ days }} days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Forum Stats -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="stats-card">
+                    <div class="stats-icon stats-forum">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <div class="stats-number">{{ total_threads }}</div>
+                    <div class="stats-label">Forum Threads</div>
+                    <div class="stats-meta">{{ new_threads }} new in last {{ days }} days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comments Stats -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="stats-card">
+                    <div class="stats-icon stats-comments">
+                        <i class="fas fa-reply"></i>
+                    </div>
+                    <div class="stats-number">{{ total_replies }}</div>
+                    <div class="stats-label">Forum Replies</div>
+                    <div class="stats-meta">{{ new_replies }} new in last {{ days }} days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDA Stats Details -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow analytics-card h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-photo-video me-1"></i> PDA Submission Status
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="small text-muted mb-1">Approved</div>
+                        <div class="h5 mb-0 font-weight-bold text-success">{{ approved_pda }}</div>
+                        <div class="progress mt-2" style="height: 10px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {% if total_pda > 0 %}{{ approved_pda|floatformat:0 }}{% else %}0{% endif %}%" 
+                                 aria-valuenow="{{ approved_pda }}" aria-valuemin="0" aria-valuemax="{{ total_pda }}"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="small text-muted mb-1">Rejected</div>
+                        <div class="h5 mb-0 font-weight-bold text-danger">{{ rejected_pda }}</div>
+                        <div class="progress mt-2" style="height: 10px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {% if total_pda > 0 %}{{ rejected_pda|floatformat:0 }}{% else %}0{% endif %}%" 
+                                 aria-valuenow="{{ rejected_pda }}" aria-valuemin="0" aria-valuemax="{{ total_pda }}"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="small text-muted mb-1">Approval Rate</div>
+                    <div class="h4 mb-0 font-weight-bold">
+                        {% if total_pda > 0 %}
+                            {{ approved_pda|floatformat:0 }}%
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow analytics-card h-100">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-comments me-1"></i> Popular Forum Topics
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if popular_topics %}
+                    {% for topic in popular_topics %}
+                    <div class="topic-item">
+                        <div class="topic-name">{{ topic.name }}</div>
+                        <div class="topic-count">{{ topic.thread_count }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div class="text-muted">No forum topics found</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow analytics-card mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-line me-1"></i> Activity Timeline (Last {{ days }} days)
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow analytics-card">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-table me-1"></i> Detailed Activity Data
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>New Users</th>
+                                <th>PDA Submissions</th>
+                                <th>Forum Threads</th>
+                                <th>Forum Replies</th>
+                                <th>Total Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in timeline_data %}
+                            <tr>
+                                <td>{{ data.date }}</td>
+                                <td>{{ data.users }}</td>
+                                <td>{{ data.pda }}</td>
+                                <td>{{ data.threads }}</td>
+                                <td>{{ data.replies }}</td>
+                                <td>{{ data.users|add:data.pda|add:data.threads|add:data.replies }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Chart.js Activity Timeline
+    const ctx = document.getElementById('activityChart').getContext('2d');
+    
+    const labels = {{ chart_labels|safe }};
+    const usersData = {{ users_data|safe }};
+    const pdaData = {{ pda_data|safe }};
+    const threadsData = {{ threads_data|safe }};
+    const repliesData = {{ replies_data|safe }};
+    
+    const activityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'New Users',
+                    data: usersData,
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'PDA Submissions',
+                    data: pdaData,
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Forum Threads',
+                    data: threadsData,
+                    borderColor: '#36b9cc',
+                    backgroundColor: 'rgba(54, 185, 204, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Forum Replies',
+                    data: repliesData,
+                    borderColor: '#f6c23e',
+                    backgroundColor: 'rgba(246, 194, 62, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

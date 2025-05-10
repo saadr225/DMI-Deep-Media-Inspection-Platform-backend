@@ -1,0 +1,443 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}PDA Submission Details{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .detail-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .detail-card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .metadata-section {
+        background-color: #f8f9fc;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .metadata-item {
+        margin-bottom: 1rem;
+        border-bottom: 1px dashed rgba(0,0,0,0.1);
+        padding-bottom: 1rem;
+    }
+    
+    .metadata-item:last-child {
+        margin-bottom: 0;
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .metadata-label {
+        font-weight: 600;
+        color: #4e73df;
+        margin-bottom: 0.25rem;
+    }
+    
+    .metadata-value {
+        font-size: 0.95rem;
+    }
+    
+    .media-container {
+        background-color: #000;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .media-container img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .media-container video {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .category-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 30px;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        background-color: rgba(78, 115, 223, 0.1);
+        color: #4e73df;
+    }
+    
+    .detection-result {
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    
+    .result-real {
+        background-color: rgba(28, 200, 138, 0.1);
+        border-left: 4px solid #1cc88a;
+    }
+    
+    .result-fake {
+        background-color: rgba(231, 74, 59, 0.1);
+        border-left: 4px solid #e74a3b;
+    }
+    
+    .result-unknown {
+        background-color: rgba(246, 194, 62, 0.1);
+        border-left: 4px solid #f6c23e;
+    }
+    
+    .detection-score {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .content-block {
+        margin-bottom: 1.5rem;
+    }
+    
+    .content-title {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+    }
+    
+    .progress {
+        height: 8px;
+        background-color: var(--border-color);
+        border-radius: 0.25rem;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+    
+    .progress-bar {
+        height: 100%;
+    }
+    
+    .progress-tall {
+        height: 25px;
+    }
+    
+    /* Progress bar widths - used instead of inline styles */
+    .w-10 { width: 10%; }
+    .w-20 { width: 20%; }
+    .w-30 { width: 30%; }
+    .w-40 { width: 40%; }
+    .w-50 { width: 50%; }
+    .w-60 { width: 60%; }
+    .w-70 { width: 70%; }
+    .w-80 { width: 80%; }
+    .w-90 { width: 90%; }
+    .w-100 { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">PDA Submission Details</h1>
+    <div>
+        <a href="{% url 'custom_admin_pda_list' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to PDA List
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- Left Column - Media Preview and Metadata -->
+    <div class="col-lg-8">
+        <!-- Media Preview -->
+        <div class="card shadow detail-card mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-photo-video me-1"></i> Media Preview
+                </h6>
+                <span class="badge bg-{% if submission.is_approved %}success{% elif submission.review_date %}danger{% else %}warning{% endif %}">
+                    {% if submission.is_approved %}
+                        Approved
+                    {% elif submission.review_date %}
+                        Rejected
+                    {% else %}
+                        Pending Review
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="media-container">
+                    {% if submission.file_type == 'image' %}
+                        <img src="{{ submission.file.url }}" alt="{{ submission.title }}" class="img-fluid">
+                    {% elif submission.file_type == 'video' %}
+                        <video controls>
+                            <source src="{{ submission.file.url }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    {% else %}
+                        <div class="p-5 text-center text-muted">
+                            <i class="fas fa-file fa-4x mb-3"></i>
+                            <p>Preview not available for this file type.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Basic Info -->
+                <h4 class="mb-3">{{ submission.title }}</h4>
+                
+                <!-- Categories/Tags -->
+                <div class="mb-3">
+                    <span class="category-badge">
+                        <i class="fas fa-tag me-1"></i> {{ submission.category }}
+                    </span>
+                    
+                    <span class="category-badge">
+                        <i class="fas fa-file me-1"></i> {{ submission.file_type|upper }}
+                    </span>
+                </div>
+                
+                <!-- Description -->
+                <div class="content-block">
+                    <div class="content-title">Description</div>
+                    <p>{{ submission.description|linebreaks }}</p>
+                </div>
+                
+                <!-- Context -->
+                {% if submission.context %}
+                <div class="content-block">
+                    <div class="content-title">Context</div>
+                    <p>{{ submission.context|linebreaks }}</p>
+                </div>
+                {% endif %}
+                
+                <!-- Source URL -->
+                {% if submission.source_url %}
+                <div class="content-block">
+                    <div class="content-title">Source URL</div>
+                    <a href="{{ submission.source_url }}" target="_blank" rel="noopener noreferrer">
+                        {{ submission.source_url }} <i class="fas fa-external-link-alt ms-1"></i>
+                    </a>
+                </div>
+                {% endif %}
+                
+                <!-- AI Detection Results -->
+                <div class="content-block">
+                    <div class="content-title">Detection Results</div>
+                    
+                    {% if submission.detection_result %}
+                        <div class="detection-result result-{% if submission.detection_result.is_fake %}fake{% elif submission.detection_result.is_real %}real{% else %}unknown{% endif %}">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="detection-score">
+                                        {% if submission.detection_result.is_fake %}
+                                            <i class="fas fa-robot me-2"></i> {{ submission.detection_result.fake_score|floatformat:1 }}% AI Generated
+                                        {% elif submission.detection_result.is_real %}
+                                            <i class="fas fa-check-circle me-2"></i> {{ submission.detection_result.real_score|floatformat:1 }}% Authentic
+                                        {% else %}
+                                            <i class="fas fa-question-circle me-2"></i> Inconclusive
+                                        {% endif %}
+                                    </div>
+                                    <p class="mb-0">
+                                        {% if submission.detection_result.is_fake %}
+                                            This content was detected as AI-generated with high confidence.
+                                        {% elif submission.detection_result.is_real %}
+                                            This content appears to be authentic.
+                                        {% else %}
+                                            Our detection system couldn't determine with confidence.
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="progress progress-tall mb-2">
+                                        <div class="progress-bar bg-danger {% if submission.detection_result.fake_score < 10 %}w-10{% elif submission.detection_result.fake_score < 20 %}w-20{% elif submission.detection_result.fake_score < 30 %}w-30{% elif submission.detection_result.fake_score < 40 %}w-40{% elif submission.detection_result.fake_score < 50 %}w-50{% elif submission.detection_result.fake_score < 60 %}w-60{% elif submission.detection_result.fake_score < 70 %}w-70{% elif submission.detection_result.fake_score < 80 %}w-80{% elif submission.detection_result.fake_score < 90 %}w-90{% else %}w-100{% endif %}" 
+                                             role="progressbar" 
+                                             aria-valuenow="{{ submission.detection_result.fake_score }}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            AI Generated ({{ submission.detection_result.fake_score|floatformat:1 }}%)
+                                        </div>
+                                    </div>
+                                    <div class="progress progress-tall">
+                                        <div class="progress-bar bg-success {% if submission.detection_result.real_score < 10 %}w-10{% elif submission.detection_result.real_score < 20 %}w-20{% elif submission.detection_result.real_score < 30 %}w-30{% elif submission.detection_result.real_score < 40 %}w-40{% elif submission.detection_result.real_score < 50 %}w-50{% elif submission.detection_result.real_score < 60 %}w-60{% elif submission.detection_result.real_score < 70 %}w-70{% elif submission.detection_result.real_score < 80 %}w-80{% elif submission.detection_result.real_score < 90 %}w-90{% else %}w-100{% endif %}"
+                                             role="progressbar" 
+                                             aria-valuenow="{{ submission.detection_result.real_score }}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            Authentic ({{ submission.detection_result.real_score|floatformat:1 }}%)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="detection-result result-unknown">
+                            <p class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> No detection results available.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Moderation Actions -->
+                {% if not submission.review_date %}
+                <div class="action-buttons">
+                    <a href="{% url 'custom_admin_pda_approve' submission.id %}" class="btn btn-success btn-lg">
+                        <i class="fas fa-check me-1"></i> Approve Submission
+                    </a>
+                    <button type="button" class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="fas fa-ban me-1"></i> Reject Submission
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column - Submission Details -->
+    <div class="col-lg-4">
+        <!-- Submission Metadata -->
+        <div class="card shadow detail-card mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-info-circle me-1"></i> Submission Details
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="metadata-section">
+                    <div class="metadata-item">
+                        <div class="metadata-label">Submission ID</div>
+                        <div class="metadata-value">{{ submission.submission_identifier }}</div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">Submitted By</div>
+                        <div class="metadata-value">
+                            <a href="{% url 'custom_admin_user_detail' submission.user.user.id %}">
+                                <i class="fas fa-user me-1"></i> {{ submission.user.user.username }}
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">Submission Date</div>
+                        <div class="metadata-value">
+                            <i class="fas fa-calendar me-1"></i> {{ submission.submission_date|date:"F j, Y" }}
+                            <div class="text-muted small">{{ submission.submission_date|time:"g:i A" }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">Original Filename</div>
+                        <div class="metadata-value">{{ submission.original_filename }}</div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">File Type</div>
+                        <div class="metadata-value">{{ submission.file_type|upper }}</div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">File Size</div>
+                        <div class="metadata-value">
+                            {% if submission.file.size < 1048576 %}
+                                {{ submission.file.size|filesizeformat }}
+                            {% else %}
+                                {{ submission.file.size|filesizeformat }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if submission.review_date %}
+                <!-- Review Information -->
+                <h6 class="font-weight-bold mt-4 mb-3">Review Information</h6>
+                <div class="metadata-section">
+                    <div class="metadata-item">
+                        <div class="metadata-label">Review Status</div>
+                        <div class="metadata-value">
+                            {% if submission.is_approved %}
+                                <span class="badge bg-success">Approved</span>
+                            {% else %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">Reviewed By</div>
+                        <div class="metadata-value">
+                            {% if submission.reviewed_by %}
+                                <i class="fas fa-user-shield me-1"></i> {{ submission.reviewed_by.username }}
+                            {% else %}
+                                <span class="text-muted">Not reviewed yet</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-item">
+                        <div class="metadata-label">Review Date</div>
+                        <div class="metadata-value">
+                            <i class="fas fa-calendar-check me-1"></i> {{ submission.review_date|date:"F j, Y" }}
+                            <div class="text-muted small">{{ submission.review_date|time:"g:i A" }}</div>
+                        </div>
+                    </div>
+                    
+                    {% if submission.review_notes %}
+                    <div class="metadata-item">
+                        <div class="metadata-label">Review Notes</div>
+                        <div class="metadata-value">{{ submission.review_notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectModalLabel">Reject Submission</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'custom_admin_pda_reject' submission.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>Are you sure you want to reject this submission?</p>
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Rejection Reason</label>
+                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" placeholder="Explain why this submission is being rejected"></textarea>
+                        <div class="form-text">This will be visible to the user who submitted this content.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Submission</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,565 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}PDA Submissions{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .pda-list-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .pda-list-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .submission-item {
+        border-left: 4px solid transparent;
+        transition: all 0.2s;
+    }
+    
+    .submission-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .submission-pending {
+        border-left-color: #f6c23e;
+    }
+    
+    .submission-approved {
+        border-left-color: #1cc88a;
+    }
+    
+    .submission-rejected {
+        border-left-color: #e74a3b;
+    }
+    
+    .submission-thumbnail {
+        width: 80px;
+        height: 60px;
+        border-radius: 8px;
+        object-fit: cover;
+        background-color: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+    }
+    
+    .submission-type-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 30px;
+    }
+    
+    .submission-status {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.75rem;
+        border-radius: 30px;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .submission-status i {
+        margin-right: 0.35rem;
+    }
+    
+    .status-pending {
+        background-color: rgba(246, 194, 62, 0.1);
+        color: #f6c23e;
+    }
+    
+    .status-approved {
+        background-color: rgba(28, 200, 138, 0.1);
+        color: #1cc88a;
+    }
+    
+    .status-rejected {
+        background-color: rgba(231, 74, 59, 0.1);
+        color: #e74a3b;
+    }
+    
+    .submission-actions {
+        opacity: 0.7;
+        transition: opacity 0.2s;
+    }
+    
+    .submission-item:hover .submission-actions {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">PDA Submissions</h1>
+    <div>
+        <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Filter Controls -->
+<div class="card shadow filter-container mb-4">
+    <form method="get" action="{% url 'custom_admin_pda_list' %}">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Statuses</option>
+                    <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="approved" {% if status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="media_type" class="form-label">Media Type</label>
+                <select class="form-select" id="media_type" name="media_type">
+                    <option value="">All Types</option>
+                    <option value="image" {% if media_type == 'image' %}selected{% endif %}>Image</option>
+                    <option value="video" {% if media_type == 'video' %}selected{% endif %}>Video</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="date_to" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" class="form-control" id="search" name="search" placeholder="Search by title, description, or username" value="{{ search|default:'' }}">
+            </div>
+            <div class="col-md-6 text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-1"></i> Apply Filters
+                </button>
+                <a href="{% url 'custom_admin_pda_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-sync-alt me-1"></i> Reset
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Submissions List -->
+<div class="card shadow pda-list-card">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-photo-video me-1"></i> Deepfake Archive Submissions
+        </h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                <div class="dropdown-header">Bulk Actions:</div>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#bulkApproveModal">
+                    <i class="fas fa-check text-success fa-sm fa-fw me-2"></i>Approve Selected
+                </a>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#bulkRejectModal">
+                    <i class="fas fa-ban text-danger fa-sm fa-fw me-2"></i>Reject Selected
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#" id="exportCSV">
+                    <i class="fas fa-file-csv fa-sm fa-fw me-2"></i>Export as CSV
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th scope="col" width="40">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAll">
+                            </div>
+                        </th>
+                        <th scope="col">Media</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Submitter</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Submitted</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" width="120">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if pda_submissions %}
+                        {% for submission in pda_submissions %}
+                        <tr class="submission-item submission-{{ submission.status }}">
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input submission-checkbox" type="checkbox" value="{{ submission.id }}">
+                                </div>
+                            </td>
+                            <td>
+                                {% if submission.media_url %}
+                                    {% if submission.media_type == 'image' %}
+                                    <img src="{{ submission.media_url }}" alt="{{ submission.title }}" class="submission-thumbnail">
+                                    {% else %}
+                                    <div class="submission-thumbnail">
+                                        <i class="fas fa-film"></i>
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="submission-thumbnail">
+                                        <i class="fas fa-{% if submission.media_type == 'image' %}image{% else %}video{% endif %}"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="fw-bold text-truncate" style="max-width: 200px;">{{ submission.title }}</div>
+                                <div class="small text-muted text-truncate" style="max-width: 200px;">{{ submission.description|truncatechars:60 }}</div>
+                            </td>
+                            <td>
+                                <a href="{% url 'custom_admin_user_detail' submission.user_id %}" class="text-decoration-none">
+                                    {{ submission.username }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if submission.media_type == 'image' %}info{% else %}primary{% endif %} submission-type-badge">
+                                    {{ submission.media_type|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <div>{{ submission.created_at|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ submission.created_at|time:"H:i" }}</small>
+                            </td>
+                            <td>
+                                <span class="submission-status status-{{ submission.status }}">
+                                    <i class="fas fa-{% if submission.status == 'pending' %}clock{% elif submission.status == 'approved' %}check{% else %}ban{% endif %}"></i>
+                                    {{ submission.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex submission-actions">
+                                    <a href="{% url 'custom_admin_pda_detail' submission.id %}" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="tooltip" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if submission.status == 'pending' %}
+                                    <a href="{% url 'custom_admin_pda_approve' submission.id %}" class="btn btn-sm btn-outline-success me-1" data-bs-toggle="tooltip" title="Approve">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    <a href="{% url 'custom_admin_pda_reject' submission.id %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Reject">
+                                        <i class="fas fa-ban"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="fas fa-photo-video fa-3x text-gray-300 mb-3"></i>
+                                    <h5>No PDA Submissions Found</h5>
+                                    <p class="text-muted">No submissions match your current filter criteria.</p>
+                                    {% if filtered %}
+                                    <a href="{% url 'custom_admin_pda_list' %}" class="btn btn-outline-primary btn-sm mt-2">
+                                        <i class="fas fa-sync-alt me-1"></i> Clear Filters
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if is_paginated %}
+    <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+                Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} submissions
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page=1" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;&laquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in paginator.page_range %}
+                        {% if i == page_obj.number %}
+                            <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                        {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+                            <li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ i }}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ paginator.num_pages }}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Bulk Approve Modal -->
+<div class="modal fade" id="bulkApproveModal" tabindex="-1" aria-labelledby="bulkApproveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkApproveModalLabel">Confirm Bulk Approval</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to approve all selected submissions? This action cannot be undone.</p>
+                <p class="text-success"><i class="fas fa-info-circle me-1"></i> Selected submissions will be published to the Public Deepfake Archive.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmBulkApprove">
+                    <i class="fas fa-check me-1"></i> Approve Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Reject Modal -->
+<div class="modal fade" id="bulkRejectModal" tabindex="-1" aria-labelledby="bulkRejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkRejectModalLabel">Confirm Bulk Rejection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to reject all selected submissions? This action cannot be undone.</p>
+                <div class="mb-3">
+                    <label for="rejectionReason" class="form-label">Rejection Reason (Optional)</label>
+                    <textarea class="form-control" id="rejectionReason" rows="3" placeholder="Enter a reason for rejection"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmBulkReject">
+                    <i class="fas fa-ban me-1"></i> Reject Selected
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle select all checkbox
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const submissionCheckboxes = document.querySelectorAll('.submission-checkbox');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            submissionCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+    }
+    
+    // Handle individual checkboxes affecting select all state
+    submissionCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(submissionCheckboxes).every(cb => cb.checked);
+            const someChecked = Array.from(submissionCheckboxes).some(cb => cb.checked);
+            
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allChecked;
+                selectAllCheckbox.indeterminate = someChecked && !allChecked;
+            }
+        });
+    });
+    
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Handle bulk approve submissions
+    const confirmBulkApproveBtn = document.getElementById('confirmBulkApprove');
+    
+    if (confirmBulkApproveBtn) {
+        confirmBulkApproveBtn.addEventListener('click', function() {
+            const selectedIds = getSelectedSubmissionIds();
+            
+            if (selectedIds.length === 0) {
+                alert('Please select at least one submission to approve.');
+                return;
+            }
+            
+            // Create a form to submit the selected IDs
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "custom_admin_pda_list" %}';
+            
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
+            
+            // Add action type
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'bulk_approve';
+            form.appendChild(actionInput);
+            
+            // Add selected IDs
+            selectedIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_ids';
+                input.value = id;
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+    
+    // Handle bulk reject submissions
+    const confirmBulkRejectBtn = document.getElementById('confirmBulkReject');
+    
+    if (confirmBulkRejectBtn) {
+        confirmBulkRejectBtn.addEventListener('click', function() {
+            const selectedIds = getSelectedSubmissionIds();
+            
+            if (selectedIds.length === 0) {
+                alert('Please select at least one submission to reject.');
+                return;
+            }
+            
+            const rejectionReason = document.getElementById('rejectionReason').value;
+            
+            // Create a form to submit the selected IDs and reason
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "custom_admin_pda_list" %}';
+            
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
+            
+            // Add action type
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'bulk_reject';
+            form.appendChild(actionInput);
+            
+            // Add rejection reason
+            const reasonInput = document.createElement('input');
+            reasonInput.type = 'hidden';
+            reasonInput.name = 'rejection_reason';
+            reasonInput.value = rejectionReason;
+            form.appendChild(reasonInput);
+            
+            // Add selected IDs
+            selectedIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selected_ids';
+                input.value = id;
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+    
+    // Handle export CSV
+    const exportCSVBtn = document.getElementById('exportCSV');
+    
+    if (exportCSVBtn) {
+        exportCSVBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Get current URL and add export parameter
+            let url = new URL(window.location.href);
+            url.searchParams.set('export', 'csv');
+            
+            // Redirect to the export URL
+            window.location.href = url.toString();
+        });
+    }
+    
+    // Helper function to get selected submission IDs
+    function getSelectedSubmissionIds() {
+        const selectedCheckboxes = document.querySelectorAll('.submission-checkbox:checked');
+        return Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
+    }
+});
+</script>
+{% endblock %} 
