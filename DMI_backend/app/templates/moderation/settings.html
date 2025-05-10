@@ -1,0 +1,201 @@
+{% extends "moderation/base.html" %}
+{% block title %}Moderation Settings{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Moderation Settings</h1>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Approval Settings</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'moderation_settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="approval_settings">
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Auto-Approve Verified Users</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="autoApproveVerified" name="auto_approve_verified" {% if auto_approve_verified %}checked{% endif %}>
+                        <label class="custom-control-label" for="autoApproveVerified">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, content submitted by verified users will be automatically approved.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Require Approval for PDA Submissions</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="pdaRequireApproval" name="pda_require_approval" {% if pda_require_approval %}checked{% endif %}>
+                        <label class="custom-control-label" for="pdaRequireApproval">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, all PDA submissions will require moderator approval before being published.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Require Approval for Forum Threads</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="forumRequireApproval" name="forum_require_approval" {% if forum_require_approval %}checked{% endif %}>
+                        <label class="custom-control-label" for="forumRequireApproval">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, all forum threads will require moderator approval before being published.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Require Approval for Forum Replies</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="replyRequireApproval" name="reply_require_approval" {% if reply_require_approval %}checked{% endif %}>
+                        <label class="custom-control-label" for="replyRequireApproval">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, all forum replies will require moderator approval before being published.</small>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Content Filter Settings</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'moderation_settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="filter_settings">
+            
+            <div class="form-group">
+                <label for="bannedWords">Banned Words</label>
+                <textarea class="form-control" id="bannedWords" name="banned_words" rows="4" placeholder="Enter comma-separated words">{% if banned_words %}{{ banned_words }}{% endif %}</textarea>
+                <small class="form-text text-muted">Comma-separated list of words that will be filtered from user content.</small>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Auto-Flag Content with Banned Words</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="autoFlagBannedWords" name="auto_flag_banned_words" {% if auto_flag_banned_words %}checked{% endif %}>
+                        <label class="custom-control-label" for="autoFlagBannedWords">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, content containing banned words will be automatically flagged for review.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Auto-Censor Banned Words</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="autoCensorBannedWords" name="auto_censor_banned_words" {% if auto_censor_banned_words %}checked{% endif %}>
+                        <label class="custom-control-label" for="autoCensorBannedWords">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, banned words will be automatically censored in published content.</small>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Notification Settings</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'moderation_settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="notification_settings">
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Email Notifications for New Submissions</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="emailNotifications" name="email_notifications" {% if email_notifications %}checked{% endif %}>
+                        <label class="custom-control-label" for="emailNotifications">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If enabled, moderators will receive email notifications for new submissions requiring approval.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Notification Digest</label>
+                <div class="col-sm-8">
+                    <select class="form-control" name="notification_digest">
+                        <option value="immediate" {% if notification_digest == 'immediate' %}selected{% endif %}>Immediate</option>
+                        <option value="hourly" {% if notification_digest == 'hourly' %}selected{% endif %}>Hourly</option>
+                        <option value="daily" {% if notification_digest == 'daily' %}selected{% endif %}>Daily</option>
+                    </select>
+                    <small class="form-text text-muted">How often email notifications should be sent.</small>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+{% if request.user.is_superuser %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Advanced Settings (Admin Only)</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'moderation_settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="advanced_settings">
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Enable Moderation System</label>
+                <div class="col-sm-8">
+                    <div class="custom-control custom-switch mt-2">
+                        <input type="checkbox" class="custom-control-input" id="enableModeration" name="enable_moderation" {% if enable_moderation %}checked{% endif %}>
+                        <label class="custom-control-label" for="enableModeration">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">If disabled, moderation will be bypassed and all content will be published immediately.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Auto-Verification Requirements</label>
+                <div class="col-sm-8">
+                    <select class="form-control" name="auto_verification_requirements">
+                        <option value="none" {% if auto_verification_requirements == 'none' %}selected{% endif %}>None (Manual Verification Only)</option>
+                        <option value="email" {% if auto_verification_requirements == 'email' %}selected{% endif %}>Email Verification</option>
+                        <option value="email_activity" {% if auto_verification_requirements == 'email_activity' %}selected{% endif %}>Email + Minimum Activity</option>
+                    </select>
+                    <small class="form-text text-muted">Requirements for users to become automatically verified.</small>
+                </div>
+            </div>
+            
+            <div class="form-group row">
+                <label class="col-sm-4 col-form-label">Minimum Activity for Auto-Verification</label>
+                <div class="col-sm-8">
+                    <input type="number" class="form-control" name="min_activity_for_verification" value="{{ min_activity_for_verification|default:5 }}" min="1">
+                    <small class="form-text text-muted">Minimum number of approved posts/replies before a user can become verified.</small>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if messages %}
+<div class="alert alert-success">
+    {% for message in messages %}
+        {{ message }}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %} 

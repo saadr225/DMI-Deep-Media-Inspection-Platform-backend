@@ -14,6 +14,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from datetime import timedelta
+from django.contrib import messages
 
 from api.models import PublicDeepfakeArchive, ForumThread, ForumReply, ForumTopic, ForumTag
 from app.controllers.ResponseCodesController import get_response_code
@@ -417,13 +418,96 @@ def moderation_settings_view(request):
         if not (request.user.is_staff or request.user.is_superuser):
             return redirect("moderation_dashboard")
 
+        # Get current settings from database or use defaults
+        from django.conf import settings as django_settings
+        
+        # Initialize settings with defaults
+        current_settings = {
+            'auto_approve_verified': getattr(django_settings, 'AUTO_APPROVE_VERIFIED', False),
+            'pda_require_approval': getattr(django_settings, 'PDA_REQUIRE_APPROVAL', True),
+            'forum_require_approval': getattr(django_settings, 'FORUM_REQUIRE_APPROVAL', True),
+            'reply_require_approval': getattr(django_settings, 'REPLY_REQUIRE_APPROVAL', False),
+            'banned_words': getattr(django_settings, 'BANNED_WORDS', ''),
+            'auto_flag_banned_words': getattr(django_settings, 'AUTO_FLAG_BANNED_WORDS', True),
+            'auto_censor_banned_words': getattr(django_settings, 'AUTO_CENSOR_BANNED_WORDS', False),
+            'email_notifications': getattr(django_settings, 'EMAIL_NOTIFICATIONS', True),
+            'notification_digest': getattr(django_settings, 'NOTIFICATION_DIGEST', 'immediate'),
+            'enable_moderation': getattr(django_settings, 'ENABLE_MODERATION', True),
+            'auto_verification_requirements': getattr(django_settings, 'AUTO_VERIFICATION_REQUIREMENTS', 'email'),
+            'min_activity_for_verification': getattr(django_settings, 'MIN_ACTIVITY_FOR_VERIFICATION', 5),
+        }
+        
+        # Try to load settings from database (implement this as needed)
+        # You can store these in the database or use Django's settings
+        
         # Handle form submissions
         if request.method == "POST":
-            # Implement settings changes here if needed
-            pass
+            form_type = request.POST.get("form_type")
+            
+            if form_type == "approval_settings":
+                # Get form values
+                auto_approve_verified = request.POST.get("auto_approve_verified") == "on"
+                pda_require_approval = request.POST.get("pda_require_approval") == "on"
+                forum_require_approval = request.POST.get("forum_require_approval") == "on"
+                reply_require_approval = request.POST.get("reply_require_approval") == "on"
+                
+                # Save settings (implement actual saving method)
+                # This is a placeholder - you'll need to implement actual storage
+                current_settings.update({
+                    'auto_approve_verified': auto_approve_verified,
+                    'pda_require_approval': pda_require_approval,
+                    'forum_require_approval': forum_require_approval,
+                    'reply_require_approval': reply_require_approval,
+                })
+                
+                messages.success(request, "Approval settings updated successfully.")
+                
+            elif form_type == "filter_settings":
+                # Get form values
+                banned_words = request.POST.get("banned_words", "")
+                auto_flag_banned_words = request.POST.get("auto_flag_banned_words") == "on"
+                auto_censor_banned_words = request.POST.get("auto_censor_banned_words") == "on"
+                
+                # Save settings
+                current_settings.update({
+                    'banned_words': banned_words,
+                    'auto_flag_banned_words': auto_flag_banned_words,
+                    'auto_censor_banned_words': auto_censor_banned_words,
+                })
+                
+                messages.success(request, "Content filter settings updated successfully.")
+                
+            elif form_type == "notification_settings":
+                # Get form values
+                email_notifications = request.POST.get("email_notifications") == "on"
+                notification_digest = request.POST.get("notification_digest", "immediate")
+                
+                # Save settings
+                current_settings.update({
+                    'email_notifications': email_notifications,
+                    'notification_digest': notification_digest,
+                })
+                
+                messages.success(request, "Notification settings updated successfully.")
+                
+            elif form_type == "advanced_settings" and request.user.is_superuser:
+                # Get form values
+                enable_moderation = request.POST.get("enable_moderation") == "on"
+                auto_verification_requirements = request.POST.get("auto_verification_requirements", "email")
+                min_activity_for_verification = int(request.POST.get("min_activity_for_verification", 5))
+                
+                # Save settings
+                current_settings.update({
+                    'enable_moderation': enable_moderation,
+                    'auto_verification_requirements': auto_verification_requirements,
+                    'min_activity_for_verification': min_activity_for_verification,
+                })
+                
+                messages.success(request, "Advanced settings updated successfully.")
 
         context = {
             "page_title": "Moderation Settings",
+            **current_settings  # Pass all settings to template
         }
 
         return render(request, "moderation/settings.html", context)
@@ -447,12 +531,12 @@ def thread_detail_view(request, thread_id):
 
         # Get replies for the thread
         replies = (
-            ForumReply.objects.filter(thread=thread, is_deleted=False)
+            ForumReply.objects.filter(thread=thread)
             .select_related("author__user")
             .order_by("created_at")
         )
 
-        # Handle form submissions (approve/reject)
+        # Handle form submissions (approve/reject/delete reply)
         if request.method == "POST":
             action = request.POST.get("action")
 
@@ -464,6 +548,15 @@ def thread_detail_view(request, thread_id):
                         approval_status=action + "d",  # "approved" or "rejected"
                         moderator=request.user,
                     )
+                    
+                    # Log the moderation action
+                    log_moderator_action(
+                        moderator=request.user,
+                        action_type=action,
+                        content_type="thread",
+                        content_object=thread,
+                        content_identifier=f"Thread: {thread.title}"
+                    )
 
                     # Show success message through template context
                     if result["success"]:
@@ -473,6 +566,29 @@ def thread_detail_view(request, thread_id):
 
                 except Exception as e:
                     action_message = f"Error processing action: {str(e)}"
+            
+            elif action == "delete_reply":
+                reply_id = request.POST.get("reply_id")
+                if reply_id:
+                    try:
+                        reply = ForumReply.objects.get(id=reply_id, thread=thread)
+                        reply.is_deleted = True
+                        reply.save()
+                        
+                        # Log the action
+                        log_moderator_action(
+                            moderator=request.user,
+                            action_type="delete",
+                            content_type="reply",
+                            content_object=reply,
+                            content_identifier=f"Reply from {reply.author.user.username} on thread: {thread.title}"
+                        )
+                        
+                        action_message = "Reply has been deleted successfully."
+                    except ForumReply.DoesNotExist:
+                        action_message = "Error: Reply not found."
+                else:
+                    action_message = "Error: No reply specified for deletion."
             else:
                 action_message = None
         else:

@@ -162,34 +162,60 @@ class CommunityForumController:
                 }
 
             thread.approval_status = approval_status
+            thread.reviewed_by = moderator
+            thread.review_date = timezone.now()
             thread.save()
 
-            # Send email notification to author
-            try:
-                author_email = thread.author.user.email
-                if author_email:
-                    status_text = "approved" if approval_status == "approved" else "rejected"
+            # If approved, send notification to author
+            if approval_status == "approved":
+                try:
+                    # Create notification for the author
+                    notification_content = f"Your thread '{thread.title}' has been approved"
+                    ForumNotification.objects.create(
+                        user=thread.author,
+                        notification_type='thread_approved',
+                        content=notification_content,
+                        thread=thread
+                    )
+                    
+                    # Send email notification
                     send_mail(
-                        subject=f"Your forum thread has been {status_text}",
-                        message=f"Hello {thread.author.user.username},\n\nYour forum thread '{thread.title}' has been {status_text} by our moderators.\n\n"
-                        + (
-                            f"You can view it in the community forum."
-                            if approval_status == "approved"
-                            else "If you believe this is a mistake, please contact our support team."
-                        ),
+                        subject="Your Forum Thread Has Been Approved",
+                        message=f"Hello {thread.author.user.username},\n\nYour thread '{thread.title}' has been approved and is now visible in the forum.",
                         from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[author_email],
+                        recipient_list=[thread.author.user.email],
                         fail_silently=True,
                     )
-            except Exception as email_err:
-                logger.error(f"Failed to send thread moderation email: {str(email_err)}")
-                # Continue even if email fails
+                except Exception as notif_error:
+                    logger.error(f"Error sending approval notification: {str(notif_error)}")
+            
+            # If rejected, notify the author
+            elif approval_status == "rejected":
+                try:
+                    # Create notification for the author
+                    notification_content = f"Your thread '{thread.title}' has been rejected"
+                    ForumNotification.objects.create(
+                        user=thread.author,
+                        notification_type='thread_rejected',
+                        content=notification_content,
+                        thread=thread
+                    )
+                    
+                    # Send email notification
+                    send_mail(
+                        subject="Your Forum Thread Was Not Approved",
+                        message=f"Hello {thread.author.user.username},\n\nWe regret to inform you that your thread '{thread.title}' was not approved. Please review our community guidelines.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[thread.author.user.email],
+                        fail_silently=True,
+                    )
+                except Exception as notif_error:
+                    logger.error(f"Error sending rejection notification: {str(notif_error)}")
 
             return {
                 "success": True,
-                "thread_id": thread.id,
-                "approval_status": thread.approval_status,
-                "code": f"FORUM_THREAD_{approval_status.upper()}",
+                "message": f"Thread has been {approval_status} successfully",
+                "code": "FORUM_MODERATED_SUCCESS",
             }
 
         except Exception as e:
@@ -197,7 +223,7 @@ class CommunityForumController:
             return {
                 "success": False,
                 "error": f"Error moderating thread: {str(e)}",
-                "code": "FORUM_MODERATE_ERROR",
+                "code": "FORUM_MODERATION_ERROR",
             }
 
     def add_reply(self, thread_id, content, user_data, parent_reply_id=None, media_file=None, is_solution=False):
@@ -444,6 +470,9 @@ class CommunityForumController:
                         "code": "FORUM_REPLY_NOT_FOUND",
                     }
 
+            # Get analytics
+            analytics = self._ensure_analytics()
+
             # Toggle like status
             if existing_like:
                 if existing_like.like_type == like_type:
@@ -451,8 +480,8 @@ class CommunityForumController:
                     existing_like.delete()
                     action = "removed"
                     # Update analytics
-                    self.analytics.total_likes -= 1
-                    self.analytics.save()
+                    analytics.total_likes -= 1
+                    analytics.save()
                 else:
                     # If different type, change the type (switch from like to dislike or vice versa)
                     existing_like.like_type = like_type
@@ -466,8 +495,8 @@ class CommunityForumController:
                     ForumLike.objects.create(user=user_data, reply=target, like_type=like_type)
                 action = "added"
                 # Update analytics
-                self.analytics.total_likes += 1
-                self.analytics.save()
+                analytics.total_likes += 1
+                analytics.save()
 
             # Get updated counts
             if thread_id:

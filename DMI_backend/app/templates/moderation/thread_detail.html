@@ -1,0 +1,203 @@
+{% extends "moderation/base.html" %}
+{% block title %}Thread: {{ thread.title }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'forum_moderation' %}" class="btn btn-outline-primary btn-sm">
+        <i class="fas fa-arrow-left"></i> Back to Forum Moderation
+    </a>
+</div>
+
+{% if action_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ action_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Thread Details</h6>
+        <div>
+            <span class="badge bg-{{ thread.approval_status|yesno:'success,warning,danger' }}">
+                {{ thread.approval_status|title }}
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        <h3 class="thread-title">{{ thread.title }}</h3>
+        <div class="thread-meta">
+            <span><i class="fas fa-user"></i> {{ thread.author.user.username }}</span>
+            <span class="mx-2"><i class="fas fa-calendar"></i> {{ thread.created_at|date:"M d, Y H:i" }}</span>
+            <span><i class="fas fa-folder"></i> {{ thread.topic.name }}</span>
+            {% if thread.tags.all %}
+            <span class="mx-2">
+                <i class="fas fa-tags"></i>
+                {% for tag in thread.tags.all %}
+                <span class="badge bg-secondary">{{ tag.name }}</span>
+                {% endfor %}
+            </span>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="thread-content">
+            {{ thread.content|linebreaks }}
+        </div>
+    </div>
+</div>
+
+{% if thread.approval_status == 'pending' %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Moderation Actions</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <form method="post" action="{% url 'thread_detail' thread.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                    <input type="hidden" name="action" value="approve">
+                    <button type="submit" class="btn btn-success btn-block">
+                        <i class="fas fa-check"></i> Approve Thread
+                    </button>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <form method="post" action="{% url 'thread_detail' thread.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="thread_id" value="{{ thread.id }}">
+                    <input type="hidden" name="action" value="reject">
+                    <button type="submit" class="btn btn-danger btn-block">
+                        <i class="fas fa-times"></i> Reject Thread
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Replies ({{ replies.count }})</h6>
+    </div>
+    <div class="card-body">
+        {% if replies %}
+        <div class="list-group">
+            {% for reply in replies %}
+            <div class="list-group-item mb-3">
+                <div class="d-flex w-100 justify-content-between">
+                    <div>
+                        <h6 class="mb-1"><strong>{{ reply.author.user.username }}</strong></h6>
+                        <small>{{ reply.created_at|date:"M d, Y H:i" }}</small>
+                    </div>
+                    <div>
+                        {% if not reply.is_deleted %}
+                        <form method="post" action="{% url 'thread_detail' thread.id %}" style="display: inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="reply_id" value="{{ reply.id }}">
+                            <input type="hidden" name="action" value="delete_reply">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                        {% else %}
+                        <span class="badge bg-secondary">Deleted</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <hr>
+                <p class="mb-1">{{ reply.content|linebreaks }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-center">No replies to this thread yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Thread History</h6>
+    </div>
+    <div class="card-body">
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title">Thread Created</h3>
+                    <p>{{ thread.created_at|date:"M d, Y H:i" }} by {{ thread.author.user.username }}</p>
+                </div>
+            </div>
+            
+            {% if thread.reviewed_by %}
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title">Thread {{ thread.approval_status|title }}</h3>
+                    <p>{{ thread.review_date|date:"M d, Y H:i" }} by {{ thread.reviewed_by.username }}</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if thread.updated_at != thread.created_at %}
+            <div class="timeline-item">
+                <div class="timeline-marker"></div>
+                <div class="timeline-content">
+                    <h3 class="timeline-title">Thread Updated</h3>
+                    <p>{{ thread.updated_at|date:"M d, Y H:i" }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .thread-title {
+        margin-bottom: 10px;
+    }
+    .thread-meta {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .thread-content {
+        margin-top: 15px;
+    }
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    .timeline-marker {
+        position: absolute;
+        top: 0;
+        left: -30px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background-color: #4e73df;
+    }
+    .timeline-marker:before {
+        content: '';
+        position: absolute;
+        left: 7px;
+        bottom: -20px;
+        width: 2px;
+        height: 20px;
+        background-color: #4e73df;
+    }
+    .timeline-item:last-child .timeline-marker:before {
+        display: none;
+    }
+    .timeline-title {
+        font-size: 1rem;
+        margin-bottom: 5px;
+    }
+</style>
+{% endblock %} 
