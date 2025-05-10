@@ -465,7 +465,8 @@ class ForumThreadAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         qs = qs.annotate(
-            reply_count=Count("replies", filter=Q(replies__is_deleted=False)), like_count=Count("likes")
+            reply_count=Count("replies", filter=Q(replies__is_deleted=False)), 
+            like_count=Count("likes__user", distinct=True, filter=Q(likes__like_type="like"))
         )
         return qs
 

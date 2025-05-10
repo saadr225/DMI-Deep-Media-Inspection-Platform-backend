@@ -219,6 +219,10 @@ class ForumThread(models.Model):
     
     view_count = models.IntegerField(default=0)
     
+    # Media attachment for thread
+    media_url = models.CharField(max_length=255, blank=True, null=True)
+    media_type = models.CharField(max_length=50, blank=True, null=True)  # image, video, document
+    
     class Meta:
         ordering = ['-last_active']
         indexes = [

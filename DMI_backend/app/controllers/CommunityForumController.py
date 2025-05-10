@@ -36,7 +36,7 @@ class CommunityForumController:
             self.analytics, _ = ForumAnalytics.objects.get_or_create(id=1)
         return self.analytics
 
-    def create_thread(self, title, content, user_data, topic_id, tags=None, is_pinned=False):
+    def create_thread(self, title, content, user_data, topic_id, tags=None, is_pinned=False, media_file=None):
         """
         Create a new forum thread
 
@@ -47,6 +47,7 @@ class CommunityForumController:
             topic_id (int): ID of the topic
             tags (list, optional): List of tag IDs
             is_pinned (bool, optional): Whether thread should be pinned
+            media_file (File, optional): Media file attachment
 
         Returns:
             dict: Response with thread details or error
@@ -69,6 +70,45 @@ class CommunityForumController:
             # Check for auto-approval
             auto_approve = user_data.is_verified or user_data.is_moderator() or user_data.user.is_staff
             approval_status = "approved" if auto_approve else "pending"
+            
+            # Handle media file if provided
+            media_url = None
+            media_type = None
+            if media_file:
+                # Create proper directory structure
+                from django.conf import settings
+                import os
+                
+                # Create forum media directory if it doesn't exist
+                media_dir = os.path.join(settings.MEDIA_ROOT, 'forum')
+                if not os.path.exists(media_dir):
+                    os.makedirs(media_dir, exist_ok=True)
+                    
+                # Create year/month subdirectories for better organization
+                now = timezone.now()
+                year_month_dir = os.path.join(media_dir, f"{now.year}/{now.month:02d}")
+                if not os.path.exists(year_month_dir):
+                    os.makedirs(year_month_dir, exist_ok=True)
+                    
+                # Use FileSystemStorage to save the file to the year/month directory
+                fs = FileSystemStorage(location=year_month_dir)
+                # Create a unique filename including user ID and timestamp
+                filename = fs.save(f"thread_{user_data.id}_{int(time.time())}_{media_file.name}", media_file)
+                
+                # Store the relative path from MEDIA_ROOT
+                relative_path = f"forum/{now.year}/{now.month:02d}/{filename}"
+                media_url = relative_path
+                
+                # Determine media type based on file extension
+                file_extension = os.path.splitext(media_file.name)[1].lower()
+                if file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']:
+                    media_type = 'image'
+                elif file_extension in ['.mp4', '.webm', '.avi', '.mov', '.wmv']:
+                    media_type = 'video'
+                elif file_extension in ['.mp3', '.wav', '.ogg']:
+                    media_type = 'audio'
+                else:
+                    media_type = 'document'
 
             # Create thread
             thread = ForumThread.objects.create(
@@ -77,7 +117,9 @@ class CommunityForumController:
                 author=user_data, 
                 topic=topic,
                 approval_status=approval_status,
-                is_pinned=is_pinned if user_data.is_moderator() or user_data.user.is_staff else False
+                is_pinned=is_pinned if user_data.is_moderator() or user_data.user.is_staff else False,
+                media_url=media_url,
+                media_type=media_type
             )
 
             # Add tags
@@ -109,11 +151,16 @@ class CommunityForumController:
                         )
                 except Exception as notif_error:
                     logger.error(f"Error creating moderator notifications: {str(notif_error)}")
+                
+            # Get full media URL for response
+            full_media_url = self._get_full_media_url(media_url) if media_url else None
 
             return {
                 "success": True,
                 "thread_id": thread.id,
                 "approval_status": thread.approval_status,
+                "media_url": full_media_url,
+                "media_type": media_type,
                 "code": "FORUM_THREAD_CREATED",
             }
 
@@ -293,9 +340,29 @@ class CommunityForumController:
             media_url = None
             media_type = None
             if media_file:
-                fs = FileSystemStorage(location=f"{settings.MEDIA_ROOT}/forum/")
+                # Create proper directory structure
+                from django.conf import settings
+                import os
+                
+                # Create forum media directory if it doesn't exist
+                media_dir = os.path.join(settings.MEDIA_ROOT, 'forum')
+                if not os.path.exists(media_dir):
+                    os.makedirs(media_dir, exist_ok=True)
+                    
+                # Create year/month subdirectories for better organization
+                now = timezone.now()
+                year_month_dir = os.path.join(media_dir, f"{now.year}/{now.month:02d}")
+                if not os.path.exists(year_month_dir):
+                    os.makedirs(year_month_dir, exist_ok=True)
+                    
+                # Use FileSystemStorage to save the file to the year/month directory
+                fs = FileSystemStorage(location=year_month_dir)
+                # Create a unique filename including user ID and timestamp
                 filename = fs.save(f"reply_{user_data.id}_{int(time.time())}_{media_file.name}", media_file)
-                media_url = fs.url(filename)
+                
+                # Store the relative path from MEDIA_ROOT
+                relative_path = f"forum/{now.year}/{now.month:02d}/{filename}"
+                media_url = relative_path
                 
                 # Determine media type based on file extension
                 file_extension = os.path.splitext(media_file.name)[1].lower()
@@ -365,11 +432,14 @@ class CommunityForumController:
                 
             # Check for @mentions in content and create notifications
             self._process_mentions(content, user_data, thread, reply)
+            
+            # Get full media URL for response
+            full_media_url = self._get_full_media_url(media_url) if media_url else None
 
             return {
                 "success": True,
                 "reply_id": reply.id,
-                "media_url": media_url,
+                "media_url": full_media_url,
                 "media_type": media_type,
                 "is_solution": reply.is_solution,
                 "code": "FORUM_REPLY_CREATED",
@@ -498,13 +568,17 @@ class CommunityForumController:
                 analytics.total_likes += 1
                 analytics.save()
 
-            # Get updated counts
+            # Get updated counts - count distinct users
             if thread_id:
-                like_count = ForumLike.objects.filter(thread=target, like_type="like").count()
-                dislike_count = ForumLike.objects.filter(thread=target, like_type="dislike").count()
+                # Get the number of unique users who have liked this thread
+                like_count = ForumLike.objects.filter(thread=target, like_type="like").values('user').distinct().count()
+                # Get the number of unique users who have disliked this thread
+                dislike_count = ForumLike.objects.filter(thread=target, like_type="dislike").values('user').distinct().count()
             else:
-                like_count = ForumLike.objects.filter(reply=target, like_type="like").count()
-                dislike_count = ForumLike.objects.filter(reply=target, like_type="dislike").count()
+                # Get the number of unique users who have liked this reply
+                like_count = ForumLike.objects.filter(reply=target, like_type="like").values('user').distinct().count()
+                # Get the number of unique users who have disliked this reply
+                dislike_count = ForumLike.objects.filter(reply=target, like_type="dislike").values('user').distinct().count()
             
             # Calculate net count (likes minus dislikes)
             net_count = like_count - dislike_count
@@ -771,11 +845,11 @@ class CommunityForumController:
             if tag_id:
                 threads = threads.filter(tags__id=tag_id)
 
-            # Annotate with counts
+            # Annotate with counts, using distinct User count instead of raw record count
             threads = threads.annotate(
                 reply_count=Count("replies", filter=Q(replies__is_deleted=False)),
-                like_count=Count("likes", filter=Q(likes__like_type="like")),
-                dislike_count=Count("likes", filter=Q(likes__like_type="dislike")),
+                like_count=Count("likes__user", distinct=True, filter=Q(likes__like_type="like")),
+                dislike_count=Count("likes__user", distinct=True, filter=Q(likes__like_type="dislike")),
             )
 
             # Order by last activity
@@ -902,83 +976,34 @@ class CommunityForumController:
             analytics.total_views += 1
             analytics.save()
 
-            # Get replies
+            # Get top-level replies (no parent)
             replies = ForumReply.objects.filter(
                 thread=thread, is_deleted=False, parent_reply=None
-            ).select_related("author__user")
+            ).select_related("author__user").order_by("created_at")
 
-            # Format replies
+            # Format replies with recursive nested replies
             formatted_replies = []
             for reply in replies:
-                # Get child replies (nested comments)
-                child_replies = ForumReply.objects.filter(
-                    parent_reply=reply, is_deleted=False
-                ).select_related("author__user")
-
-                formatted_child_replies = []
-                for child in child_replies:
-                    # Get likes for child reply
-                    like_count = ForumLike.objects.filter(reply=child, like_type="like").count()
-                    dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").count()
-                    net_count = like_count - dislike_count
-                    
-                    # Check if user has liked the child reply
-                    user_liked = False
-                    user_disliked = False
-                    if user_data:
-                        user_liked = ForumLike.objects.filter(user=user_data, reply=child, like_type="like").exists()
-                        user_disliked = ForumLike.objects.filter(user=user_data, reply=child, like_type="dislike").exists()
-                    
-                    # Get reactions for child reply
-                    child_reactions = self.get_reaction_counts(reply_id=child.id)
-                    
-                    # Calculate time ago
-                    time_ago = self._calculate_time_ago(child.created_at)
-                    
-                    # Get child author details
-                    child_author = {
-                        "username": child.author.user.username,
-                        "avatar": child.author.profile_image_url,
-                        "joinDate": child.author.user.date_joined.strftime("%B %Y"),
-                        "isVerified": child.author.is_verified or child.author.user.is_staff
-                    }
-
-                    formatted_child_replies.append({
-                        "id": child.id,
-                        "content": child.content,
-                        "author": child_author,
-                        "created_at": child.created_at,
-                        "timeAgo": time_ago,
-                        "likes": like_count,
-                        "dislikes": dislike_count,
-                        "net_count": net_count,
-                        "reactions": child_reactions,
-                        "user_liked": user_liked,
-                        "user_disliked": user_disliked,
-                        "media_url": child.media_url,
-                        "media_type": child.media_type,
-                        "is_solution": child.is_solution,
-                    })
-
-                # Get like info for parent reply
-                like_count = ForumLike.objects.filter(reply=reply, like_type="like").count()
-                dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").count()
+                # Get like info for reply - count distinct users
+                like_count = ForumLike.objects.filter(reply=reply, like_type="like").values('user').distinct().count()
+                dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").values('user').distinct().count()
                 net_count = like_count - dislike_count
                 
-                # Check if user has liked/disliked the parent reply
+                # Check if user has liked/disliked the reply
                 user_liked = False
                 user_disliked = False
                 if user_data:
                     user_liked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="like").exists()
                     user_disliked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="dislike").exists()
                 
-                # Get reactions for parent reply
+                # Get reactions for reply
                 reply_reactions = self.get_reaction_counts(reply_id=reply.id)
                 
-                # Calculate time ago for parent reply
+                # Calculate time ago
                 time_ago = self._calculate_time_ago(reply.created_at)
+                created_date = reply.created_at.strftime("%B %d, %Y")
                 
-                # Get parent reply author details
+                # Get reply author details
                 reply_author = {
                     "username": reply.author.user.username,
                     "avatar": reply.author.profile_image_url,
@@ -986,23 +1011,34 @@ class CommunityForumController:
                     "postCount": self._get_user_post_count(reply.author),
                     "isVerified": reply.author.is_verified or reply.author.user.is_staff
                 }
+                
+                # Format media URL if it exists
+                media = None
+                if reply.media_url:
+                    media_url = self._get_full_media_url(reply.media_url)
+                    media = {
+                        "url": media_url,
+                        "type": reply.media_type
+                    }
+                
+                # Get nested replies recursively
+                nested_replies = self._get_nested_replies(reply.id, user_data)
 
                 formatted_replies.append({
                     "id": reply.id,
                     "content": reply.content,
                     "author": reply_author,
-                    "created_at": reply.created_at,
-                    "updated_at": reply.updated_at,
+                    "date": created_date,
                     "timeAgo": time_ago,
-                    "replies": formatted_child_replies,
                     "likes": like_count,
                     "dislikes": dislike_count,
                     "net_count": net_count,
+                    "isVerified": reply.author.is_verified or reply.author.user.is_staff,
+                    "media": media,
+                    "replies": nested_replies,
                     "reactions": reply_reactions,
                     "user_liked": user_liked,
                     "user_disliked": user_disliked,
-                    "media_url": reply.media_url,
-                    "media_type": reply.media_type,
                     "is_solution": reply.is_solution,
                 })
 
@@ -1017,9 +1053,9 @@ class CommunityForumController:
                     user=user_data, thread=thread, like_type="dislike"
                 ).exists()
 
-            # Get like and dislike counts for thread
-            thread_like_count = ForumLike.objects.filter(thread=thread, like_type="like").count()
-            thread_dislike_count = ForumLike.objects.filter(thread=thread, like_type="dislike").count()
+            # Get like and dislike counts for thread - count distinct users
+            thread_like_count = ForumLike.objects.filter(thread=thread, like_type="like").values('user').distinct().count()
+            thread_dislike_count = ForumLike.objects.filter(thread=thread, like_type="dislike").values('user').distinct().count()
             thread_net_count = thread_like_count - thread_dislike_count
             
             # Get reactions for thread
@@ -1050,6 +1086,14 @@ class CommunityForumController:
             
             # Get tag names
             tags = [tag.name for tag in thread.tags.all()]
+            
+            # Handle thread media if it exists
+            thread_media = None
+            if hasattr(thread, 'media_url') and thread.media_url:
+                thread_media = {
+                    "url": self._get_full_media_url(thread.media_url),
+                    "type": thread.media_type if hasattr(thread, 'media_type') else 'image'
+                }
 
             # Format response
             thread_detail = {
@@ -1072,6 +1116,7 @@ class CommunityForumController:
                 "approval_status": thread.approval_status,
                 "is_pinned": thread.is_pinned,
                 "is_locked": thread.is_locked,
+                "media": thread_media,
                 "topic": {
                     "id": thread.topic.id,
                     "name": thread.topic.name,
@@ -1220,11 +1265,11 @@ class CommunityForumController:
                 is_deleted=False,
             ).distinct()
 
-            # Annotate with counts
+            # Annotate with counts, using distinct User count instead of raw record count
             threads = threads.annotate(
                 reply_count=Count("replies", filter=Q(replies__is_deleted=False)),
-                like_count=Count("likes", filter=Q(likes__like_type="like")),
-                dislike_count=Count("likes", filter=Q(likes__like_type="dislike")),
+                like_count=Count("likes__user", distinct=True, filter=Q(likes__like_type="like")),
+                dislike_count=Count("likes__user", distinct=True, filter=Q(likes__like_type="dislike")),
             )
 
             # Annotate with boolean fields for ordering
@@ -1528,85 +1573,29 @@ class CommunityForumController:
             except EmptyPage:
                 paginated_replies = paginator.page(paginator.num_pages)
 
-            # Format replies
+            # Format replies with recursive nested replies
             formatted_replies = []
             for reply in paginated_replies:
-                # Get child replies (nested comments)
-                child_replies = ForumReply.objects.filter(
-                    parent_reply=reply, is_deleted=False
-                ).select_related("author__user")
-
-                formatted_child_replies = []
-                for child in child_replies:
-                    # Get likes for child reply
-                    like_count = ForumLike.objects.filter(reply=child, like_type="like").count()
-                    dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").count()
-                    net_count = like_count - dislike_count
-                    
-                    # Check if user has liked the child reply
-                    user_liked = False
-                    user_disliked = False
-                    if user_data:
-                        user_liked = ForumLike.objects.filter(user=user_data, reply=child, like_type="like").exists()
-                        user_disliked = ForumLike.objects.filter(user=user_data, reply=child, like_type="dislike").exists()
-                    
-                    # Get reactions for child reply
-                    child_reactions = self.get_reaction_counts(reply_id=child.id)
-                    
-                    # Calculate time ago
-                    time_ago = self._calculate_time_ago(child.created_at)
-                    created_date = child.created_at.strftime("%B %d, %Y")
-                    
-                    # Get child author details
-                    child_author = {
-                        "username": child.author.user.username,
-                        "avatar": child.author.profile_image_url,
-                        "joinDate": child.author.user.date_joined.strftime("%B %Y"),
-                        "postCount": self._get_user_post_count(child.author),
-                        "isVerified": child.author.is_verified or child.author.user.is_staff
-                    }
-
-                    formatted_child_replies.append({
-                        "id": child.id,
-                        "content": child.content,
-                        "author": child_author,
-                        "date": created_date,
-                        "timeAgo": time_ago,
-                        "likes": like_count,
-                        "dislikes": dislike_count,
-                        "net_count": net_count,
-                        "isVerified": child.author.is_verified or child.author.user.is_staff,
-                        "media": {
-                            "url": child.media_url,
-                            "type": child.media_type
-                        } if child.media_url else None,
-                        "replies": [],
-                        "reactions": child_reactions,
-                        "user_liked": user_liked,
-                        "user_disliked": user_disliked,
-                        "is_solution": child.is_solution,
-                    })
-
-                # Get like info for parent reply
-                like_count = ForumLike.objects.filter(reply=reply, like_type="like").count()
-                dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").count()
+                # Get like info for reply - count distinct users
+                like_count = ForumLike.objects.filter(reply=reply, like_type="like").values('user').distinct().count()
+                dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").values('user').distinct().count()
                 net_count = like_count - dislike_count
                 
-                # Check if user has liked/disliked the parent reply
+                # Check if user has liked/disliked the reply
                 user_liked = False
                 user_disliked = False
                 if user_data:
                     user_liked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="like").exists()
                     user_disliked = ForumLike.objects.filter(user=user_data, reply=reply, like_type="dislike").exists()
                 
-                # Get reactions for parent reply
+                # Get reactions for reply
                 reply_reactions = self.get_reaction_counts(reply_id=reply.id)
                 
-                # Calculate time ago for parent reply
+                # Calculate time ago for reply
                 time_ago = self._calculate_time_ago(reply.created_at)
                 created_date = reply.created_at.strftime("%B %d, %Y")
                 
-                # Get parent reply author details
+                # Get reply author details
                 reply_author = {
                     "username": reply.author.user.username,
                     "avatar": reply.author.profile_image_url,
@@ -1614,6 +1603,18 @@ class CommunityForumController:
                     "postCount": self._get_user_post_count(reply.author),
                     "isVerified": reply.author.is_verified or reply.author.user.is_staff
                 }
+                
+                # Format media URL if it exists
+                media = None
+                if reply.media_url:
+                    media_url = self._get_full_media_url(reply.media_url)
+                    media = {
+                        "url": media_url,
+                        "type": reply.media_type
+                    }
+                
+                # Get nested replies recursively
+                nested_replies = self._get_nested_replies(reply.id, user_data)
 
                 formatted_replies.append({
                     "id": reply.id,
@@ -1625,11 +1626,8 @@ class CommunityForumController:
                     "dislikes": dislike_count,
                     "net_count": net_count,
                     "isVerified": reply.author.is_verified or reply.author.user.is_staff,
-                    "media": {
-                        "url": reply.media_url,
-                        "type": reply.media_type
-                    } if reply.media_url else None,
-                    "replies": formatted_child_replies,
+                    "media": media,
+                    "replies": nested_replies,
                     "reactions": reply_reactions,
                     "user_liked": user_liked,
                     "user_disliked": user_disliked,
@@ -1652,3 +1650,99 @@ class CommunityForumController:
                 "error": f"Error fetching thread replies: {str(e)}",
                 "code": "FORUM_REPLIES_ERROR",
             }
+
+    def _get_nested_replies(self, parent_reply_id, user_data=None):
+        """
+        Recursively get all nested replies for a parent reply
+        
+        Args:
+            parent_reply_id (int): ID of the parent reply
+            user_data (UserData, optional): Current user data for checking likes
+            
+        Returns:
+            list: List of formatted nested replies
+        """
+        # Get child replies
+        child_replies = ForumReply.objects.filter(
+            parent_reply_id=parent_reply_id, is_deleted=False
+        ).select_related("author__user").order_by("created_at")
+        
+        formatted_nested_replies = []
+        
+        for child in child_replies:
+            # Get likes for child reply - count distinct users
+            like_count = ForumLike.objects.filter(reply=child, like_type="like").values('user').distinct().count()
+            dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").values('user').distinct().count()
+            net_count = like_count - dislike_count
+            
+            # Check if user has liked/disliked the child reply
+            user_liked = False
+            user_disliked = False
+            if user_data:
+                user_liked = ForumLike.objects.filter(user=user_data, reply=child, like_type="like").exists()
+                user_disliked = ForumLike.objects.filter(user=user_data, reply=child, like_type="dislike").exists()
+            
+            # Get reactions for child reply
+            child_reactions = self.get_reaction_counts(reply_id=child.id)
+            
+            # Calculate time ago
+            time_ago = self._calculate_time_ago(child.created_at)
+            created_date = child.created_at.strftime("%B %d, %Y")
+            
+            # Get child author details
+            child_author = {
+                "username": child.author.user.username,
+                "avatar": child.author.profile_image_url,
+                "joinDate": child.author.user.date_joined.strftime("%B %Y"),
+                "postCount": self._get_user_post_count(child.author),
+                "isVerified": child.author.is_verified or child.author.user.is_staff
+            }
+            
+            # Format media URL if it exists
+            media = None
+            if child.media_url:
+                media_url = self._get_full_media_url(child.media_url)
+                media = {
+                    "url": media_url,
+                    "type": child.media_type
+                }
+            
+            # Recursively get nested replies for this child (grandchildren of original parent)
+            nested_replies = self._get_nested_replies(child.id, user_data)
+            
+            formatted_nested_replies.append({
+                "id": child.id,
+                "content": child.content,
+                "author": child_author,
+                "date": created_date,
+                "timeAgo": time_ago,
+                "likes": like_count,
+                "dislikes": dislike_count,
+                "net_count": net_count,
+                "isVerified": child.author.is_verified or child.author.user.is_staff,
+                "media": media,
+                "replies": nested_replies,
+                "reactions": child_reactions,
+                "user_liked": user_liked,
+                "user_disliked": user_disliked,
+                "is_solution": child.is_solution,
+            })
+        
+        return formatted_nested_replies
+
+    def _get_full_media_url(self, media_url):
+        """Convert local media path to full URL with domain"""
+        if not media_url:
+            return None
+        
+        # If it's already a full URL, return it
+        if media_url.startswith('http'):
+            return media_url
+        
+        # Otherwise, make sure it uses the correct media URL from settings
+        if media_url.startswith('/'):
+            media_url = media_url[1:]  # Remove leading slash if present
+        
+        # Join with MEDIA_URL from settings
+        from django.conf import settings
+        return f"{settings.MEDIA_URL}{media_url}"

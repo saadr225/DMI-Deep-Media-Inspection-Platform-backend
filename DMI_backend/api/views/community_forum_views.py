@@ -31,7 +31,7 @@ forum_controller = CommunityForumController()
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-@parser_classes([JSONParser])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def create_thread(request):
     """
     Create a new thread in the community forum
@@ -44,6 +44,7 @@ def create_thread(request):
     Optional fields:
     - tags: List of tag IDs
     - is_pinned: Whether the thread should be pinned (moderators only)
+    - media_file: Media file attachment
     """
     try:
         user = request.user
@@ -55,6 +56,11 @@ def create_thread(request):
         topic_id = request.data.get("topic_id")
         tags = request.data.get("tags", [])
         is_pinned = request.data.get("is_pinned", False)
+        media_file = request.FILES.get("media_file")
+        
+        # Convert string 'true'/'false' to boolean if needed
+        if isinstance(is_pinned, str):
+            is_pinned = is_pinned.lower() == 'true'
 
         result = forum_controller.create_thread(
             title=title, 
@@ -62,7 +68,8 @@ def create_thread(request):
             user_data=user_data, 
             topic_id=topic_id, 
             tags=tags,
-            is_pinned=is_pinned
+            is_pinned=is_pinned,
+            media_file=media_file
         )
 
         if result["success"]:
