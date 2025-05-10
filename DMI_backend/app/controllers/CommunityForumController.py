@@ -760,6 +760,12 @@ class CommunityForumController:
             result_threads = []
             for thread in paginated_threads:
                 author_username = thread.author.user.username
+                
+                # Get first line of content for preview
+                content_lines = thread.content.split('\n')
+                content_preview = content_lines[0] if content_lines else ""
+                if len(content_lines) > 1 or len(content_preview) > 150:
+                    content_preview = content_preview[:150] + "..."
 
                 result_threads.append(
                     {
@@ -774,6 +780,7 @@ class CommunityForumController:
                         "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                         "approval_status": thread.approval_status,
                         "view_count": thread.view_count,
+                        "content_preview": content_preview,
                     }
                 )
 
