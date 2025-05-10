@@ -1,0 +1,217 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Moderator Management{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .user-item {
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+    }
+    
+    .user-item:hover {
+        background-color: rgba(78, 115, 223, 0.05);
+        border-left-color: #4e73df;
+    }
+    
+    .user-name {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .user-meta {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #1cc88a;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    
+    .user-avatar.admin {
+        background-color: #e74a3b;
+    }
+    
+    .user-role {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 10rem;
+    }
+    
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e3e6f0;
+    }
+    
+    .section-description {
+        color: #858796;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Moderator Management</h1>
+    <div>
+        <a href="{% url 'custom_admin_users' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-users fa-sm"></i> All Users
+        </a>
+    </div>
+</div>
+
+<!-- Current Moderators -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Current Moderators</h6>
+    </div>
+    <div class="card-body">
+        <div class="section-description">
+            These users have moderation privileges. They can approve or reject PDA submissions and forum posts.
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Full Name</th>
+                        <th>Join Date</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in moderators %}
+                    <tr class="user-item">
+                        <td>
+                            <div class="user-avatar {% if user.is_superuser or user.is_staff %}admin{% endif %}">
+                                {{ user.username.0|upper }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-name">{{ user.username }}</div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.get_full_name|default:"-" }}</td>
+                        <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                        <td>
+                            {% if user.is_superuser %}
+                                <span class="badge bg-danger user-role">Admin</span>
+                            {% elif user.is_staff %}
+                                <span class="badge bg-danger user-role">Staff</span>
+                            {% else %}
+                                <span class="badge bg-success user-role">Moderator</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not user.is_superuser and not user.is_staff %}
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="remove_moderator">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-user-times"></i> Remove
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'custom_admin_user_detail' user.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-user-shield mb-3" style="font-size: 2rem; opacity: 0.4;"></i>
+                                <p>No moderators found. Add a moderator to help with content moderation.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Regular Users (Potential Moderators) -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Regular Users</h6>
+    </div>
+    <div class="card-body">
+        <div class="section-description">
+            Add moderation privileges to regular users. Consider trusted users who are familiar with site content.
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Full Name</th>
+                        <th>Join Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in regular_users %}
+                    <tr class="user-item">
+                        <td>
+                            <div class="user-avatar" style="background-color: #858796;">
+                                {{ user.username.0|upper }}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="user-name">{{ user.username }}</div>
+                        </td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.get_full_name|default:"-" }}</td>
+                        <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                        <td>
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="add_moderator">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-user-plus"></i> Make Moderator
+                                </button>
+                            </form>
+                            <a href="{% url 'custom_admin_user_detail' user.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="fas fa-users mb-3" style="font-size: 2rem; opacity: 0.4;"></i>
+                                <p>No regular users found. Add users first before making them moderators.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %} 

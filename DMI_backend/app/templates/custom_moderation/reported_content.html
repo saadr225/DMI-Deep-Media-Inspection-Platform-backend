@@ -1,0 +1,141 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}Reported Content{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .report-card {
+        transition: transform 0.3s ease;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .report-icon {
+        font-size: 2rem;
+        opacity: 0.7;
+    }
+    
+    .report-date {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Reported Content</h1>
+    <div>
+        <a href="#" class="btn btn-primary btn-sm">
+            <i class="fas fa-sync-alt fa-sm"></i> Refresh
+        </a>
+        <a href="#" class="btn btn-secondary btn-sm ms-2">
+            <i class="fas fa-filter fa-sm"></i> Filter
+        </a>
+    </div>
+</div>
+
+<!-- Content Row -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Reported Items</h6>
+            </div>
+            <div class="card-body">
+                {% if reported_items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Content</th>
+                                    <th>Reported By</th>
+                                    <th>Reason</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in reported_items %}
+                                <tr>
+                                    <td>{{ item.content_type }}</td>
+                                    <td>
+                                        <a href="{{ item.content_url }}">{{ item.content_title }}</a>
+                                        <div class="small text-muted">by {{ item.content_author }}</div>
+                                    </td>
+                                    <td>{{ item.reported_by }}</td>
+                                    <td>{{ item.reason }}</td>
+                                    <td>{{ item.report_date }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ item.view_url }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ item.dismiss_url }}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i>
+                                            </a>
+                                            <a href="{{ item.remove_url }}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <h4>No Reported Content</h4>
+                        <p class="mb-0">There are currently no items that have been reported by users.</p>
+                        <p class="text-muted">Reported content will appear here when users flag inappropriate material.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Information Row -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Content Reporting System</h6>
+            </div>
+            <div class="card-body">
+                <p>The content reporting system allows users to flag inappropriate content for moderator review. When a user reports content, it appears in this queue for you to review and take appropriate action.</p>
+                
+                <h5 class="mt-4">How to Handle Reports</h5>
+                <ul>
+                    <li><strong>Review the content</strong> - View the reported content to determine if it violates community guidelines</li>
+                    <li><strong>Dismiss the report</strong> - If the content doesn't violate guidelines, dismiss the report</li>
+                    <li><strong>Remove the content</strong> - If the content violates guidelines, remove it and possibly warn the user</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span>All moderation actions are logged and can be reviewed by administrators.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

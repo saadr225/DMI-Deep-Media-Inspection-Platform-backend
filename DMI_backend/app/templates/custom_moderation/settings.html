@@ -1,0 +1,220 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}Moderation Settings{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .settings-section {
+        margin-bottom: 2rem;
+    }
+    
+    .settings-section-title {
+        border-bottom: 1px solid #e3e6f0;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .settings-description {
+        color: #858796;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-switch {
+        padding-left: 2.5em;
+    }
+    
+    .form-switch .form-check-input {
+        margin-left: -2.5em;
+        width: 2em;
+    }
+    
+    .setting-item {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Moderation Settings</h1>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ success_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+{% if error_message %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ error_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-xl-8 col-lg-10">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Your Preferences</h6>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="settings-section">
+                        <h5 class="settings-section-title">Notification Settings</h5>
+                        <p class="settings-description">Control when and how you receive notifications about moderation activities</p>
+                        
+                        <div class="setting-item">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="email_notifications" name="email_notifications" {% if notification_settings.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="email_notifications">
+                                    <strong>Email Notifications</strong>
+                                </label>
+                                <div class="text-muted">
+                                    Receive email notifications for moderation activities
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="browser_notifications" name="browser_notifications" {% if notification_settings.browser_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="browser_notifications">
+                                    <strong>Browser Notifications</strong>
+                                </label>
+                                <div class="text-muted">
+                                    Receive browser notifications when you're on the site
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notify_on_new_pda" name="notify_on_new_pda" {% if notification_settings.notify_on_new_pda %}checked{% endif %}>
+                                <label class="form-check-label" for="notify_on_new_pda">
+                                    <strong>PDA Submission Notifications</strong>
+                                </label>
+                                <div class="text-muted">
+                                    Receive notifications when new PDA submissions require moderation
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notify_on_new_thread" name="notify_on_new_thread" {% if notification_settings.notify_on_new_thread %}checked{% endif %}>
+                                <label class="form-check-label" for="notify_on_new_thread">
+                                    <strong>Forum Content Notifications</strong>
+                                </label>
+                                <div class="text-muted">
+                                    Receive notifications when new forum threads or replies require moderation
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="notify_on_reports" name="notify_on_reports" {% if notification_settings.notify_on_reports %}checked{% endif %}>
+                                <label class="form-check-label" for="notify_on_reports">
+                                    <strong>Content Report Notifications</strong>
+                                </label>
+                                <div class="text-muted">
+                                    Receive notifications when users report content for moderation
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h5 class="settings-section-title">Dashboard Preferences</h5>
+                        <p class="settings-description">Customize how your moderation dashboard displays information</p>
+                        
+                        <div class="setting-item">
+                            <div class="mb-3">
+                                <label for="dashboard_items" class="form-label"><strong>Items per page</strong></label>
+                                <select class="form-select" id="dashboard_items" name="dashboard_items">
+                                    <option value="10" selected>10 items</option>
+                                    <option value="25">25 items</option>
+                                    <option value="50">50 items</option>
+                                    <option value="100">100 items</option>
+                                </select>
+                                <div class="text-muted">
+                                    Number of items to display per page in moderation queues
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="mb-3">
+                                <label for="default_view" class="form-label"><strong>Default view</strong></label>
+                                <select class="form-select" id="default_view" name="default_view">
+                                    <option value="pda" selected>PDA Queue</option>
+                                    <option value="forum">Forum Queue</option>
+                                    <option value="reports">Reported Content</option>
+                                    <option value="all">All Pending Items</option>
+                                </select>
+                                <div class="text-muted">
+                                    Default view to show when accessing the moderation dashboard
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Moderation Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <p>This section contains guidelines and best practices for performing moderation duties.</p>
+                
+                <h5 class="mt-4">Content Guidelines</h5>
+                <ul>
+                    <li><strong>Approve content</strong> that:
+                        <ul>
+                            <li>Follows community guidelines</li>
+                            <li>Provides valuable information or discussion</li>
+                            <li>Is properly labeled and categorized</li>
+                        </ul>
+                    </li>
+                    <li><strong>Reject content</strong> that:
+                        <ul>
+                            <li>Contains harassment, hate speech, or bullying</li>
+                            <li>Includes personal information without consent</li>
+                            <li>Promotes illegal activities</li>
+                            <li>Contains spam or is clearly off-topic</li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <h5 class="mt-4">Moderation Etiquette</h5>
+                <ul>
+                    <li>Be respectful and professional in all interactions</li>
+                    <li>Provide clear reasons when rejecting content</li>
+                    <li>Apply guidelines consistently across all users</li>
+                    <li>If unsure about a decision, consult with other moderators</li>
+                </ul>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>Remember that all moderation actions are logged and can be reviewed by administrators.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

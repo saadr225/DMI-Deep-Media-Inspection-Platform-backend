@@ -1,0 +1,426 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .stat-card {
+        border-radius: 0.5rem;
+        transition: transform 0.3s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-icon {
+        font-size: 2rem;
+        opacity: 0.8;
+    }
+    
+    .stat-count {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .activity-item {
+        position: relative;
+        padding: 0.75rem 1.25rem;
+        transition: background-color 0.3s;
+    }
+    
+    .activity-item:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .activity-item:not(:last-child) {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+    
+    .activity-time {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    
+    .action-card {
+        height: 100%;
+        transition: transform 0.3s;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .action-icon {
+        font-size: 1.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Moderation Dashboard</h1>
+    <div>
+        <a href="{% url 'analytics_dashboard' %}" class="btn btn-primary btn-sm ms-2">
+            <i class="fas fa-chart-line fa-sm"></i> View Analytics
+        </a>
+        <a href="{% url 'moderation_settings' %}" class="btn btn-secondary btn-sm ms-2">
+            <i class="fas fa-cog fa-sm"></i> Settings
+        </a>
+    </div>
+</div>
+
+<!-- Quick Stats Row -->
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Pending PDA</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pda_pending_count }}</div>
+                        <div class="text-xs {% if pda_pending_count > 5 %}text-danger{% else %}text-success{% endif %}">
+                            {% if pda_pending_count > 5 %}
+                                <i class="fas fa-exclamation-circle"></i> Needs attention
+                            {% else %}
+                                <i class="fas fa-check-circle"></i> Under control
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-photo-video fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Pending Forum</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ forum_pending_count }}</div>
+                        <div class="text-xs {% if forum_pending_count > 10 %}text-danger{% else %}text-success{% endif %}">
+                            {% if forum_pending_count > 10 %}
+                                <i class="fas fa-exclamation-circle"></i> Needs attention
+                            {% else %}
+                                <i class="fas fa-check-circle"></i> Under control
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Reported Content</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ reported_count }}</div>
+                        <div class="text-xs {% if reported_count > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {% if reported_count > 0 %}
+                                <i class="fas fa-exclamation-circle"></i> Requires review
+                            {% else %}
+                                <i class="fas fa-check-circle"></i> No reports
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-flag fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">My Activities</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ moderator_actions_count }}</div>
+                        <div class="text-xs text-muted">
+                            <i class="fas fa-calendar"></i> Last 7 days
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Moderation Queue and Actions Row -->
+<div class="row">
+    <!-- Moderation Chart -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Moderation Status</h6>
+                <div class="dropdown no-arrow">
+                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
+                        <a class="dropdown-item" href="#">Last 7 Days</a>
+                        <a class="dropdown-item" href="#">Last 30 Days</a>
+                        <a class="dropdown-item" href="#">Last 90 Days</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="moderationChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Action Cards -->
+    <div class="col-lg-4">
+        <div class="row">
+            <div class="col-md-6 col-lg-12 mb-4">
+                <div class="card bg-primary text-white shadow action-card">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="fas fa-photo-video action-icon"></i>
+                            <div class="text-uppercase mb-1">Moderate PDA</div>
+                            <a href="{% url 'pda_moderation' %}" class="btn btn-light btn-sm mt-2">Go</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-12 mb-4">
+                <div class="card bg-success text-white shadow action-card">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="fas fa-comments action-icon"></i>
+                            <div class="text-uppercase mb-1">Moderate Forum</div>
+                            <a href="{% url 'forum_moderation' %}" class="btn btn-light btn-sm mt-2">Go</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-12 mb-4">
+                <div class="card bg-warning text-white shadow action-card">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <i class="fas fa-flag action-icon"></i>
+                            <div class="text-uppercase mb-1">Reported Content</div>
+                            <a href="{% url 'reported_content' %}" class="btn btn-light btn-sm mt-2">Go</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Items for Moderation and Recent Activity Row -->
+<div class="row">
+    <!-- Items for Moderation -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Items for Moderation</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group">
+                    {% if recent_moderation_items %}
+                        {% for item in recent_moderation_items %}
+                            <div class="list-group-item activity-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ item.title }}</h6>
+                                    <small class="activity-time">{{ item.submission_date|timesince }} ago</small>
+                                </div>
+                                <p class="mb-1">{{ item.type }} by {{ item.author }}</p>
+                                <div class="d-flex mt-2">
+                                    <a href="{{ item.url }}" class="btn btn-sm btn-primary">View</a>
+                                    <a href="{{ item.approve_url }}" class="btn btn-sm btn-success ms-2">Approve</a>
+                                    <a href="{{ item.reject_url }}" class="btn btn-sm btn-danger ms-2">Reject</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item">
+                            <p class="mb-0 text-center">No items for moderation right now.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-sm me-2">PDA Queue</a>
+                <a href="{% url 'forum_moderation' %}" class="btn btn-success btn-sm">Forum Queue</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Moderation Activity -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Your Recent Activity</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group">
+                    {% if moderator_actions %}
+                        {% for action in moderator_actions %}
+                            <div class="list-group-item activity-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ action.content_identifier }}</h6>
+                                    <small class="activity-time">{{ action.timestamp|timesince }} ago</small>
+                                </div>
+                                <p class="mb-1">
+                                    {% if action.action_type == 'approve' %}
+                                        <span class="text-success"><i class="fas fa-check-circle"></i> Approved</span>
+                                    {% elif action.action_type == 'reject' %}
+                                        <span class="text-danger"><i class="fas fa-times-circle"></i> Rejected</span>
+                                    {% elif action.action_type == 'delete' %}
+                                        <span class="text-warning"><i class="fas fa-trash"></i> Deleted</span>
+                                    {% endif %}
+                                    {{ action.content_type }}
+                                </p>
+                                {% if action.notes %}
+                                    <small>Note: {{ action.notes }}</small>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="list-group-item">
+                            <p class="mb-0 text-center">No recent moderation activity found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="#" class="btn btn-primary btn-sm">View All Your Activity</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Moderation Chart
+    const moderationCtx = document.getElementById('moderationChart').getContext('2d');
+    const moderationChart = new Chart(moderationCtx, {
+        type: 'line',
+        data: {
+            labels: {{ days_labels|safe }},
+            datasets: [
+                {
+                    label: 'PDA Submissions',
+                    borderColor: '#36b9cc',
+                    backgroundColor: 'rgba(54, 185, 204, 0.05)',
+                    data: {{ pda_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#36b9cc',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Forum Threads',
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.05)',
+                    data: {{ threads_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#1cc88a',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Approved Items',
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    data: {{ approved_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#4e73df',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 25,
+                    bottom: 0
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: "rgba(0, 0, 0, 0.05)",
+                        drawBorder: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 5
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyColor: "#858796",
+                    titleColor: "#6e707e",
+                    titleMarginBottom: 10,
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    padding: 15,
+                    displayColors: false,
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

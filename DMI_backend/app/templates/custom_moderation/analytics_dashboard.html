@@ -1,0 +1,365 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}Analytics Dashboard{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .stat-card {
+        border-radius: 0.5rem;
+        transition: transform 0.3s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-count {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    .progress-small {
+        height: 5px;
+    }
+    
+    .activity-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .activity-date {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
+    <div>
+        <div class="btn-group">
+            <a href="?days=7" class="btn btn-sm btn-outline-primary {% if days == 7 %}active{% endif %}">Last 7 days</a>
+            <a href="?days=30" class="btn btn-sm btn-outline-primary {% if days == 30 %}active{% endif %}">Last 30 days</a>
+            <a href="?days=90" class="btn btn-sm btn-outline-primary {% if days == 90 %}active{% endif %}">Last 90 days</a>
+        </div>
+        <a href="#" class="btn btn-sm btn-primary ms-2" onclick="window.print();">
+            <i class="fas fa-download fa-sm"></i> Export Report
+        </a>
+    </div>
+</div>
+
+<!-- Quick Stats Row -->
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total PDA</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pda }}</div>
+                        <div class="text-xs text-{% if new_pda > 0 %}success{% else %}muted{% endif %}">
+                            <i class="fas fa-{% if new_pda > 0 %}arrow-up{% else %}minus{% endif %}"></i> 
+                            {{ new_pda }} new in selected period
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-photo-video fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Approved PDA</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ approved_pda }}</div>
+                        <div class="text-xs">
+                            {% with approval_rate=approved_pda|floatformat:0|default:0|add:0 %}
+                            {% with total=total_pda|floatformat:0|default:1|add:0 %}
+                            {% widthratio approval_rate total 100 as approval_percent %}
+                            {{ approval_percent }}% approval rate
+                            {% endwith %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Forum Threads</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_threads }}</div>
+                        <div class="text-xs text-{% if new_threads > 0 %}success{% else %}muted{% endif %}">
+                            <i class="fas fa-{% if new_threads > 0 %}arrow-up{% else %}minus{% endif %}"></i> 
+                            {{ new_threads }} new in selected period
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Forum Replies</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_replies }}</div>
+                        <div class="text-xs text-{% if new_replies > 0 %}success{% else %}muted{% endif %}">
+                            <i class="fas fa-{% if new_replies > 0 %}arrow-up{% else %}minus{% endif %}"></i> 
+                            {{ new_replies }} new in selected period
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-reply fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <!-- Activity Overview Chart -->
+    <div class="col-xl-8 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Activity Overview</h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Moderation Stats -->
+    <div class="col-xl-4 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Your Moderation Stats</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h4 class="small font-weight-bold">Total Actions <span class="float-end">{{ total_actions }}</span></h4>
+                </div>
+                
+                <div class="mb-4">
+                    <h4 class="small font-weight-bold">Approvals <span class="float-end">{{ approve_count }}</span></h4>
+                    <div class="progress progress-small mb-2">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {% widthratio approve_count total_actions 100 %}%" 
+                             aria-valuenow="{% widthratio approve_count total_actions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h4 class="small font-weight-bold">Rejections <span class="float-end">{{ reject_count }}</span></h4>
+                    <div class="progress progress-small mb-2">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {% widthratio reject_count total_actions 100 %}%" 
+                             aria-valuenow="{% widthratio reject_count total_actions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h4 class="small font-weight-bold">Deletions <span class="float-end">{{ delete_count }}</span></h4>
+                    <div class="progress progress-small mb-2">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: {% widthratio delete_count total_actions 100 %}%" 
+                             aria-valuenow="{% widthratio delete_count total_actions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-5">
+                    <i class="fas fa-chart-line fa-3x text-gray-300 mb-3"></i>
+                    <p>Statistics based on your moderation activity for the past {{ days }} days.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline Row -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Activity Timeline</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>PDA Submissions</th>
+                                <th>PDA Approvals</th>
+                                <th>Forum Threads</th>
+                                <th>Forum Replies</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in timeline_data %}
+                            <tr>
+                                <td>{{ day.date }}</td>
+                                <td>{{ day.pda }}</td>
+                                <td>{{ day.pda_approved }}</td>
+                                <td>{{ day.threads }}</td>
+                                <td>{{ day.replies }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Activity Chart
+    const activityCtx = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|safe }},
+            datasets: [
+                {
+                    label: 'PDA Submissions',
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    data: {{ pda_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#4e73df',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'PDA Approvals',
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.05)',
+                    data: {{ pda_approvals_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#1cc88a',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Forum Threads',
+                    borderColor: '#36b9cc',
+                    backgroundColor: 'rgba(54, 185, 204, 0.05)',
+                    data: {{ threads_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#36b9cc',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: 'Forum Replies',
+                    borderColor: '#f6c23e',
+                    backgroundColor: 'rgba(246, 194, 62, 0.05)',
+                    data: {{ replies_data|safe }},
+                    borderWidth: 3,
+                    pointBackgroundColor: '#f6c23e',
+                    pointBorderColor: '#fff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 25,
+                    top: 25,
+                    bottom: 0
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: "rgba(0, 0, 0, 0.05)",
+                        drawBorder: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 5
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    backgroundColor: "rgb(255,255,255)",
+                    bodyColor: "#858796",
+                    titleColor: "#6e707e",
+                    titleMarginBottom: 10,
+                    borderColor: '#dddfeb',
+                    borderWidth: 1,
+                    padding: 15,
+                    displayColors: false,
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

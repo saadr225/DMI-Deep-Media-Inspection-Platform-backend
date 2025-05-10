@@ -1,0 +1,195 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}PDA Moderation Queue{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .pda-item {
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+    }
+    
+    .pda-item:hover {
+        background-color: rgba(54, 185, 204, 0.05);
+        border-left-color: #36b9cc;
+    }
+    
+    .pda-title {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .pda-details {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .pda-item .actions {
+        visibility: hidden;
+        opacity: 0;
+        transition: all 0.2s;
+    }
+    
+    .pda-item:hover .actions {
+        visibility: visible;
+        opacity: 1;
+    }
+    
+    .pda-tag {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        margin-right: 0.25rem;
+        border-radius: 10rem;
+    }
+    
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+    }
+    
+    .media-thumbnail {
+        width: 100px;
+        height: 60px;
+        background-size: cover;
+        background-position: center;
+        border-radius: 0.25rem;
+        background-color: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">PDA Moderation</h1>
+    <div>
+        <span class="badge bg-warning text-dark me-2">
+            <i class="fas fa-clock"></i> {{ pending_count }} Pending
+        </span>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Public Deepfake Archive Submissions</h6>
+    </div>
+    <div class="card-body">
+        {% if pending_submissions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="110">Media</th>
+                            <th>Title</th>
+                            <th>Submitter</th>
+                            <th>Date</th>
+                            <th width="150">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in pending_submissions %}
+                        <tr class="pda-item">
+                            <td>
+                                <div class="media-thumbnail">
+                                    {% if submission.thumbnail_url %}
+                                    <img src="{{ submission.thumbnail_url }}" alt="Thumbnail" class="img-fluid">
+                                    {% else %}
+                                    <i class="fas fa-photo-video"></i>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="pda-title">{{ submission.title }}</div>
+                                <div class="pda-details">
+                                    <span><i class="fas fa-tag fa-sm"></i> {{ submission.category|default:"Uncategorized" }}</span>
+                                </div>
+                            </td>
+                            <td>{{ submission.user.user.username }}</td>
+                            <td>{{ submission.submission_date|date:"M d, Y" }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a href="{% url 'pda_detail' submission.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <div class="btn-group mt-1">
+                                        <a href="{% url 'pda_approve' submission.id %}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <a href="{% url 'pda_reject' submission.id %}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if pending_submissions.has_other_pages %}
+            <div class="d-flex justify-content-center mt-4">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination">
+                        {% if pending_submissions.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ pending_submissions.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in pending_submissions.paginator.page_range %}
+                            {% if pending_submissions.number == num %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                            {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pending_submissions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ pending_submissions.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-photo-video"></i>
+                </div>
+                <h4>No PDA submissions to moderate</h4>
+                <p>There are currently no Public Deepfake Archive submissions requiring moderation.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

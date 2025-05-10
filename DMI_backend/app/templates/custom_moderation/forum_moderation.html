@@ -1,0 +1,210 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}Forum Moderation Queue{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .thread-item {
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
+    }
+    
+    .thread-item:hover {
+        background-color: rgba(78, 115, 223, 0.05);
+        border-left-color: #4e73df;
+    }
+    
+    .thread-title {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .thread-details {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .thread-item .actions {
+        visibility: hidden;
+        opacity: 0;
+        transition: all 0.2s;
+    }
+    
+    .thread-item:hover .actions {
+        visibility: visible;
+        opacity: 1;
+    }
+    
+    .thread-tag {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        margin-right: 0.25rem;
+        border-radius: 10rem;
+    }
+    
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+    }
+    
+    .filter-badge {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .filter-badge:hover {
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Forum Moderation</h1>
+    <div>
+        <span class="badge bg-warning text-dark me-2">
+            <i class="fas fa-clock"></i> {{ pending_count }} Pending
+        </span>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Forum Threads</h6>
+        <div>
+            <a href="{% url 'forum_moderation' %}?filter=pending" class="badge bg-warning text-dark filter-badge mx-1 {% if filter_type == 'pending' %}border border-dark{% endif %}">
+                Pending
+            </a>
+            <a href="{% url 'forum_moderation' %}?filter=reported" class="badge bg-danger filter-badge mx-1 {% if filter_type == 'reported' %}border border-dark{% endif %}">
+                Reported
+            </a>
+            <a href="{% url 'forum_moderation' %}?filter=all" class="badge bg-primary filter-badge mx-1 {% if filter_type == 'all' %}border border-dark{% endif %}">
+                All
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if threads %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Date</th>
+                            <th>Topic</th>
+                            <th width="150">Status</th>
+                            <th width="150">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for thread in threads %}
+                        <tr class="thread-item">
+                            <td>
+                                <div class="thread-title">{{ thread.title }}</div>
+                                <div class="thread-details">
+                                    <i class="fas fa-comments fa-sm"></i> {{ thread.replies.count }} replies
+                                    {% if thread.is_pinned %}
+                                    <span class="ms-2"><i class="fas fa-thumbtack fa-sm"></i> Pinned</span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-1">
+                                    {% for tag in thread.tags.all %}
+                                    <span class="badge bg-info thread-tag">{{ tag.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>{{ thread.author.user.username }}</td>
+                            <td>{{ thread.created_at|date:"M d, Y" }}</td>
+                            <td>{{ thread.topic.name }}</td>
+                            <td>
+                                <span class="badge {% if thread.approval_status == 'approved' %}bg-success{% elif thread.approval_status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ thread.approval_status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <a href="{% url 'thread_detail' thread.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    {% if thread.approval_status == 'pending' %}
+                                    <div class="btn-group mt-1">
+                                        <a href="{% url 'thread_approve' thread.id %}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                        <a href="{% url 'thread_reject' thread.id %}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if threads.has_other_pages %}
+            <div class="d-flex justify-content-center mt-4">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination">
+                        {% if threads.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ threads.previous_page_number }}{% if filter_type %}&filter={{ filter_type }}{% endif %}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in threads.paginator.page_range %}
+                            {% if threads.number == num %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                            {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}{% if filter_type %}&filter={{ filter_type }}{% endif %}">{{ num }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if threads.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ threads.next_page_number }}{% if filter_type %}&filter={{ filter_type }}{% endif %}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h4>No threads to moderate</h4>
+                <p>There are currently no threads requiring moderation in this category.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

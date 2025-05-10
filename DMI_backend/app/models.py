@@ -10,6 +10,7 @@ class UserData(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     is_verified = models.BooleanField(default=False)
     profile_image_url = models.CharField(max_length=255, blank=True, null=True, default="/images/avatars/default.png")
+    metadata = models.JSONField(default=dict, blank=True, null=True)
 
     def is_moderator(self):
         """Check if user is a moderator"""

@@ -1,0 +1,271 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}PDA: {{ submission.title }}{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .submission-header {
+        border-bottom: 1px solid #e3e6f0;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .submission-meta {
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+        color: #858796;
+        margin-bottom: 0.5rem;
+    }
+    
+    .submission-meta > div {
+        margin-right: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .media-container {
+        background-color: #f8f9fc;
+        border-radius: 0.35rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    
+    .media-placeholder {
+        width: 100%;
+        height: 300px;
+        background-color: #e9ecef;
+        border-radius: 0.35rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 1.5rem;
+    }
+    
+    .media-embed {
+        max-width: 100%;
+        max-height: 500px;
+        margin: 0 auto;
+    }
+    
+    .description-section {
+        background-color: #f8f9fc;
+        border-radius: 0.35rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .metadata-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .metadata-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .metadata-item:last-child {
+        border-bottom: none;
+    }
+    
+    .metadata-label {
+        font-weight: 600;
+        color: #4e73df;
+        margin-bottom: 0.25rem;
+    }
+    
+    .review-section {
+        background-color: #eaecf4;
+        border-radius: 0.35rem;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .review-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">PDA Submission Review</h1>
+    <div>
+        <a href="{% url 'pda_moderation' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-arrow-left fa-sm"></i> Back to PDA Queue
+        </a>
+    </div>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Submission Details</h6>
+        <div>
+            {% if submission.is_approved %}
+            <span class="badge bg-success">Approved</span>
+            {% elif submission.review_date %}
+            <span class="badge bg-danger">Rejected</span>
+            {% else %}
+            <span class="badge bg-warning text-dark">Pending</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="submission-header">
+            <h4>{{ submission.title }}</h4>
+            <div class="submission-meta">
+                <div>
+                    <i class="fas fa-user fa-sm"></i> Submitted by: {{ submission.user.user.username }}
+                </div>
+                <div>
+                    <i class="fas fa-calendar fa-sm"></i> Date: {{ submission.submission_date|date:"M d, Y" }}
+                </div>
+                <div>
+                    <i class="fas fa-tag fa-sm"></i> Category: {{ submission.category|default:"Uncategorized" }}
+                </div>
+                {% if submission.deepfake_type %}
+                <div>
+                    <i class="fas fa-code-branch fa-sm"></i> Type: {{ submission.deepfake_type }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="media-container">
+                    {% if submission.media_url %}
+                        {% if submission.media_type == 'image' %}
+                            <img src="{{ submission.media_url }}" alt="{{ submission.title }}" class="img-fluid media-embed">
+                        {% elif submission.media_type == 'video' %}
+                            <video controls class="media-embed">
+                                <source src="{{ submission.media_url }}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        {% else %}
+                            <div class="media-placeholder">
+                                <i class="fas fa-photo-video me-2"></i> Media Preview Not Available
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="media-placeholder">
+                            <i class="fas fa-photo-video me-2"></i> No Media Attached
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="description-section">
+                    <h5 class="mb-3">Description</h5>
+                    {% if submission.description %}
+                        {{ submission.description|linebreaks }}
+                    {% else %}
+                        <p class="text-muted">No description provided.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Additional Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="metadata-section">
+                            {% if submission.source_url %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Source URL</div>
+                                <div class="metadata-value">
+                                    <a href="{{ submission.source_url }}" target="_blank">{{ submission.source_url }}</a>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission.creation_date %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Creation Date</div>
+                                <div class="metadata-value">{{ submission.creation_date|date:"M d, Y" }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission.author %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Author</div>
+                                <div class="metadata-value">{{ submission.author }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission.technology_used %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Technology Used</div>
+                                <div class="metadata-value">{{ submission.technology_used }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission.reviewed_by %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Reviewed By</div>
+                                <div class="metadata-value">{{ submission.reviewed_by.username }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission.review_date %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Review Date</div>
+                                <div class="metadata-value">{{ submission.review_date|date:"M d, Y H:i" }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission.review_notes %}
+                            <div class="metadata-item">
+                                <div class="metadata-label">Review Notes</div>
+                                <div class="metadata-value">{{ submission.review_notes }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if not submission.review_date %}
+                        <div class="review-buttons">
+                            <form method="post" action="{% url 'pda_reject' submission.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-times-circle"></i> Reject
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'pda_approve' submission.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check-circle"></i> Approve
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if not submission.review_date %}
+        <div class="review-section">
+            <h5 class="mb-3">Moderation Review</h5>
+            <form method="post" id="reviewForm">
+                {% csrf_token %}
+                <div class="form-group mb-3">
+                    <label for="reviewNotes">Review Notes:</label>
+                    <textarea class="form-control" id="reviewNotes" name="review_notes" rows="3" placeholder="Add any notes about your decision (optional)"></textarea>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" formaction="{% url 'pda_reject' submission.id %}" class="btn btn-danger">
+                        <i class="fas fa-times-circle"></i> Reject Submission
+                    </button>
+                    <button type="submit" formaction="{% url 'pda_approve' submission.id %}" class="btn btn-success">
+                        <i class="fas fa-check-circle"></i> Approve Submission
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

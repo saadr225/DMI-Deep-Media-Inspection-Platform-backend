@@ -1,0 +1,206 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .profile-header {
+        background-color: #f8f9fc;
+        border-bottom: 1px solid #e3e6f0;
+        padding: 1.5rem;
+        border-radius: 0.35rem 0.35rem 0 0;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: #36b9cc;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        margin-right: 1rem;
+    }
+    
+    .profile-stats {
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    
+    .stat-item {
+        padding: 0.5rem 1rem;
+        border-right: 1px solid #e3e6f0;
+    }
+    
+    .stat-item:last-child {
+        border-right: none;
+    }
+    
+    .stat-number {
+        font-size: 1.25rem;
+        font-weight: 700;
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #858796;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Moderator Profile</h1>
+</div>
+
+<!-- Profile Overview Card -->
+<div class="card shadow mb-4">
+    <div class="profile-header">
+        <div class="d-flex">
+            <div class="profile-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div>
+                <h4 class="font-weight-bold">{{ user.username }}</h4>
+                <p class="mb-0">{{ user.email }}</p>
+                <p class="text-muted mb-0">
+                    Moderator
+                    {% if user.is_staff %} | Staff {% endif %}
+                    {% if user.is_superuser %} | Administrator {% endif %}
+                </p>
+                
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ moderation_stats.total_actions }}</span>
+                        <span class="stat-label">Total Actions</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ moderation_stats.approved_count }}</span>
+                        <span class="stat-label">Approved</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ moderation_stats.rejected_count }}</span>
+                        <span class="stat-label">Rejected</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Last Activity</span>
+                        <span>{{ moderation_stats.last_action.timestamp|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <!-- Profile Update Form -->
+        <form method="post" class="user">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-4">Personal Information</h5>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="firstName">First Name</label>
+                            <input type="text" class="form-control" id="firstName" name="first_name" value="{{ user.first_name }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="lastName">Last Name</label>
+                            <input type="text" class="form-control" id="lastName" name="last_name" value="{{ user.last_name }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="username">Username</label>
+                        <input type="text" class="form-control" id="username" value="{{ user.username }}" readonly>
+                        <small class="text-muted">Username cannot be changed</small>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h5 class="mb-4">Change Password</h5>
+                    
+                    <div class="mb-3">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" class="form-control" id="currentPassword" name="current_password">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" class="form-control" id="newPassword" name="new_password">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password">
+                    </div>
+                    
+                    <div class="text-muted mb-3">
+                        <small>Leave password fields empty if you don't want to change it</small>
+                    </div>
+                </div>
+            </div>
+            
+            <hr>
+            
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Moderation History Card -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Recent Moderation Activity</h6>
+    </div>
+    <div class="card-body">
+        {% if moderation_activities %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Content</th>
+                            <th>Date</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in moderation_activities %}
+                        <tr>
+                            <td>
+                                {% if activity.action_type == 'approve' %}
+                                    <span class="badge bg-success">Approved</span>
+                                {% elif activity.action_type == 'reject' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% elif activity.action_type == 'delete' %}
+                                    <span class="badge bg-warning">Deleted</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ activity.action_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ activity.content_identifier }}</td>
+                            <td>{{ activity.timestamp }}</td>
+                            <td>{{ activity.notes|default:"No notes" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-center py-3">No recent moderation activity found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
