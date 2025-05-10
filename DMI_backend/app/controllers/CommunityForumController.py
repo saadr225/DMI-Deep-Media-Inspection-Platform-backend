@@ -505,6 +505,9 @@ class CommunityForumController:
             else:
                 like_count = ForumLike.objects.filter(reply=target, like_type="like").count()
                 dislike_count = ForumLike.objects.filter(reply=target, like_type="dislike").count()
+            
+            # Calculate net count (likes minus dislikes)
+            net_count = like_count - dislike_count
 
             return {
                 "success": True,
@@ -512,6 +515,7 @@ class CommunityForumController:
                 "like_type": like_type,
                 "like_count": like_count,
                 "dislike_count": dislike_count,
+                "net_count": net_count,
                 "code": f"FORUM_LIKE_{action.upper()}",
             }
 
@@ -770,7 +774,8 @@ class CommunityForumController:
             # Annotate with counts
             threads = threads.annotate(
                 reply_count=Count("replies", filter=Q(replies__is_deleted=False)),
-                like_count=Count("likes"),
+                like_count=Count("likes", filter=Q(likes__like_type="like")),
+                dislike_count=Count("likes", filter=Q(likes__like_type="dislike")),
             )
 
             # Order by last activity
@@ -795,6 +800,9 @@ class CommunityForumController:
                 content_preview = content_lines[0] if content_lines else ""
                 if len(content_lines) > 1 or len(content_preview) > 150:
                     content_preview = content_preview[:150] + "..."
+                    
+                # Calculate net count
+                net_count = thread.like_count - thread.dislike_count
 
                 result_threads.append(
                     {
@@ -805,6 +813,8 @@ class CommunityForumController:
                         "last_active": thread.last_active,
                         "reply_count": thread.reply_count,
                         "like_count": thread.like_count,
+                        "dislike_count": thread.dislike_count,
+                        "net_count": net_count,
                         "topic": {"id": thread.topic.id, "name": thread.topic.name},
                         "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                         "approval_status": thread.approval_status,
@@ -897,6 +907,7 @@ class CommunityForumController:
                     # Get likes for child reply
                     like_count = ForumLike.objects.filter(reply=child, like_type="like").count()
                     dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").count()
+                    net_count = like_count - dislike_count
                     
                     # Check if user has liked the child reply
                     user_liked = False
@@ -927,6 +938,7 @@ class CommunityForumController:
                         "timeAgo": time_ago,
                         "likes": like_count,
                         "dislikes": dislike_count,
+                        "net_count": net_count,
                         "reactions": child_reactions,
                         "user_liked": user_liked,
                         "user_disliked": user_disliked,
@@ -938,6 +950,7 @@ class CommunityForumController:
                 # Get like info for parent reply
                 like_count = ForumLike.objects.filter(reply=reply, like_type="like").count()
                 dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").count()
+                net_count = like_count - dislike_count
                 
                 # Check if user has liked/disliked the parent reply
                 user_liked = False
@@ -971,6 +984,7 @@ class CommunityForumController:
                     "replies": formatted_child_replies,
                     "likes": like_count,
                     "dislikes": dislike_count,
+                    "net_count": net_count,
                     "reactions": reply_reactions,
                     "user_liked": user_liked,
                     "user_disliked": user_disliked,
@@ -993,6 +1007,7 @@ class CommunityForumController:
             # Get like and dislike counts for thread
             thread_like_count = ForumLike.objects.filter(thread=thread, like_type="like").count()
             thread_dislike_count = ForumLike.objects.filter(thread=thread, like_type="dislike").count()
+            thread_net_count = thread_like_count - thread_dislike_count
             
             # Get reactions for thread
             reactions = self.get_reaction_counts(thread_id=thread_id)
@@ -1033,6 +1048,8 @@ class CommunityForumController:
                 "timeAgo": time_ago,
                 "views": thread.view_count,
                 "likes": thread_like_count,
+                "dislikes": thread_dislike_count,
+                "net_count": thread_net_count,
                 "upvotes": thread_like_count,
                 "downvotes": thread_dislike_count,
                 "tags": tags,
@@ -1194,7 +1211,8 @@ class CommunityForumController:
             # Annotate with counts
             threads = threads.annotate(
                 reply_count=Count("replies", filter=Q(replies__is_deleted=False)),
-                like_count=Count("likes"),
+                like_count=Count("likes", filter=Q(likes__like_type="like")),
+                dislike_count=Count("likes", filter=Q(likes__like_type="dislike")),
             )
 
             # Annotate with boolean fields for ordering
@@ -1224,6 +1242,9 @@ class CommunityForumController:
             # Format response
             result_threads = []
             for thread in paginated_threads:
+                # Calculate net count
+                net_count = thread.like_count - thread.dislike_count
+                
                 result_threads.append(
                     {
                         "id": thread.id,
@@ -1233,6 +1254,8 @@ class CommunityForumController:
                         "last_active": thread.last_active,
                         "reply_count": thread.reply_count,
                         "like_count": thread.like_count,
+                        "dislike_count": thread.dislike_count,
+                        "net_count": net_count,
                         "topic": {"id": thread.topic.id, "name": thread.topic.name},
                         "tags": [{"id": tag.id, "name": tag.name} for tag in thread.tags.all()],
                         # Include a small content preview
@@ -1493,6 +1516,7 @@ class CommunityForumController:
                     # Get likes for child reply
                     like_count = ForumLike.objects.filter(reply=child, like_type="like").count()
                     dislike_count = ForumLike.objects.filter(reply=child, like_type="dislike").count()
+                    net_count = like_count - dislike_count
                     
                     # Check if user has liked the child reply
                     user_liked = False
@@ -1526,6 +1550,7 @@ class CommunityForumController:
                         "likes": like_count,
                         "upvotes": like_count,
                         "downvotes": dislike_count,
+                        "net_count": net_count,
                         "isVerified": child.author.is_verified or child.author.user.is_staff,
                         "media": {
                             "url": child.media_url,
@@ -1541,6 +1566,7 @@ class CommunityForumController:
                 # Get like info for parent reply
                 like_count = ForumLike.objects.filter(reply=reply, like_type="like").count()
                 dislike_count = ForumLike.objects.filter(reply=reply, like_type="dislike").count()
+                net_count = like_count - dislike_count
                 
                 # Check if user has liked/disliked the parent reply
                 user_liked = False
@@ -1574,6 +1600,7 @@ class CommunityForumController:
                     "likes": like_count,
                     "upvotes": like_count,
                     "downvotes": dislike_count,
+                    "net_count": net_count,
                     "isVerified": reply.author.is_verified or reply.author.user.is_staff,
                     "media": {
                         "url": reply.media_url,
