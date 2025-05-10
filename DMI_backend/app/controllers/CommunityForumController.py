@@ -1161,16 +1161,19 @@ class CommunityForumController:
                 like_count=Count("likes"),
             )
 
-            # Order by relevance (title match first, then content)
+            # Annotate with boolean fields for ordering
+            threads = threads.annotate(
+                title_exact_match=Count('pk', filter=Q(title__iexact=query)),
+                title_contains=Count('pk', filter=Q(title__icontains=query)),
+                content_contains=Count('pk', filter=Q(content__icontains=query))
+            )
+
+            # Order by relevance (title match first, then content) using the annotated fields
             threads = threads.order_by(
-                # Title exact match gets highest priority
-                ~Q(title__iexact=query),
-                # Then title contains
-                ~Q(title__icontains=query),
-                # Then content contains
-                ~Q(content__icontains=query),
-                # Finally by last activity
-                "-last_active",
+                '-title_exact_match',  # Exact title match first
+                '-title_contains',     # Then title contains
+                '-content_contains',   # Then content contains
+                '-last_active'         # Finally by last activity
             )
 
             # Paginate results
