@@ -819,7 +819,7 @@ class CommunityForumController:
                 "code": "FORUM_REPLY_DELETE_ERROR",
             }
 
-    def get_threads(self, topic_id=None, tag_id=None, page=1, items_per_page=20, user_data=None):
+    def get_threads(self, topic_id=None, tag_id=None, page=1, items_per_page=20, user_data=None, current_user=None):
         """
         Get threads with pagination
 
@@ -829,6 +829,7 @@ class CommunityForumController:
             page (int): Page number
             items_per_page (int): Items per page
             user_data (UserData, optional): If provided, filter by user's threads
+            current_user (UserData, optional): The current logged-in user for checking likes/dislikes
 
         Returns:
             dict: Response with thread list
@@ -889,12 +890,12 @@ class CommunityForumController:
                 # Check if user has liked or disliked the thread
                 user_liked = False
                 user_disliked = False
-                if user_data:
+                if current_user:
                     user_liked = ForumLike.objects.filter(
-                        user=user_data, thread=thread, like_type="like"
+                        user=current_user, thread=thread, like_type="like"
                     ).exists()
                     user_disliked = ForumLike.objects.filter(
-                        user=user_data, thread=thread, like_type="dislike"
+                        user=current_user, thread=thread, like_type="dislike"
                     ).exists()
                 
                 # Format media URL if it exists
@@ -1252,7 +1253,7 @@ class CommunityForumController:
                 "code": "FORUM_TAGS_ERROR",
             }
 
-    def search_threads(self, query, page=1, items_per_page=20, user_data=None):
+    def search_threads(self, query, page=1, items_per_page=20, current_user=None):
         """
         Search threads by keywords or phrases
 
@@ -1260,7 +1261,7 @@ class CommunityForumController:
             query (str): Search query
             page (int): Page number
             items_per_page (int): Items per page
-            user_data (UserData, optional): Current user data
+            current_user (UserData, optional): Current user data for checking likes/dislikes
 
         Returns:
             dict: Response with search results
@@ -1322,12 +1323,12 @@ class CommunityForumController:
                 # Check if user has liked or disliked the thread
                 user_liked = False
                 user_disliked = False
-                if user_data:
+                if current_user:
                     user_liked = ForumLike.objects.filter(
-                        user=user_data, thread=thread, like_type="like"
+                        user=current_user, thread=thread, like_type="like"
                     ).exists()
                     user_disliked = ForumLike.objects.filter(
-                        user=user_data, thread=thread, like_type="dislike"
+                        user=current_user, thread=thread, like_type="dislike"
                     ).exists()
                 
                 # Format media URL if it exists
