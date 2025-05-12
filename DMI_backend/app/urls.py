@@ -47,5 +47,7 @@ urlpatterns = [
         path('analytics/', custom_moderation_views.analytics_dashboard_view, name='analytics_dashboard'),
         path('settings/', custom_moderation_views.moderation_settings_view, name='moderation_settings'),
         path('profile/', custom_moderation_views.moderation_profile_view, name='moderation_profile'),
+        path('search/', custom_moderation_views.moderation_search_view, name='moderation_search'),
+        path('chart-data/', custom_moderation_views.moderation_chart_data_api, name='moderation_chart_data'),
     ])),
 ]

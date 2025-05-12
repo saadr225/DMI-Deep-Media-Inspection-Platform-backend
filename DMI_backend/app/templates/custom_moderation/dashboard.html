@@ -3,424 +3,958 @@
 
 {% block extrastyle %}
 <style>
-    .stat-card {
-        border-radius: 0.5rem;
-        transition: transform 0.3s;
+    :root {
+        --primary: #4361ee;
+        --primary-light: rgba(67, 97, 238, 0.1);
+        --secondary: #3f37c9;
+        --success: #4cc9f0;
+        --info: #4895ef;
+        --warning: #f72585;
+        --danger: #ff4d6d;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --gray: #6c757d;
+        --gray-light: #f1f3f5;
+        --gray-dark: #343a40;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-muted: #adb5bd;
+        --border-color: #e9ecef;
+        --shadow-sm: 0 .125rem .25rem rgba(0, 0, 0, .075);
+        --shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, .175);
+        --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --border-radius: 12px;
+        --border-radius-sm: 8px;
+        --border-radius-lg: 16px;
+        --transition: all 0.2s ease-in-out;
+    }
+
+    body {
+        background-color: #f9fafb;
+        font-family: var(--font-family);
+        color: var(--text-primary);
+        min-height: 100vh;
     }
     
-    .stat-card:hover {
-        transform: translateY(-5px);
+    /* Dashboard layout */
+    .dashboard-container {
+        margin-bottom: 80px;
+        padding-bottom: 40px;
     }
     
-    .stat-icon {
-        font-size: 2rem;
-        opacity: 0.8;
+    .bottom-spacer {
+        height: 60px;
+        width: 100%;
     }
     
-    .stat-count {
-        font-size: 2rem;
-        font-weight: 700;
+    /* Dashboard Grid Layout */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
     }
     
-    .stat-label {
-        font-size: 0.9rem;
+    .dashboard-header {
+        grid-column: span 12;
+    }
+    
+    .dashboard-stats {
+        grid-column: span 12;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-gap: 20px;
+    }
+    
+    .dashboard-content {
+        grid-column: span 12;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+    
+    .content-left {
+        grid-column: span 8;
+    }
+    
+    .content-right {
+        grid-column: span 4;
+    }
+    
+    @media (max-width: 1200px) {
+        .dashboard-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .content-left, .content-right {
+            grid-column: span 12;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* Card styling */
+    .card {
+        background: white;
+        border-radius: var(--border-radius);
+        border: none;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        height: 60%;
+    }
+    
+    .card:hover {
+        box-shadow: var(--shadow);
+        transform: translateY(-2px);
+    }
+    
+    .card-header {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-title {
         font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+        color: var(--text-primary);
+    }
+    
+    .card-body {
+        padding: 24px;
+    }
+    
+    .card-footer {
+        background: white;
+        border-top: 1px solid var(--border-color);
+        padding: 16px 24px;
+    }
+    
+    /* Stats Card */
+    .stat-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card-header {
+        padding: 24px 24px 16px;
+    }
+    
+    .stat-card-body {
+        padding: 0 24px 24px;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .stat-card-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+    
+    .stat-card-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        color: var(--text-secondary);
+    }
+    
+    .stat-card-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: baseline;
+    }
+    
+    .stat-card-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .stat-card-progress {
+        height: 4px;
+        border-radius: 2px;
+        background-color: var(--gray-light);
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    
+    .stat-card-progress-bar {
+        height: 100%;
+        border-radius: 2px;
+    }
+    
+    .stat-card-action {
+        margin-top: auto;
+    }
+    
+    /* Status Indicators */
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    
+    .status-success {
+        background-color: var(--success);
+        box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.2);
+    }
+    
+    .status-warning {
+        background-color: var(--warning);
+        box-shadow: 0 0 0 2px rgba(247, 37, 133, 0.2);
+    }
+    
+    .status-danger {
+        background-color: var(--danger);
+        box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.2);
+    }
+    
+    /* Items list styling */
+    .item-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    
+    .item-list-item {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-color);
+        transition: var(--transition);
+    }
+    
+    .item-list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .item-list-item:hover {
+        background-color: var(--gray-light);
+    }
+    
+    .item-list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .item-list-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .item-list-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 4px;
         text-transform: uppercase;
     }
     
-    .activity-item {
-        position: relative;
-        padding: 0.75rem 1.25rem;
-        transition: background-color 0.3s;
-    }
-    
-    .activity-item:hover {
-        background-color: rgba(0, 0, 0, 0.03);
-    }
-    
-    .activity-item:not(:last-child) {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-    }
-    
-    .activity-time {
+    .item-list-meta {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
         font-size: 0.75rem;
-        color: #6c757d;
+        color: var(--text-secondary);
     }
     
-    .action-card {
+    .item-list-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    /* Activity summary styling */
+    .activity-summary {
+        display: flex;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+    
+    .activity-summary-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 16px;
+        background-color: var(--primary-light);
+    }
+    
+    .activity-summary-content {
+        flex: 1;
+    }
+    
+    .activity-summary-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+    
+    .activity-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    
+    .activity-stat {
+        display: flex;
+        align-items: center;
+    }
+    
+    .activity-stat-label {
+        font-weight: 500;
+        margin-left: 8px;
+    }
+    
+    /* Content status styling */
+    .content-status-item {
+        margin-bottom: 20px;
+    }
+    
+    .content-status-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    
+    .content-status-title {
+        display: flex;
+        align-items: center;
+        font-weight: 500;
+    }
+    
+    .content-status-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+    
+    .content-status-progress {
+        height: 8px;
+        border-radius: 4px;
+        background-color: var(--gray-light);
+        overflow: hidden;
+    }
+    
+    .content-status-progress-bar {
         height: 100%;
-        transition: transform 0.3s;
+        border-radius: 4px;
+        transition: width 0.3s ease;
     }
     
-    .action-card:hover {
-        transform: translateY(-5px);
+    /* Button styling */
+    .btn {
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: var(--border-radius-sm);
+        border: none;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
     }
     
-    .action-icon {
-        font-size: 1.75rem;
-        margin-bottom: 0.5rem;
+    .btn-sm {
+        padding: 4px 12px;
+        font-size: 0.75rem;
     }
     
-    .chart-container {
-        position: relative;
-        height: 300px;
+    .btn-lg {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
+    
+    .btn-icon {
+        margin-right: 8px;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--secondary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-success {
+        background-color: var(--success);
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background-color: var(--info);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-danger {
+        background-color: var(--danger);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background-color: var(--warning);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-light {
+        background-color: white;
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+    
+    .btn-light:hover {
+        background-color: var(--gray-light);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-block {
+        display: flex;
+        width: 100%;
+    }
+    
+    /* Badge styling */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.3px;
+    }
+    
+    .badge-primary {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+    
+    .badge-success {
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
+    }
+    
+    .badge-danger {
+        background-color: rgba(255, 77, 109, 0.1);
+        color: var(--danger);
+    }
+    
+    .badge-warning {
+        background-color: rgba(247, 37, 133, 0.1);
+        color: var(--warning);
+    }
+    
+    /* Utility classes */
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-1 { margin-bottom: 4px !important; }
+    .mb-2 { margin-bottom: 8px !important; }
+    .mb-3 { margin-bottom: 16px !important; }
+    .mb-4 { margin-bottom: 24px !important; }
+    .mb-5 { margin-bottom: 32px !important; }
+    
+    .mt-0 { margin-top: 0 !important; }
+    .mt-1 { margin-top: 4px !important; }
+    .mt-2 { margin-top: 8px !important; }
+    .mt-3 { margin-top: 16px !important; }
+    .mt-4 { margin-top: 24px !important; }
+    .mt-5 { margin-top: 32px !important; }
+    
+    .ms-1 { margin-left: 4px !important; }
+    .ms-2 { margin-left: 8px !important; }
+    .ms-3 { margin-left: 16px !important; }
+    
+    .me-1 { margin-right: 4px !important; }
+    .me-2 { margin-right: 8px !important; }
+    .me-3 { margin-right: 16px !important; }
+    
+    .p-0 { padding: 0 !important; }
+    
+    .text-primary { color: var(--primary) !important; }
+    .text-success { color: var(--success) !important; }
+    .text-danger { color: var(--danger) !important; }
+    .text-warning { color: var(--warning) !important; }
+    .text-muted { color: var(--text-secondary) !important; }
+    
+    .bg-primary { background-color: var(--primary) !important; }
+    .bg-primary-light { background-color: var(--primary-light) !important; }
+    .bg-success { background-color: var(--success) !important; }
+    .bg-danger { background-color: var(--danger) !important; }
+    .bg-warning { background-color: var(--warning) !important; }
+    .bg-light { background-color: var(--light) !important; }
+    
+    .font-weight-bold { font-weight: 600 !important; }
+    .text-uppercase { text-transform: uppercase !important; }
+    
+    .d-flex { display: flex !important; }
+    .align-items-center { align-items: center !important; }
+    .justify-content-between { justify-content: space-between !important; }
+    .justify-content-center { justify-content: center !important; }
+    .flex-column { flex-direction: column !important; }
+    
+    .text-center { text-align: center !important; }
+    .w-100 { width: 100% !important; }
+    
+    .rounded-circle { border-radius: 50% !important; }
+    
+    .empty-state {
+        padding: 48px 24px;
+        text-align: center;
+        background: linear-gradient(180deg, rgba(249, 250, 251, 0) 0%, rgba(249, 250, 251, 0.5) 100%);
+    }
+    
+    .empty-state-icon {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        display: inline-block;
+    }
+    
+    .empty-state-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    
+    .empty-state-message {
+        color: var(--text-secondary);
+        margin-bottom: 0;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Moderation Dashboard</h1>
-    <div>
-        <a href="{% url 'analytics_dashboard' %}" class="btn btn-primary btn-sm ms-2">
-            <i class="fas fa-chart-line fa-sm"></i> View Analytics
-        </a>
-        <a href="{% url 'moderation_settings' %}" class="btn btn-secondary btn-sm ms-2">
-            <i class="fas fa-cog fa-sm"></i> Settings
-        </a>
+<div class="dashboard-grid dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 font-weight-bold mb-0">Moderation Dashboard</h1>
+            <div class="d-flex">
+                <a href="{% url 'analytics_dashboard' %}" class="btn btn-primary me-2">
+                    <i class="fas fa-chart-line me-2"></i> Analytics
+                </a>
+                <a href="{% url 'moderation_settings' %}" class="btn btn-light">
+                    <i class="fas fa-cog me-2"></i> Settings
+                </a>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- Quick Stats Row -->
-<div class="row">
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Pending PDA</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pda_pending_count }}</div>
-                        <div class="text-xs {% if pda_pending_count > 5 %}text-danger{% else %}text-success{% endif %}">
-                            {% if pda_pending_count > 5 %}
-                                <i class="fas fa-exclamation-circle"></i> Needs attention
-                            {% else %}
-                                <i class="fas fa-check-circle"></i> Under control
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-photo-video fa-2x text-gray-300"></i>
-                    </div>
+    <!-- Dashboard Stats -->
+    <div class="dashboard-stats mb-4">
+        <!-- PDA Stat Card -->
+        <div class="card stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon bg-primary-light">
+                    <i class="fas fa-photo-video text-primary"></i>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-title">Pending PDA</div>
+                <div class="stat-card-value">{{ pda_pending_count }}</div>
+                <div class="stat-card-label">
+                    {% if pda_pending_count > 5 %}
+                        <i class="fas fa-exclamation-circle text-danger me-1"></i> Needs attention
+                    {% elif pda_pending_count > 0 %}
+                        <i class="fas fa-info-circle text-warning me-1"></i> Awaiting review
+                    {% else %}
+                        <i class="fas fa-check-circle text-success me-1"></i> All caught up
+                    {% endif %}
+                </div>
+                <div class="stat-card-progress">
+                    {% if pda_pending_count > 10 %}
+                        <div class="stat-card-progress-bar bg-danger" style="width: 100%"></div>
+                    {% elif pda_pending_count > 5 %}
+                        <div class="stat-card-progress-bar bg-warning" style="width: 60%"></div>
+                    {% else %}
+                        <div class="stat-card-progress-bar bg-success" style="width: 30%"></div>
+                    {% endif %}
+                </div>
+                <div class="stat-card-action">
+                    <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-block">View PDA Queue</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forum Stat Card -->
+        <div class="card stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon bg-success-light">
+                    <i class="fas fa-comments text-success"></i>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-title">Pending Forum</div>
+                <div class="stat-card-value">{{ forum_pending_count }}</div>
+                <div class="stat-card-label">
+                    {% if forum_pending_count > 10 %}
+                        <i class="fas fa-exclamation-circle text-danger me-1"></i> High volume
+                    {% elif forum_pending_count > 5 %}
+                        <i class="fas fa-exclamation-triangle text-warning me-1"></i> Moderate volume
+                    {% elif forum_pending_count > 0 %}
+                        <i class="fas fa-info-circle text-success me-1"></i> Low volume
+                    {% else %}
+                        <i class="fas fa-check-circle text-success me-1"></i> All caught up
+                    {% endif %}
+                </div>
+                <div class="stat-card-progress">
+                    {% if forum_pending_count > 15 %}
+                        <div class="stat-card-progress-bar bg-danger" style="width: 100%"></div>
+                    {% elif forum_pending_count > 10 %}
+                        <div class="stat-card-progress-bar bg-warning" style="width: 70%"></div>
+                    {% else %}
+                        <div class="stat-card-progress-bar bg-success" style="width: 30%"></div>
+                    {% endif %}
+                </div>
+                <div class="stat-card-action">
+                    <a href="{% url 'forum_moderation' %}" class="btn btn-success btn-block">View Forum Queue</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Stat Card -->
+        <div class="card stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon bg-danger-light">
+                    <i class="fas fa-flag text-danger"></i>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-title">Reported Content</div>
+                <div class="stat-card-value">{{ reported_count }}</div>
+                <div class="stat-card-label">
+                    {% if reported_count > 0 %}
+                        <i class="fas fa-exclamation-circle text-danger me-1"></i> Requires review
+                    {% else %}
+                        <i class="fas fa-check-circle text-success me-1"></i> No reports
+                    {% endif %}
+                </div>
+                <div class="stat-card-progress">
+                    {% if reported_count > 5 %}
+                        <div class="stat-card-progress-bar bg-danger" style="width: 100%"></div>
+                    {% elif reported_count > 0 %}
+                        <div class="stat-card-progress-bar bg-warning" style="width: 60%"></div>
+                    {% else %}
+                        <div class="stat-card-progress-bar bg-success" style="width: 5%"></div>
+                    {% endif %}
+                </div>
+                <div class="stat-card-action">
+                    <a href="{% url 'reported_content' %}" class="btn btn-danger btn-block">View Reports</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Stat Card -->
+        <div class="card stat-card">
+            <div class="stat-card-header">
+                <div class="stat-card-icon bg-warning-light">
+                    <i class="fas fa-clipboard-check text-warning"></i>
+                </div>
+            </div>
+            <div class="stat-card-body">
+                <div class="stat-card-title">My Activities</div>
+                <div class="stat-card-value">{{ moderator_actions_count }}</div>
+                <div class="stat-card-label">
+                    <i class="fas fa-calendar me-1"></i> Last 7 days
+                </div>
+                <div class="stat-card-progress">
+                    {% if moderator_actions_count > 50 %}
+                        <div class="stat-card-progress-bar bg-success" style="width: 100%"></div>
+                    {% elif moderator_actions_count > 25 %}
+                        <div class="stat-card-progress-bar bg-primary" style="width: 75%"></div>
+                    {% elif moderator_actions_count > 10 %}
+                        <div class="stat-card-progress-bar bg-info" style="width: 50%"></div>
+                    {% elif moderator_actions_count > 0 %}
+                        <div class="stat-card-progress-bar bg-warning" style="width: 25%"></div>
+                    {% else %}
+                        <div class="stat-card-progress-bar bg-light" style="width: 5%"></div>
+                    {% endif %}
+                </div>
+                <div class="stat-card-action">
+                    <a href="{% url 'moderation_profile' %}?tab=activity" class="btn btn-warning btn-block">View Activity</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Pending Forum</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ forum_pending_count }}</div>
-                        <div class="text-xs {% if forum_pending_count > 10 %}text-danger{% else %}text-success{% endif %}">
-                            {% if forum_pending_count > 10 %}
-                                <i class="fas fa-exclamation-circle"></i> Needs attention
-                            {% else %}
-                                <i class="fas fa-check-circle"></i> Under control
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-comments fa-2x text-gray-300"></i>
-                    </div>
+    <!-- Dashboard Content -->
+    <div class="dashboard-content">
+        <!-- Main Content - Items for moderation -->
+        <div class="content-left">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-tasks me-2"></i> Items for Moderation
+                    </h2>
+                    <span class="badge badge-primary">{{ pending_count }} pending</span>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Reported Content</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ reported_count }}</div>
-                        <div class="text-xs {% if reported_count > 0 %}text-danger{% else %}text-success{% endif %}">
-                            {% if reported_count > 0 %}
-                                <i class="fas fa-exclamation-circle"></i> Requires review
-                            {% else %}
-                                <i class="fas fa-check-circle"></i> No reports
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-flag fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">My Activities</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ moderator_actions_count }}</div>
-                        <div class="text-xs text-muted">
-                            <i class="fas fa-calendar"></i> Last 7 days
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Moderation Queue and Actions Row -->
-<div class="row">
-    <!-- Moderation Chart -->
-    <div class="col-lg-8">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Moderation Status</h6>
-                <div class="dropdown no-arrow">
-                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-end shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
-                        <a class="dropdown-item" href="#">Last 7 Days</a>
-                        <a class="dropdown-item" href="#">Last 30 Days</a>
-                        <a class="dropdown-item" href="#">Last 90 Days</a>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="moderationChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Action Cards -->
-    <div class="col-lg-4">
-        <div class="row">
-            <div class="col-md-6 col-lg-12 mb-4">
-                <div class="card bg-primary text-white shadow action-card">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <i class="fas fa-photo-video action-icon"></i>
-                            <div class="text-uppercase mb-1">Moderate PDA</div>
-                            <a href="{% url 'pda_moderation' %}" class="btn btn-light btn-sm mt-2">Go</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-12 mb-4">
-                <div class="card bg-success text-white shadow action-card">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <i class="fas fa-comments action-icon"></i>
-                            <div class="text-uppercase mb-1">Moderate Forum</div>
-                            <a href="{% url 'forum_moderation' %}" class="btn btn-light btn-sm mt-2">Go</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-12 mb-4">
-                <div class="card bg-warning text-white shadow action-card">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <i class="fas fa-flag action-icon"></i>
-                            <div class="text-uppercase mb-1">Reported Content</div>
-                            <a href="{% url 'reported_content' %}" class="btn btn-light btn-sm mt-2">Go</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Items for Moderation and Recent Activity Row -->
-<div class="row">
-    <!-- Items for Moderation -->
-    <div class="col-lg-6">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Recent Items for Moderation</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="list-group">
+                <div class="card-body p-0">
                     {% if recent_moderation_items %}
-                        {% for item in recent_moderation_items %}
-                            <div class="list-group-item activity-item">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ item.title }}</h6>
-                                    <small class="activity-time">{{ item.submission_date|timesince }} ago</small>
-                                </div>
-                                <p class="mb-1">{{ item.type }} by {{ item.author }}</p>
-                                <div class="d-flex mt-2">
-                                    <a href="{{ item.url }}" class="btn btn-sm btn-primary">View</a>
-                                    <a href="{{ item.approve_url }}" class="btn btn-sm btn-success ms-2">Approve</a>
-                                    <a href="{{ item.reject_url }}" class="btn btn-sm btn-danger ms-2">Reject</a>
-                                </div>
-                            </div>
-                        {% endfor %}
+                        <ul class="item-list">
+                            {% for item in recent_moderation_items %}
+                                <li class="item-list-item">
+                                    <div class="item-list-header">
+                                        <h3 class="item-list-title">{{ item.title|truncatechars:50 }}</h3>
+                                        <span class="badge {% if item.type == 'PDA Submission' %}badge-primary{% elif item.type == 'Forum Thread' %}badge-success{% else %}badge-warning{% endif %}">
+                                            {% if item.type == 'PDA Submission' %}PDA{% elif item.type == 'Forum Thread' %}Forum{% else %}{{ item.type }}{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="item-list-meta">
+                                        <span class="me-3"><i class="fas fa-user me-1"></i> {{ item.author }}</span>
+                                        <span><i class="fas fa-clock me-1"></i> {{ item.submission_date|timesince }} ago</span>
+                                    </div>
+                                    <div class="item-list-actions">
+                                        <a href="{{ item.url }}" class="btn btn-light btn-sm">
+                                            <i class="fas fa-eye me-1"></i> View
+                                        </a>
+                                        <a href="{{ item.approve_url }}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-check me-1"></i> Approve
+                                        </a>
+                                        <a href="{{ item.reject_url }}" class="btn btn-danger btn-sm">
+                                            <i class="fas fa-times me-1"></i> Reject
+                                        </a>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
                     {% else %}
-                        <div class="list-group-item">
-                            <p class="mb-0 text-center">No items for moderation right now.</p>
+                        <div class="empty-state">
+                            <span class="empty-state-icon text-success">
+                                <i class="fas fa-check-circle"></i>
+                            </span>
+                            <h3 class="empty-state-title">All Caught Up!</h3>
+                            <p class="empty-state-message">No items pending moderation</p>
                         </div>
                     {% endif %}
                 </div>
+                {% if recent_moderation_items %}
+                    <div class="card-footer text-center">
+                        <a href="{% url 'forum_moderation' %}" class="btn btn-primary">View All Pending Items</a>
+                    </div>
+                {% endif %}
             </div>
-            <div class="card-footer">
-                <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-sm me-2">PDA Queue</a>
-                <a href="{% url 'forum_moderation' %}" class="btn btn-success btn-sm">Forum Queue</a>
+            
+            <!-- Activity Summary Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-pie me-2"></i> Activity Summary
+                    </h2>
+                    <span class="badge badge-primary">{{ moderator_actions_count }} actions</span>
+                </div>
+                <div class="card-body">
+                    <div class="activity-summary mb-4">
+                        <div class="activity-summary-icon">
+                            <i class="fas fa-clipboard-check fa-2x text-primary"></i>
+                        </div>
+                        <div class="activity-summary-content">
+                            <h3 class="activity-summary-title">Recent moderation activity</h3>
+                            <div class="activity-stats">
+                                <div class="activity-stat">
+                                    <span class="status-indicator status-success"></span>
+                                    <span class="activity-stat-label text-success">{{ approved_count }} Approved</span>
+                                </div>
+                                <div class="activity-stat">
+                                    <span class="status-indicator status-danger"></span>
+                                    <span class="activity-stat-label text-danger">{{ rejected_count }} Rejected</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if moderator_actions %}
+                        <ul class="item-list">
+                            {% for action in moderator_actions|slice:":5" %}
+                                <li class="item-list-item">
+                                    <div class="item-list-header">
+                                        <h3 class="item-list-title">{{ action.content_identifier|truncatechars:50 }}</h3>
+                                        <span class="badge {% if action.action_type == 'approve' %}badge-success{% elif action.action_type == 'reject' %}badge-danger{% else %}badge-warning{% endif %}">
+                                            {% if action.action_type == 'approve' %}Approved{% elif action.action_type == 'reject' %}Rejected{% else %}{{ action.action_type|title }}{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="item-list-meta">
+                                        <span class="me-3"><i class="fas fa-tag me-1"></i> {{ action.content_type }}</span>
+                                        <span><i class="fas fa-clock me-1"></i> {{ action.timestamp|timesince }} ago</span>
+                                    </div>
+                                    {% if action.notes %}
+                                        <div class="item-list-meta">
+                                            <i class="fas fa-sticky-note me-1"></i> {{ action.notes|truncatechars:100 }}
+                                        </div>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="empty-state">
+                            <span class="empty-state-icon text-primary">
+                                <i class="fas fa-clipboard-list"></i>
+                            </span>
+                            <h3 class="empty-state-title">No Activity Yet</h3>
+                            <p class="empty-state-message">Your actions will appear here</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{% url 'moderation_profile' %}?tab=activity" class="btn btn-primary">
+                        <i class="fas fa-history me-1"></i> View Full Activity History
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- Recent Moderation Activity -->
-    <div class="col-lg-6">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Your Recent Activity</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="list-group">
-                    {% if moderator_actions %}
-                        {% for action in moderator_actions %}
-                            <div class="list-group-item activity-item">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ action.content_identifier }}</h6>
-                                    <small class="activity-time">{{ action.timestamp|timesince }} ago</small>
+        
+        <!-- Sidebar Content -->
+        <div class="content-right">
+            <!-- Content Status Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-signal me-2"></i> Content Status
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- PDA Status -->
+                    <div class="content-status-item">
+                        <div class="content-status-header">
+                            <div class="content-status-title">
+                                <div class="content-status-icon bg-primary-light">
+                                    <i class="fas fa-photo-video text-primary"></i>
                                 </div>
-                                <p class="mb-1">
-                                    {% if action.action_type == 'approve' %}
-                                        <span class="text-success"><i class="fas fa-check-circle"></i> Approved</span>
-                                    {% elif action.action_type == 'reject' %}
-                                        <span class="text-danger"><i class="fas fa-times-circle"></i> Rejected</span>
-                                    {% elif action.action_type == 'delete' %}
-                                        <span class="text-warning"><i class="fas fa-trash"></i> Deleted</span>
-                                    {% endif %}
-                                    {{ action.content_type }}
-                                </p>
-                                {% if action.notes %}
-                                    <small>Note: {{ action.notes }}</small>
-                                {% endif %}
+                                <span>PDA Content</span>
                             </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="list-group-item">
-                            <p class="mb-0 text-center">No recent moderation activity found.</p>
+                            <span class="badge badge-primary">{{ pda_pending_count }}</span>
                         </div>
-                    {% endif %}
+                        <div class="content-status-progress">
+                            {% if pda_pending_count > 10 %}
+                                <div class="content-status-progress-bar bg-danger" style="width: 100%"></div>
+                            {% elif pda_pending_count > 5 %}
+                                <div class="content-status-progress-bar bg-warning" style="width: 60%"></div>
+                            {% else %}
+                                <div class="content-status-progress-bar bg-success" style="width: 30%"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Forum Status -->
+                    <div class="content-status-item">
+                        <div class="content-status-header">
+                            <div class="content-status-title">
+                                <div class="content-status-icon bg-success-light">
+                                    <i class="fas fa-comments text-success"></i>
+                                </div>
+                                <span>Forum Content</span>
+                            </div>
+                            <span class="badge badge-success">{{ forum_pending_count }}</span>
+                        </div>
+                        <div class="content-status-progress">
+                            {% if forum_pending_count > 15 %}
+                                <div class="content-status-progress-bar bg-danger" style="width: 100%"></div>
+                            {% elif forum_pending_count > 10 %}
+                                <div class="content-status-progress-bar bg-warning" style="width: 70%"></div>
+                            {% else %}
+                                <div class="content-status-progress-bar bg-success" style="width: 30%"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Reported Status -->
+                    <div class="content-status-item">
+                        <div class="content-status-header">
+                            <div class="content-status-title">
+                                <div class="content-status-icon bg-danger-light">
+                                    <i class="fas fa-flag text-danger"></i>
+                                </div>
+                                <span>Reported Content</span>
+                            </div>
+                            <span class="badge badge-danger">{{ reported_count }}</span>
+                        </div>
+                        <div class="content-status-progress">
+                            {% if reported_count > 5 %}
+                                <div class="content-status-progress-bar bg-danger" style="width: 100%"></div>
+                            {% elif reported_count > 0 %}
+                                <div class="content-status-progress-bar bg-warning" style="width: 60%"></div>
+                            {% else %}
+                                <div class="content-status-progress-bar bg-success" style="width: 5%"></div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card-footer">
-                <a href="#" class="btn btn-primary btn-sm">View All Your Activity</a>
+            
+            <!-- Quick Links Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-link me-2"></i> Quick Actions
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-column">
+                        <a href="{% url 'pda_moderation' %}" class="btn btn-light mb-3">
+                            <i class="fas fa-photo-video me-2"></i> PDA Moderation
+                        </a>
+                        <a href="{% url 'forum_moderation' %}" class="btn btn-light mb-3">
+                            <i class="fas fa-comments me-2"></i> Forum Moderation
+                        </a>
+                        <a href="{% url 'reported_content' %}" class="btn btn-light mb-3">
+                            <i class="fas fa-flag me-2"></i> Reported Content
+                        </a>
+                        <a href="{% url 'analytics_dashboard' %}" class="btn btn-light mb-3">
+                            <i class="fas fa-chart-line me-2"></i> View Analytics
+                        </a>
+                        <a href="{% url 'moderation_profile' %}" class="btn btn-light">
+                            <i class="fas fa-user me-2"></i> My Profile
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<div class="bottom-spacer"></div>
 {% endblock %}
 
 {% block extrascripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Moderation Chart
-    const moderationCtx = document.getElementById('moderationChart').getContext('2d');
-    const moderationChart = new Chart(moderationCtx, {
-        type: 'line',
-        data: {
-            labels: {{ days_labels|safe }},
-            datasets: [
-                {
-                    label: 'PDA Submissions',
-                    borderColor: '#36b9cc',
-                    backgroundColor: 'rgba(54, 185, 204, 0.05)',
-                    data: {{ pda_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#36b9cc',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Forum Threads',
-                    borderColor: '#1cc88a',
-                    backgroundColor: 'rgba(28, 200, 138, 0.05)',
-                    data: {{ threads_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#1cc88a',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Approved Items',
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                    data: {{ approved_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#4e73df',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 25,
-                    top: 25,
-                    bottom: 0
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: "rgba(0, 0, 0, 0.05)",
-                        drawBorder: false
-                    },
-                    ticks: {
-                        maxTicksLimit: 5
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyColor: "#858796",
-                    titleColor: "#6e707e",
-                    titleMarginBottom: 10,
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    padding: 15,
-                    displayColors: false,
-                    intersect: false,
-                    mode: 'index'
-                }
-            }
-        }
-    });
-});
+// No additional scripts needed
 </script>
 {% endblock %} 

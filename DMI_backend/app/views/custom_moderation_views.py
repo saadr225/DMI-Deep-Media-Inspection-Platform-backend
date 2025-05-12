@@ -139,6 +139,19 @@ def moderation_dashboard_view(request):
         moderator=request.user
     ).order_by('-timestamp')[:10]
     
+    # Count recent actions by type
+    approved_count = ModeratorAction.objects.filter(
+        moderator=request.user,
+        timestamp__gte=timezone.now() - timedelta(days=7),
+        action_type='approve'
+    ).count()
+    
+    rejected_count = ModeratorAction.objects.filter(
+        moderator=request.user,
+        timestamp__gte=timezone.now() - timedelta(days=7),
+        action_type='reject'
+    ).count()
+    
     moderator_actions_count = ModeratorAction.objects.filter(
         moderator=request.user,
         timestamp__gte=timezone.now() - timedelta(days=7)
@@ -185,41 +198,69 @@ def moderation_dashboard_view(request):
     # Sort moderation items by date
     recent_moderation_items = sorted(recent_moderation_items, key=lambda x: x['submission_date'], reverse=True)[:5]
     
-    # Generate data for charts
+    # Generate data for charts - Default 7 days
     days = 7
     days_labels = []
     pda_data = []
     threads_data = []
     approved_data = []
     
-    for i in range(days):
-        day = timezone.now() - timedelta(days=days-i-1)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-        
-        # Format date as string
-        days_labels.append(day_start.strftime('%Y-%m-%d'))
-        
-        # Count items for each day
-        day_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(day_start, day_end)).count()
-        day_threads = ForumThread.objects.filter(created_at__range=(day_start, day_end)).count()
-        
-        # Count approved items
-        day_approved = (
-            PublicDeepfakeArchive.objects.filter(
-                is_approved=True, 
-                review_date__range=(day_start, day_end)
-            ).count() +
-            ForumThread.objects.filter(
-                approval_status='approved',
-                review_date__range=(day_start, day_end)
-            ).count()
-        )
-        
-        pda_data.append(day_pda)
-        threads_data.append(day_threads)
-        approved_data.append(day_approved)
+    # Get current time
+    current_time = timezone.now()
     
+    # Check if there's any data in the last 7 days
+    has_recent_data = (
+        PublicDeepfakeArchive.objects.filter(submission_date__gte=current_time - timedelta(days=days)).exists() or
+        ForumThread.objects.filter(created_at__gte=current_time - timedelta(days=days)).exists()
+    )
+    
+    # If no real data exists, generate sample data for demonstration
+    if not has_recent_data:
+        for i in range(days):
+            day = current_time - timedelta(days=days-i-1)
+            # Format date as string
+            days_labels.append(day.strftime('%b %d'))
+            
+            # Generate some sample data
+            # This will be more interesting than all zeros
+            day_pda = max(0, int(3 * (1 + 0.5 * i) * (i % 2 + 0.5)))
+            day_threads = max(0, int(5 * (1 + 0.3 * i) * (i % 3 + 0.7)))
+            day_approved = max(0, int((day_pda + day_threads) * 0.7))
+            
+            pda_data.append(day_pda)
+            threads_data.append(day_threads)
+            approved_data.append(day_approved)
+    else:
+        # Real data exists, use it as before
+        for i in range(days):
+            day = current_time - timedelta(days=days-i-1)
+            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+            # Format date as string
+            days_labels.append(day_start.strftime('%b %d'))
+            
+            # Count items for each day
+            day_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(day_start, day_end)).count()
+            day_threads = ForumThread.objects.filter(created_at__range=(day_start, day_end)).count()
+            
+            # Count approved items
+            day_approved = (
+                PublicDeepfakeArchive.objects.filter(
+                    is_approved=True, 
+                    review_date__range=(day_start, day_end)
+                ).count() +
+                ForumThread.objects.filter(
+                    approval_status='approved',
+                    review_date__range=(day_start, day_end)
+                ).count()
+            )
+            
+            pda_data.append(day_pda)
+            threads_data.append(day_threads)
+            approved_data.append(day_approved)
+    
+    # Format context for the template
     context = {
         'active_page': 'dashboard',
         'pda_pending_count': pda_pending_count,
@@ -228,11 +269,14 @@ def moderation_dashboard_view(request):
         'pending_count': pda_pending_count + forum_pending_count + reported_count,
         'moderator_actions': moderator_actions,
         'moderator_actions_count': moderator_actions_count,
+        'approved_count': approved_count,
+        'rejected_count': rejected_count,
         'recent_moderation_items': recent_moderation_items,
         'days_labels': json.dumps(days_labels),
         'pda_data': json.dumps(pda_data),
         'threads_data': json.dumps(threads_data),
-        'approved_data': json.dumps(approved_data)
+        'approved_data': json.dumps(approved_data),
+        'has_chart_data': has_recent_data
     }
     
     return render(request, 'custom_moderation/dashboard.html', context)
@@ -759,13 +803,263 @@ def moderation_profile_view(request):
         moderator=request.user
     ).order_by('-timestamp')[:10]
     
+    # Get all user actions sorted by date
+    all_actions = ModeratorAction.objects.filter(
+        moderator=request.user
+    ).order_by('-timestamp')
+    
+    # Pagination for all actions
+    paginator = Paginator(all_actions, 15)  # 15 actions per page
+    page_number = request.GET.get('page', 1)
+    paginated_actions = paginator.get_page(page_number)
+    
     context = {
         'active_page': 'profile',
         'success_message': success_message,
         'error_message': error_message,
         'activity_stats': activity_stats,
         'recent_actions': recent_actions,
+        'all_actions': paginated_actions,
         'join_date': request.user.date_joined
     }
     
-    return render(request, 'custom_moderation/profile.html', context) 
+    return render(request, 'custom_moderation/profile.html', context)
+
+# API endpoint for moderation chart data
+@moderator_required
+def moderation_chart_data_api(request):
+    """API endpoint for moderation chart data with time-based filtering"""
+    try:
+        # Get date range parameter
+        days = int(request.GET.get('days', 7))
+        if days <= 0:
+            days = 7
+        
+        # Calculate date ranges
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=days)
+        
+        # Generate time series data for charts
+        time_period = []
+        pda_series = []
+        thread_series = []
+        approved_series = []
+        
+        # Check if there's any data in the requested period
+        has_real_data = (
+            PublicDeepfakeArchive.objects.filter(submission_date__gte=start_date).exists() or
+            ForumThread.objects.filter(created_at__gte=start_date).exists()
+        )
+        
+        # If no real data exists, generate sample data for demonstration
+        if not has_real_data:
+            # For daily data
+            if days <= 90:
+                for i in range(days):
+                    day = start_date + timedelta(days=i)
+                    # Format date for display
+                    time_period.append(day.strftime('%b %d'))
+                    
+                    # Generate sample data
+                    # This creates a more interesting chart pattern
+                    day_pda = max(0, int(3 * (1 + 0.5 * (i % 7)) * (i % 2 + 0.5)))
+                    day_threads = max(0, int(5 * (1 + 0.3 * (i % 5)) * (i % 3 + 0.7)))
+                    day_approved = max(0, int((day_pda + day_threads) * 0.7))
+                    
+                    pda_series.append(day_pda)
+                    thread_series.append(day_threads)
+                    approved_series.append(day_approved)
+            # For weekly data
+            else:
+                num_weeks = days // 7
+                for i in range(num_weeks):
+                    week_start = start_date + timedelta(days=i*7)
+                    week_end = week_start + timedelta(days=6)
+                    
+                    # Format date range for display
+                    time_period.append(f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}")
+                    
+                    # Generate sample weekly data
+                    week_pda = max(0, int(10 * (1 + 0.4 * i) * (i % 3 + 0.7)))
+                    week_threads = max(0, int(15 * (1 + 0.2 * i) * (i % 4 + 0.5)))
+                    week_approved = max(0, int((week_pda + week_threads) * 0.8))
+                    
+                    pda_series.append(week_pda)
+                    thread_series.append(week_threads)
+                    approved_series.append(week_approved)
+        else:
+            # For daily data
+            if days <= 90:
+                for i in range(days):
+                    day = start_date + timedelta(days=i)
+                    day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+                    day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+                    
+                    # Format date for display
+                    time_period.append(day_start.strftime('%b %d'))  # Changed format to be more readable
+                    
+                    # Get counts for the day
+                    day_pda = PublicDeepfakeArchive.objects.filter(
+                        submission_date__range=(day_start, day_end)
+                    ).count()
+                    
+                    day_threads = ForumThread.objects.filter(
+                        created_at__range=(day_start, day_end)
+                    ).count()
+                    
+                    day_approved = (
+                        PublicDeepfakeArchive.objects.filter(
+                            is_approved=True, 
+                            review_date__range=(day_start, day_end)
+                        ).count() +
+                        ForumThread.objects.filter(
+                            approval_status='approved',
+                            review_date__range=(day_start, day_end)
+                        ).count()
+                    )
+                    
+                    pda_series.append(day_pda)
+                    thread_series.append(day_threads)
+                    approved_series.append(day_approved)
+            # For weekly data
+            else:
+                # Calculate number of weeks
+                num_weeks = days // 7
+                for i in range(num_weeks):
+                    week_start = start_date + timedelta(days=i*7)
+                    week_end = week_start + timedelta(days=6)
+                    
+                    # Format date range for display
+                    time_period.append(f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}")
+                    
+                    # Get counts for the week
+                    week_pda = PublicDeepfakeArchive.objects.filter(
+                        submission_date__range=(week_start, week_end)
+                    ).count()
+                    
+                    week_threads = ForumThread.objects.filter(
+                        created_at__range=(week_start, week_end)
+                    ).count()
+                    
+                    week_approved = (
+                        PublicDeepfakeArchive.objects.filter(
+                            is_approved=True, 
+                            review_date__range=(week_start, week_end)
+                        ).count() +
+                        ForumThread.objects.filter(
+                            approval_status='approved',
+                            review_date__range=(week_start, week_end)
+                        ).count()
+                    )
+                    
+                    pda_series.append(week_pda)
+                    thread_series.append(week_threads)
+                    approved_series.append(week_approved)
+        
+        # Check if we have any data to display
+        has_data = any(pda_series) or any(thread_series) or any(approved_series)
+        
+        # Return JSON response with data
+        return JsonResponse({
+            'labels': time_period,
+            'pda_data': pda_series,
+            'threads_data': thread_series,
+            'approved_data': approved_series,
+            'timespan': days,
+            'has_data': has_data,
+            'has_real_data': has_real_data,
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d')
+        })
+    except ValueError as e:
+        logger.error(f"Invalid input for chart data: {str(e)}")
+        return JsonResponse({
+            'error': 'Invalid input parameter',
+            'message': str(e)
+        }, status=400)
+    except Exception as e:
+        logger.error(f"Error generating chart data: {str(e)}")
+        return JsonResponse({
+            'error': 'Failed to generate chart data',
+            'message': str(e)
+        }, status=500)
+
+@moderator_required
+def moderation_search_view(request):
+    """View for search functionality in the moderation panel"""
+    query = request.GET.get('q', '')
+    results = {
+        'pda': [],
+        'threads': [],
+        'users': [],
+    }
+    
+    if query:
+        # Search PDA submissions
+        pda_results = PublicDeepfakeArchive.objects.filter(
+            Q(title__icontains=query) | 
+            Q(description__icontains=query) |
+            Q(user__user__username__icontains=query)
+        ).order_by('-submission_date')[:10]
+        
+        # Search forum threads
+        thread_results = ForumThread.objects.filter(
+            Q(title__icontains=query) | 
+            Q(content__icontains=query) |
+            Q(author__user__username__icontains=query)
+        ).order_by('-created_at')[:10]
+        
+        # Search users
+        user_results = User.objects.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
+        ).filter(
+            Q(is_staff=True) | Q(userdata__role='moderator')
+        ).distinct()[:10]
+        
+        # Format results
+        for pda in pda_results:
+            results['pda'].append({
+                'id': pda.id,
+                'title': pda.title,
+                'status': 'Approved' if pda.is_approved else 'Pending' if pda.review_date is None else 'Rejected',
+                'author': pda.user.user.username,
+                'date': pda.submission_date,
+                'url': reverse('pda_detail', args=[pda.id])
+            })
+        
+        for thread in thread_results:
+            results['threads'].append({
+                'id': thread.id,
+                'title': thread.title,
+                'status': thread.approval_status.capitalize(),
+                'author': thread.author.user.username,
+                'date': thread.created_at,
+                'url': reverse('thread_detail', args=[thread.id])
+            })
+        
+        for user in user_results:
+            try:
+                user_data = UserData.objects.get(user=user)
+                role = user_data.role.capitalize() if user_data.role else 'Staff' if user.is_staff else 'User'
+            except UserData.DoesNotExist:
+                role = 'Staff' if user.is_staff else 'User'
+            
+            results['users'].append({
+                'id': user.id,
+                'username': user.username,
+                'full_name': f"{user.first_name} {user.last_name}".strip(),
+                'email': user.email,
+                'role': role
+            })
+    
+    context = {
+        'active_page': 'search',
+        'query': query,
+        'results': results,
+        'total_results': len(results['pda']) + len(results['threads']) + len(results['users']),
+    }
+    
+    return render(request, 'custom_moderation/search_results.html', context) 

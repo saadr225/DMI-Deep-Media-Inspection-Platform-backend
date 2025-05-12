@@ -1,0 +1,222 @@
+{% extends "custom_moderation/base.html" %}
+{% block title %}Search Results{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .search-header {
+        background-color: #f8f9fc;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .result-card {
+        transition: transform 0.3s;
+        margin-bottom: 1rem;
+    }
+    
+    .result-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .result-date {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .result-author {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .result-status {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 2rem;
+    }
+    
+    .status-approved {
+        background-color: rgba(28, 200, 138, 0.1);
+        color: #1cc88a;
+    }
+    
+    .status-pending {
+        background-color: rgba(54, 185, 204, 0.1);
+        color: #36b9cc;
+    }
+    
+    .status-rejected {
+        background-color: rgba(231, 74, 59, 0.1);
+        color: #e74a3b;
+    }
+    
+    .nav-pills .nav-link {
+        border-radius: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        font-weight: 500;
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: var(--primary);
+    }
+    
+    .tab-pane {
+        padding: 1.5rem 0;
+    }
+    
+    .no-results {
+        padding: 3rem 0;
+        text-align: center;
+    }
+    
+    .no-results i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #d1d3e2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-header shadow-sm">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h3 mb-0 text-gray-800">Search Results</h1>
+        <form class="form-inline" action="{% url 'moderation_search' %}" method="GET">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" value="{{ query }}" placeholder="Search again..." aria-label="Search">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search fa-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <p>Found {{ total_results }} result{% if total_results != 1 %}s{% endif %} for "{{ query }}"</p>
+</div>
+
+{% if total_results > 0 %}
+<ul class="nav nav-pills mb-3" id="searchResultsTabs" role="tablist">
+    {% if results.pda %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pda-tab" data-bs-toggle="pill" data-bs-target="#pda" type="button" role="tab" aria-controls="pda" aria-selected="true">
+            PDA Submissions ({{ results.pda|length }})
+        </button>
+    </li>
+    {% endif %}
+    {% if results.threads %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if not results.pda %}active{% endif %}" id="threads-tab" data-bs-toggle="pill" data-bs-target="#threads" type="button" role="tab" aria-controls="threads" aria-selected="{% if not results.pda %}true{% else %}false{% endif %}">
+            Forum Threads ({{ results.threads|length }})
+        </button>
+    </li>
+    {% endif %}
+    {% if results.users %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if not results.pda and not results.threads %}active{% endif %}" id="users-tab" data-bs-toggle="pill" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="{% if not results.pda and not results.threads %}true{% else %}false{% endif %}">
+            Users ({{ results.users|length }})
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+<div class="tab-content" id="searchResultsTabContent">
+    <!-- PDA Results -->
+    {% if results.pda %}
+    <div class="tab-pane fade show active" id="pda" role="tabpanel" aria-labelledby="pda-tab">
+        <div class="row">
+            {% for item in results.pda %}
+            <div class="col-lg-6">
+                <div class="card shadow-sm result-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title mb-0">{{ item.title }}</h5>
+                            <span class="result-status status-{{ item.status|lower }}">{{ item.status }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <div class="result-author">
+                                <i class="fas fa-user-circle me-1"></i> {{ item.author }}
+                            </div>
+                            <div class="result-date">
+                                <i class="fas fa-calendar-alt me-1"></i> {{ item.date|date:"M d, Y" }}
+                            </div>
+                        </div>
+                        <a href="{{ item.url }}" class="btn btn-primary btn-sm">View Details</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Thread Results -->
+    {% if results.threads %}
+    <div class="tab-pane fade {% if not results.pda %}show active{% endif %}" id="threads" role="tabpanel" aria-labelledby="threads-tab">
+        <div class="row">
+            {% for item in results.threads %}
+            <div class="col-lg-6">
+                <div class="card shadow-sm result-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="card-title mb-0">{{ item.title }}</h5>
+                            <span class="result-status status-{{ item.status|lower }}">{{ item.status }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <div class="result-author">
+                                <i class="fas fa-user-circle me-1"></i> {{ item.author }}
+                            </div>
+                            <div class="result-date">
+                                <i class="fas fa-calendar-alt me-1"></i> {{ item.date|date:"M d, Y" }}
+                            </div>
+                        </div>
+                        <a href="{{ item.url }}" class="btn btn-primary btn-sm">View Thread</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- User Results -->
+    {% if results.users %}
+    <div class="tab-pane fade {% if not results.pda and not results.threads %}show active{% endif %}" id="users" role="tabpanel" aria-labelledby="users-tab">
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in results.users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.full_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.role }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card shadow">
+    <div class="card-body">
+        <div class="no-results">
+            <i class="fas fa-search"></i>
+            <h4>No results found</h4>
+            <p class="text-muted">Try different keywords or check your spelling</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %} 

@@ -669,11 +669,11 @@
                 </button>
                 
                 <!-- Topbar Search -->
-                <form class="d-none d-sm-flex form-inline flex-grow-1 mx-4">
+                <form class="d-none d-sm-flex form-inline flex-grow-1 mx-4" action="{% url 'moderation_search' %}" method="GET">
                     <div class="input-group">
-                        <input type="text" class="form-control bg-light border-0 small" placeholder="Search for..." aria-label="Search">
+                        <input type="text" name="q" class="form-control bg-light border-0 small" placeholder="Search for PDA, threads, or users..." aria-label="Search">
                         <div class="input-group-append">
-                            <button class="btn btn-primary" type="button">
+                            <button class="btn btn-primary" type="submit">
                                 <i class="fas fa-search fa-sm"></i>
                             </button>
                         </div>
@@ -686,49 +686,70 @@
                     <li class="nav-item dropdown me-3 position-relative">
                         <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-bell fa-fw text-muted"></i>
+                            {% if pending_count > 0 %}
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
-                                3+
+                                {{ pending_count }}
                             </span>
+                            {% endif %}
                         </a>
                         <!-- Dropdown - Alerts -->
                         <div class="dropdown-menu dropdown-menu-end" aria-labelledby="alertsDropdown">
                             <h6 class="dropdown-header bg-primary text-white p-3">
                                 Alerts Center
                             </h6>
-                            <a class="dropdown-item d-flex align-items-center py-3" href="#">
+                            {% if pda_pending_count > 0 %}
+                            <a class="dropdown-item d-flex align-items-center py-3" href="{% url 'pda_moderation' %}">
                                 <div class="me-3">
                                     <div class="icon-circle bg-primary">
                                         <i class="fas fa-photo-video text-white"></i>
                                     </div>
                                 </div>
                                 <div>
-                                    <div class="small text-muted">May 10, 2025</div>
-                                    <span>New PDA submission requires review</span>
+                                    <div class="small text-muted">{% now "M d, Y" %}</div>
+                                    <span>{{ pda_pending_count }} PDA submission{% if pda_pending_count != 1 %}s{% endif %} require{% if pda_pending_count == 1 %}s{% endif %} review</span>
                                 </div>
                             </a>
-                            <a class="dropdown-item d-flex align-items-center py-3" href="#">
+                            {% endif %}
+                            {% if forum_pending_count > 0 %}
+                            <a class="dropdown-item d-flex align-items-center py-3" href="{% url 'forum_moderation' %}">
                                 <div class="me-3">
                                     <div class="icon-circle bg-success">
-                                        <i class="fas fa-check text-white"></i>
+                                        <i class="fas fa-comments text-white"></i>
                                     </div>
                                 </div>
                                 <div>
-                                    <div class="small text-muted">May 9, 2025</div>
-                                    <span>5 items were successfully processed</span>
+                                    <div class="small text-muted">{% now "M d, Y" %}</div>
+                                    <span>{{ forum_pending_count }} forum thread{% if forum_pending_count != 1 %}s{% endif %} pending review</span>
                                 </div>
                             </a>
-                            <a class="dropdown-item d-flex align-items-center py-3" href="#">
+                            {% endif %}
+                            {% if reported_count > 0 %}
+                            <a class="dropdown-item d-flex align-items-center py-3" href="{% url 'reported_content' %}">
                                 <div class="me-3">
                                     <div class="icon-circle bg-warning">
                                         <i class="fas fa-exclamation-triangle text-white"></i>
                                     </div>
                                 </div>
                                 <div>
-                                    <div class="small text-muted">May 8, 2025</div>
-                                    <span>New forum thread was flagged for review</span>
+                                    <div class="small text-muted">{% now "M d, Y" %}</div>
+                                    <span>{{ reported_count }} item{% if reported_count != 1 %}s{% endif %} flagged for review</span>
                                 </div>
                             </a>
-                            <a class="dropdown-item text-center small text-muted py-3" href="#">Show All Alerts</a>
+                            {% endif %}
+                            {% if pending_count == 0 %}
+                            <div class="dropdown-item d-flex align-items-center py-3">
+                                <div class="me-3">
+                                    <div class="icon-circle bg-success">
+                                        <i class="fas fa-check text-white"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="small text-muted">{% now "M d, Y" %}</div>
+                                    <span>All items have been reviewed</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <a class="dropdown-item text-center small text-muted py-3" href="{% url 'moderation_dashboard' %}">View Dashboard</a>
                         </div>
                     </li>
                     
@@ -755,7 +776,7 @@
                                 <i class="fas fa-cogs fa-sm fa-fw me-2 text-muted"></i>
                                 Settings
                             </a>
-                            <a class="dropdown-item" href="#">
+                            <a class="dropdown-item" href="{% url 'moderation_profile' %}?tab=activity">
                                 <i class="fas fa-list fa-sm fa-fw me-2 text-muted"></i>
                                 Activity Log
                             </a>
