@@ -3,220 +3,495 @@
 
 {% block extrastyle %}
 <style>
-    .search-header {
-        background-color: #f8f9fc;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+    :root {
+        --primary: #4361ee;
+        --primary-light: rgba(67, 97, 238, 0.1);
+        --secondary: #3f37c9;
+        --success: #4cc9f0;
+        --info: #4895ef;
+        --warning: #f72585;
+        --danger: #ff4d6d;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --gray: #6c757d;
+        --gray-light: #f1f3f5;
+        --gray-dark: #343a40;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-muted: #adb5bd;
+        --border-color: #e9ecef;
+        --shadow-sm: 0 .125rem .25rem rgba(0, 0, 0, .075);
+        --shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, .175);
+        --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --border-radius: 12px;
+        --border-radius-sm: 8px;
+        --border-radius-lg: 16px;
+        --transition: all 0.2s ease-in-out;
+    }
+
+    body {
+        background-color: #f9fafb;
+        font-family: var(--font-family);
+        color: var(--text-primary);
+        min-height: 100vh;
     }
     
+    /* Search layout */
+    .search-container {
+        margin-bottom: 80px;
+        padding-bottom: 40px;
+    }
+    
+    .search-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+    
+    .search-header-wrapper {
+        grid-column: span 12;
+        margin-bottom: 24px;
+    }
+    
+    .search-content {
+        grid-column: span 12;
+    }
+    
+    .bottom-spacer {
+        height: 60px;
+        width: 100%;
+    }
+    
+    /* Search Header */
+    .search-header {
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .search-form {
+        margin-top: 16px;
+    }
+    
+    .search-input {
+        border-radius: var(--border-radius-sm);
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        width: 100%;
+        transition: var(--transition);
+    }
+    
+    .search-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.15);
+        outline: none;
+    }
+    
+    .result-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-gap: 24px;
+    }
+    
+    @media (max-width: 768px) {
+        .result-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* Result Card */
     .result-card {
-        transition: transform 0.3s;
-        margin-bottom: 1rem;
+        background: white;
+        border-radius: var(--border-radius);
+        border: none;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        height: 100%;
     }
     
     .result-card:hover {
+        box-shadow: var(--shadow);
         transform: translateY(-3px);
     }
     
-    .result-date {
-        font-size: 0.8rem;
-        color: #6c757d;
+    .result-card-body {
+        padding: 24px;
     }
     
-    .result-author {
-        font-size: 0.85rem;
-        font-weight: 500;
+    .result-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
     }
     
-    .result-status {
-        font-size: 0.75rem;
+    .result-card-title {
         font-weight: 600;
-        padding: 0.25rem 0.5rem;
-        border-radius: 2rem;
+        font-size: 1.1rem;
+        margin: 0;
+        color: var(--text-primary);
+    }
+    
+    .result-card-meta {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .result-card-meta > div {
+        display: flex;
+        align-items: center;
+        margin-right: 16px;
+    }
+    
+    .result-card-meta i {
+        margin-right: 4px;
+    }
+    
+    /* Status badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.3px;
     }
     
     .status-approved {
-        background-color: rgba(28, 200, 138, 0.1);
-        color: #1cc88a;
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
     }
     
     .status-pending {
-        background-color: rgba(54, 185, 204, 0.1);
-        color: #36b9cc;
+        background-color: rgba(72, 149, 239, 0.1);
+        color: var(--info);
     }
     
     .status-rejected {
-        background-color: rgba(231, 74, 59, 0.1);
-        color: #e74a3b;
+        background-color: rgba(255, 77, 109, 0.1);
+        color: var(--danger);
     }
     
-    .nav-pills .nav-link {
-        border-radius: 0.5rem;
-        padding: 0.75rem 1.25rem;
+    /* Nav Tabs */
+    .nav-tabs {
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 24px;
+        display: flex;
+        overflow-x: auto;
+    }
+    
+    .nav-tabs .nav-item {
+        margin-bottom: -1px;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-secondary);
+        padding: 12px 16px;
         font-weight: 500;
+        transition: var(--transition);
+        display: inline-block;
+        margin-right: 4px;
+        cursor: pointer;
+        white-space: nowrap;
     }
     
-    .nav-pills .nav-link.active {
-        background-color: var(--primary);
+    .nav-tabs .nav-link:hover {
+        color: var(--primary);
+        border-color: transparent;
     }
     
-    .tab-pane {
-        padding: 1.5rem 0;
+    .nav-tabs .nav-link.active {
+        color: var(--primary);
+        border-color: var(--primary);
+        background-color: transparent;
     }
     
-    .no-results {
-        padding: 3rem 0;
+    /* Table styling */
+    .user-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .user-table th {
+        background-color: var(--gray-light);
+        color: var(--text-primary);
+        font-weight: 600;
+        padding: 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .user-table td {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        background-color: white;
+    }
+    
+    .user-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .user-table tr:hover td {
+        background-color: var(--gray-light);
+    }
+    
+    /* Empty state */
+    .empty-state {
+        padding: 48px 24px;
         text-align: center;
+        background: linear-gradient(180deg, rgba(249, 250, 251, 0) 0%, rgba(249, 250, 251, 0.5) 100%);
     }
     
-    .no-results i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        color: #d1d3e2;
+    .empty-state-icon {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        display: inline-block;
+        color: var(--text-muted);
     }
+    
+    .empty-state-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+    
+    .empty-state-message {
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+    }
+    
+    /* Button styling */
+    .btn {
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: var(--border-radius-sm);
+        border: none;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--secondary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-light {
+        background-color: white;
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+    
+    .btn-light:hover {
+        background-color: var(--gray-light);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* Utility classes */
+    .d-flex { display: flex !important; }
+    .align-items-center { align-items: center !important; }
+    .justify-content-between { justify-content: space-between !important; }
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-1 { margin-bottom: 4px !important; }
+    .mb-2 { margin-bottom: 8px !important; }
+    .mb-3 { margin-bottom: 16px !important; }
+    .mb-4 { margin-bottom: 24px !important; }
+    .me-1 { margin-right: 4px !important; }
+    .me-2 { margin-right: 8px !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="search-header shadow-sm">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="h3 mb-0 text-gray-800">Search Results</h1>
-        <form class="form-inline" action="{% url 'moderation_search' %}" method="GET">
-            <div class="input-group">
-                <input type="text" name="q" class="form-control" value="{{ query }}" placeholder="Search again..." aria-label="Search">
-                <div class="input-group-append">
+<div class="search-grid search-container">
+    <!-- Search Header -->
+    <div class="search-header-wrapper">
+        <div class="search-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 font-weight-bold mb-2">Search Results</h1>
+                <a href="{% url 'moderation_dashboard' %}" class="btn btn-light">
+                    <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+            <p class="mb-3">Found {{ total_results }} result{% if total_results != 1 %}s{% endif %} for "{{ query }}"</p>
+            <form class="search-form" action="{% url 'moderation_search' %}" method="GET">
+                <div class="d-flex">
+                    <input type="text" name="q" class="search-input me-2" value="{{ query }}" placeholder="Search again..." aria-label="Search">
                     <button class="btn btn-primary" type="submit">
-                        <i class="fas fa-search fa-sm"></i>
+                        <i class="fas fa-search me-2"></i> Search
                     </button>
                 </div>
-            </div>
-        </form>
-    </div>
-    <p>Found {{ total_results }} result{% if total_results != 1 %}s{% endif %} for "{{ query }}"</p>
-</div>
-
-{% if total_results > 0 %}
-<ul class="nav nav-pills mb-3" id="searchResultsTabs" role="tablist">
-    {% if results.pda %}
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="pda-tab" data-bs-toggle="pill" data-bs-target="#pda" type="button" role="tab" aria-controls="pda" aria-selected="true">
-            PDA Submissions ({{ results.pda|length }})
-        </button>
-    </li>
-    {% endif %}
-    {% if results.threads %}
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {% if not results.pda %}active{% endif %}" id="threads-tab" data-bs-toggle="pill" data-bs-target="#threads" type="button" role="tab" aria-controls="threads" aria-selected="{% if not results.pda %}true{% else %}false{% endif %}">
-            Forum Threads ({{ results.threads|length }})
-        </button>
-    </li>
-    {% endif %}
-    {% if results.users %}
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {% if not results.pda and not results.threads %}active{% endif %}" id="users-tab" data-bs-toggle="pill" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="{% if not results.pda and not results.threads %}true{% else %}false{% endif %}">
-            Users ({{ results.users|length }})
-        </button>
-    </li>
-    {% endif %}
-</ul>
-
-<div class="tab-content" id="searchResultsTabContent">
-    <!-- PDA Results -->
-    {% if results.pda %}
-    <div class="tab-pane fade show active" id="pda" role="tabpanel" aria-labelledby="pda-tab">
-        <div class="row">
-            {% for item in results.pda %}
-            <div class="col-lg-6">
-                <div class="card shadow-sm result-card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="card-title mb-0">{{ item.title }}</h5>
-                            <span class="result-status status-{{ item.status|lower }}">{{ item.status }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <div class="result-author">
-                                <i class="fas fa-user-circle me-1"></i> {{ item.author }}
-                            </div>
-                            <div class="result-date">
-                                <i class="fas fa-calendar-alt me-1"></i> {{ item.date|date:"M d, Y" }}
-                            </div>
-                        </div>
-                        <a href="{{ item.url }}" class="btn btn-primary btn-sm">View Details</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+            </form>
         </div>
     </div>
-    {% endif %}
-    
-    <!-- Thread Results -->
-    {% if results.threads %}
-    <div class="tab-pane fade {% if not results.pda %}show active{% endif %}" id="threads" role="tabpanel" aria-labelledby="threads-tab">
-        <div class="row">
-            {% for item in results.threads %}
-            <div class="col-lg-6">
-                <div class="card shadow-sm result-card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="card-title mb-0">{{ item.title }}</h5>
-                            <span class="result-status status-{{ item.status|lower }}">{{ item.status }}</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3">
-                            <div class="result-author">
-                                <i class="fas fa-user-circle me-1"></i> {{ item.author }}
+
+    <!-- Search Content -->
+    <div class="search-content">
+        {% if total_results > 0 %}
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="searchResultsTabs" role="tablist">
+            {% if results.pda %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="pda-tab" data-bs-toggle="pill" data-bs-target="#pda" type="button" role="tab" aria-controls="pda" aria-selected="true">
+                    <i class="fas fa-photo-video me-2"></i> PDA Submissions ({{ results.pda|length }})
+                </button>
+            </li>
+            {% endif %}
+            
+            {% if results.threads %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if not results.pda %}active{% endif %}" id="threads-tab" data-bs-toggle="pill" data-bs-target="#threads" type="button" role="tab" aria-controls="threads" aria-selected="{% if not results.pda %}true{% else %}false{% endif %}">
+                    <i class="fas fa-comments me-2"></i> Forum Threads ({{ results.threads|length }})
+                </button>
+            </li>
+            {% endif %}
+            
+            {% if results.users %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if not results.pda and not results.threads %}active{% endif %}" id="users-tab" data-bs-toggle="pill" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="{% if not results.pda and not results.threads %}true{% else %}false{% endif %}">
+                    <i class="fas fa-users me-2"></i> Users ({{ results.users|length }})
+                </button>
+            </li>
+            {% endif %}
+        </ul>
+
+        <!-- Tab content -->
+        <div class="tab-content" id="searchResultsTabContent">
+            <!-- PDA Results -->
+            {% if results.pda %}
+            <div class="tab-pane fade show active" id="pda" role="tabpanel" aria-labelledby="pda-tab">
+                <div class="result-grid">
+                    {% for item in results.pda %}
+                    <div class="result-card">
+                        <div class="result-card-body">
+                            <div class="result-card-header">
+                                <h5 class="result-card-title">{{ item.title }}</h5>
+                                <span class="status-badge status-{{ item.status|lower }}">{{ item.status }}</span>
                             </div>
-                            <div class="result-date">
-                                <i class="fas fa-calendar-alt me-1"></i> {{ item.date|date:"M d, Y" }}
+                            <div class="result-card-meta">
+                                <div>
+                                    <i class="fas fa-user-circle"></i> {{ item.author }}
+                                </div>
+                                <div>
+                                    <i class="fas fa-calendar-alt"></i> {{ item.date|date:"M d, Y" }}
+                                </div>
                             </div>
+                            <a href="{{ item.url }}" class="btn btn-primary">
+                                <i class="fas fa-eye me-2"></i> View Details
+                            </a>
                         </div>
-                        <a href="{{ item.url }}" class="btn btn-primary btn-sm">View Thread</a>
                     </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-    
-    <!-- User Results -->
-    {% if results.users %}
-    <div class="tab-pane fade {% if not results.pda and not results.threads %}show active{% endif %}" id="users" role="tabpanel" aria-labelledby="users-tab">
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead class="bg-light">
-                    <tr>
-                        <th>Username</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in results.users %}
-                    <tr>
-                        <td>{{ user.username }}</td>
-                        <td>{{ user.full_name }}</td>
-                        <td>{{ user.email }}</td>
-                        <td>{{ user.role }}</td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Thread Results -->
+            {% if results.threads %}
+            <div class="tab-pane fade {% if not results.pda %}show active{% endif %}" id="threads" role="tabpanel" aria-labelledby="threads-tab">
+                <div class="result-grid">
+                    {% for item in results.threads %}
+                    <div class="result-card">
+                        <div class="result-card-body">
+                            <div class="result-card-header">
+                                <h5 class="result-card-title">{{ item.title }}</h5>
+                                <span class="status-badge status-{{ item.status|lower }}">{{ item.status }}</span>
+                            </div>
+                            <div class="result-card-meta">
+                                <div>
+                                    <i class="fas fa-user-circle"></i> {{ item.author }}
+                                </div>
+                                <div>
+                                    <i class="fas fa-calendar-alt"></i> {{ item.date|date:"M d, Y" }}
+                                </div>
+                            </div>
+                            <a href="{{ item.url }}" class="btn btn-primary">
+                                <i class="fas fa-eye me-2"></i> View Thread
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- User Results -->
+            {% if results.users %}
+            <div class="tab-pane fade {% if not results.pda and not results.threads %}show active{% endif %}" id="users" role="tabpanel" aria-labelledby="users-tab">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in results.users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.full_name }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.is_staff %}
+                                <span class="status-badge status-approved">Staff</span>
+                                {% elif user.is_moderator %}
+                                <span class="status-badge status-pending">Moderator</span>
+                                {% else %}
+                                <span class="status-badge">User</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ user.profile_url }}" class="btn btn-light btn-sm">
+                                    <i class="fas fa-user me-1"></i> Profile
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
         </div>
-    </div>
-    {% endif %}
-</div>
-{% else %}
-<div class="card shadow">
-    <div class="card-body">
-        <div class="no-results">
-            <i class="fas fa-search"></i>
-            <h4>No results found</h4>
-            <p class="text-muted">Try different keywords or check your spelling</p>
+        {% else %}
+        <div class="empty-state">
+            <span class="empty-state-icon">
+                <i class="fas fa-search"></i>
+            </span>
+            <h3 class="empty-state-title">No Results Found</h3>
+            <p class="empty-state-message">We couldn't find any results matching "{{ query }}"</p>
+            <a href="{% url 'moderation_dashboard' %}" class="btn btn-primary">
+                <i class="fas fa-home me-2"></i> Back to Dashboard
+            </a>
         </div>
+        {% endif %}
     </div>
 </div>
-{% endif %}
+
+<div class="bottom-spacer"></div>
 {% endblock %} 

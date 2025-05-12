@@ -3,65 +3,226 @@
 
 {% block extrastyle %}
 <style>
+    :root {
+        --primary: #4361ee;
+        --primary-light: rgba(67, 97, 238, 0.1);
+        --secondary: #3f37c9;
+        --success: #4cc9f0;
+        --info: #4895ef;
+        --warning: #f72585;
+        --danger: #ff4d6d;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --gray: #6c757d;
+        --gray-light: #f1f3f5;
+        --gray-dark: #343a40;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-muted: #adb5bd;
+        --border-color: #e9ecef;
+        --shadow-sm: 0 .125rem .25rem rgba(0, 0, 0, .075);
+        --shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, .175);
+        --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --border-radius: 12px;
+        --border-radius-sm: 8px;
+        --border-radius-lg: 16px;
+        --transition: all 0.2s ease-in-out;
+    }
+
+    body {
+        background-color: #f9fafb;
+        font-family: var(--font-family);
+        color: var(--text-primary);
+        min-height: 100vh;
+    }
+    
+    /* PDA Detail layout */
+    .pda-detail-container {
+        margin-bottom: 80px;
+        padding-bottom: 40px;
+    }
+    
+    .pda-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+    
+    .pda-detail-header {
+        grid-column: span 12;
+        margin-bottom: 24px;
+    }
+    
+    .pda-detail-content {
+        grid-column: span 12;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+    
+    .pda-detail-main {
+        grid-column: span 8;
+    }
+    
+    .pda-detail-sidebar {
+        grid-column: span 4;
+    }
+    
+    .bottom-spacer {
+        height: 60px;
+        width: 100%;
+    }
+    
+    @media (max-width: 992px) {
+        .pda-detail-main, .pda-detail-sidebar {
+            grid-column: span 12;
+        }
+    }
+    
+    /* Card styling */
+    .card {
+        background: white;
+        border-radius: var(--border-radius);
+        border: none;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+    
+    .card:hover {
+        box-shadow: var(--shadow);
+    }
+    
+    .card-header {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-title i {
+        margin-right: 12px;
+        color: var(--primary);
+    }
+    
+    .card-body {
+        padding: 24px;
+    }
+    
+    /* Submission Header */
     .submission-header {
-        border-bottom: 1px solid #e3e6f0;
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .submission-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text-primary);
     }
     
     .submission-meta {
         display: flex;
         flex-wrap: wrap;
         font-size: 0.85rem;
-        color: #858796;
-        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
     }
     
     .submission-meta > div {
-        margin-right: 1.5rem;
-        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        margin-right: 20px;
+        margin-bottom: 8px;
     }
     
+    .submission-meta i {
+        margin-right: 8px;
+        color: var(--primary);
+        width: 16px;
+        text-align: center;
+    }
+    
+    /* Media Container */
     .media-container {
-        background-color: #f8f9fc;
-        border-radius: 0.35rem;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        background-color: var(--gray-light);
+        border-radius: var(--border-radius);
+        padding: 24px;
+        margin-bottom: 24px;
         text-align: center;
     }
     
     .media-placeholder {
         width: 100%;
         height: 300px;
-        background-color: #e9ecef;
-        border-radius: 0.35rem;
+        background-color: var(--gray);
+        border-radius: var(--border-radius);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #6c757d;
-        font-size: 1.5rem;
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 500;
     }
     
     .media-embed {
         max-width: 100%;
         max-height: 500px;
         margin: 0 auto;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
     }
     
+    /* Description Section */
     .description-section {
-        background-color: #f8f9fc;
-        border-radius: 0.35rem;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
     }
     
+    .description-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+    }
+    
+    .description-title i {
+        margin-right: 12px;
+        color: var(--primary);
+    }
+    
+    .description-content {
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+    
+    /* Metadata Section */
     .metadata-section {
-        margin-bottom: 1.5rem;
+        margin-bottom: 24px;
     }
     
     .metadata-item {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
     }
     
     .metadata-item:last-child {
@@ -70,202 +231,398 @@
     
     .metadata-label {
         font-weight: 600;
-        color: #4e73df;
-        margin-bottom: 0.25rem;
+        font-size: 0.85rem;
+        color: var(--primary);
+        margin-bottom: 4px;
     }
     
+    .metadata-value {
+        color: var(--text-primary);
+    }
+    
+    .metadata-value a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+    
+    .metadata-value a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Review Section */
     .review-section {
-        background-color: #eaecf4;
-        border-radius: 0.35rem;
-        padding: 1.5rem;
-        margin-top: 2rem;
+        background-color: var(--primary-light);
+        border-radius: var(--border-radius);
+        padding: 24px;
+        margin-top: 24px;
+    }
+    
+    .review-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 16px;
+        color: var(--text-primary);
+    }
+    
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+    
+    .form-control {
+        border-radius: var(--border-radius-sm);
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+        font-size: 0.95rem;
+        resize: vertical;
+        min-height: 120px;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.15);
+        outline: none;
     }
     
     .review-buttons {
         display: flex;
         justify-content: space-between;
-        margin-top: 1rem;
+        margin-top: 16px;
     }
+    
+    /* Status Badge */
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-approved {
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
+    }
+    
+    .status-rejected {
+        background-color: rgba(255, 77, 109, 0.1);
+        color: var(--danger);
+    }
+    
+    .status-pending {
+        background-color: rgba(72, 149, 239, 0.1);
+        color: var(--info);
+    }
+    
+    /* Button styling */
+    .btn {
+        font-weight: 500;
+        padding: 10px 20px;
+        border-radius: var(--border-radius-sm);
+        border: none;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--secondary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-success {
+        background-color: var(--success);
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background-color: var(--info);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-danger {
+        background-color: var(--danger);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background-color: var(--warning);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-outline-primary {
+        background-color: transparent;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: var(--primary-light);
+        transform: translateY(-1px);
+    }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .btn i {
+        margin-right: 8px;
+    }
+    
+    /* Utility classes */
+    .d-flex { display: flex !important; }
+    .align-items-center { align-items: center !important; }
+    .justify-content-between { justify-content: space-between !important; }
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-1 { margin-bottom: 4px !important; }
+    .mb-2 { margin-bottom: 8px !important; }
+    .mb-3 { margin-bottom: 16px !important; }
+    .mb-4 { margin-bottom: 24px !important; }
+    .me-2 { margin-right: 8px !important; }
+    .text-muted { color: var(--text-secondary) !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">PDA Submission Review</h1>
-    <div>
-        <a href="{% url 'pda_moderation' %}" class="btn btn-sm btn-outline-primary">
-            <i class="fas fa-arrow-left fa-sm"></i> Back to PDA Queue
-        </a>
-    </div>
-</div>
-
-<div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-        <h6 class="m-0 font-weight-bold text-primary">Submission Details</h6>
-        <div>
-            {% if submission.is_approved %}
-            <span class="badge bg-success">Approved</span>
-            {% elif submission.review_date %}
-            <span class="badge bg-danger">Rejected</span>
-            {% else %}
-            <span class="badge bg-warning text-dark">Pending</span>
-            {% endif %}
+<div class="pda-detail-grid pda-detail-container">
+    <!-- Detail Header -->
+    <div class="pda-detail-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 font-weight-bold mb-0">PDA Submission Review</h1>
+            <a href="{% url 'pda_moderation' %}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Queue
+            </a>
         </div>
     </div>
-    <div class="card-body">
-        <div class="submission-header">
-            <h4>{{ submission.title }}</h4>
-            <div class="submission-meta">
-                <div>
-                    <i class="fas fa-user fa-sm"></i> Submitted by: {{ submission.user.user.username }}
+
+    <!-- Detail Content -->
+    <div class="pda-detail-content">
+        <!-- Main Content -->
+        <div class="pda-detail-main">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-photo-video"></i> Submission Details
+                    </h2>
+                    {% if submission.is_approved %}
+                    <span class="status-badge status-approved">Approved</span>
+                    {% elif submission.review_date %}
+                    <span class="status-badge status-rejected">Rejected</span>
+                    {% else %}
+                    <span class="status-badge status-pending">Pending</span>
+                    {% endif %}
                 </div>
-                <div>
-                    <i class="fas fa-calendar fa-sm"></i> Date: {{ submission.submission_date|date:"M d, Y" }}
+                <div class="card-body">
+                    <div class="submission-header">
+                        <h3 class="submission-title">{{ submission.title }}</h3>
+                        <div class="submission-meta">
+                            <div>
+                                <i class="fas fa-user"></i> {{ submission.user.user.username }}
+                            </div>
+                            <div>
+                                <i class="fas fa-calendar"></i> {{ submission.submission_date|date:"M d, Y" }}
+                            </div>
+                            <div>
+                                <i class="fas fa-tag"></i> {{ submission.category|default:"Uncategorized" }}
+                            </div>
+                            {% if submission.deepfake_type %}
+                            <div>
+                                <i class="fas fa-code-branch"></i> {{ submission.deepfake_type }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="media-container">
+                        {% if submission.media_url %}
+                            {% if submission.media_type == 'image' %}
+                                <img src="{{ submission.media_url }}" alt="{{ submission.title }}" class="img-fluid media-embed">
+                            {% elif submission.media_type == 'video' %}
+                                <video controls class="media-embed">
+                                    <source src="{{ submission.media_url }}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            {% else %}
+                                <div class="media-placeholder">
+                                    <i class="fas fa-photo-video me-2"></i> Media Preview Not Available
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="media-placeholder">
+                                <i class="fas fa-photo-video me-2"></i> No Media Attached
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="description-section">
+                        <h4 class="description-title">
+                            <i class="fas fa-align-left"></i> Description
+                        </h4>
+                        <div class="description-content">
+                            {% if submission.description %}
+                                {{ submission.description|linebreaks }}
+                            {% else %}
+                                <p class="text-muted">No description provided.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if not submission.review_date %}
+                    <div class="review-section">
+                        <h4 class="review-title">Review Submission</h4>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="review_notes" class="form-label">Moderation Notes</label>
+                                <textarea class="form-control" id="review_notes" name="review_notes" rows="4" placeholder="Add your notes about this submission..."></textarea>
+                            </div>
+                            <div class="review-buttons">
+                                <button type="submit" name="action" value="reject" class="btn btn-danger">
+                                    <i class="fas fa-times-circle"></i> Reject Submission
+                                </button>
+                                <button type="submit" name="action" value="approve" class="btn btn-success">
+                                    <i class="fas fa-check-circle"></i> Approve Submission
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
                 </div>
-                <div>
-                    <i class="fas fa-tag fa-sm"></i> Category: {{ submission.category|default:"Uncategorized" }}
-                </div>
-                {% if submission.deepfake_type %}
-                <div>
-                    <i class="fas fa-code-branch fa-sm"></i> Type: {{ submission.deepfake_type }}
-                </div>
-                {% endif %}
             </div>
         </div>
         
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="media-container">
-                    {% if submission.media_url %}
-                        {% if submission.media_type == 'image' %}
-                            <img src="{{ submission.media_url }}" alt="{{ submission.title }}" class="img-fluid media-embed">
-                        {% elif submission.media_type == 'video' %}
-                            <video controls class="media-embed">
-                                <source src="{{ submission.media_url }}" type="video/mp4">
-                                Your browser does not support the video tag.
-                            </video>
-                        {% else %}
-                            <div class="media-placeholder">
-                                <i class="fas fa-photo-video me-2"></i> Media Preview Not Available
-                            </div>
-                        {% endif %}
-                    {% else %}
-                        <div class="media-placeholder">
-                            <i class="fas fa-photo-video me-2"></i> No Media Attached
-                        </div>
-                    {% endif %}
+        <!-- Sidebar -->
+        <div class="pda-detail-sidebar">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-info-circle"></i> Additional Information
+                    </h2>
                 </div>
-                
-                <div class="description-section">
-                    <h5 class="mb-3">Description</h5>
-                    {% if submission.description %}
-                        {{ submission.description|linebreaks }}
-                    {% else %}
-                        <p class="text-muted">No description provided.</p>
-                    {% endif %}
+                <div class="card-body p-0">
+                    <div class="metadata-section">
+                        {% if submission.source_url %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Source URL</div>
+                            <div class="metadata-value">
+                                <a href="{{ submission.source_url }}" target="_blank">{{ submission.source_url }}</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if submission.creation_date %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Creation Date</div>
+                            <div class="metadata-value">{{ submission.creation_date|date:"M d, Y" }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if submission.author %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Author</div>
+                            <div class="metadata-value">{{ submission.author }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if submission.technology_used %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Technology Used</div>
+                            <div class="metadata-value">{{ submission.technology_used }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if submission.license_info %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">License Information</div>
+                            <div class="metadata-value">{{ submission.license_info }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="metadata-item">
+                            <div class="metadata-label">Submission Status</div>
+                            <div class="metadata-value">
+                                {% if submission.is_approved %}
+                                <span class="text-success"><i class="fas fa-check-circle me-2"></i> Approved</span>
+                                {% elif submission.review_date %}
+                                <span class="text-danger"><i class="fas fa-times-circle me-2"></i> Rejected</span>
+                                {% else %}
+                                <span class="text-info"><i class="fas fa-clock me-2"></i> Pending Review</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if submission.review_date %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Reviewed On</div>
+                            <div class="metadata-value">{{ submission.review_date|date:"M d, Y" }}</div>
+                        </div>
+                        
+                        <div class="metadata-item">
+                            <div class="metadata-label">Reviewed By</div>
+                            <div class="metadata-value">{{ submission.reviewer.username }}</div>
+                        </div>
+                        
+                        {% if submission.review_notes %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Review Notes</div>
+                            <div class="metadata-value">{{ submission.review_notes }}</div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             
-            <div class="col-lg-4">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Additional Information</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="metadata-section">
-                            {% if submission.source_url %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Source URL</div>
-                                <div class="metadata-value">
-                                    <a href="{{ submission.source_url }}" target="_blank">{{ submission.source_url }}</a>
-                                </div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if submission.creation_date %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Creation Date</div>
-                                <div class="metadata-value">{{ submission.creation_date|date:"M d, Y" }}</div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if submission.author %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Author</div>
-                                <div class="metadata-value">{{ submission.author }}</div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if submission.technology_used %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Technology Used</div>
-                                <div class="metadata-value">{{ submission.technology_used }}</div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if submission.reviewed_by %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Reviewed By</div>
-                                <div class="metadata-value">{{ submission.reviewed_by.username }}</div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if submission.review_date %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Review Date</div>
-                                <div class="metadata-value">{{ submission.review_date|date:"M d, Y H:i" }}</div>
-                            </div>
-                            {% endif %}
-                            
-                            {% if submission.review_notes %}
-                            <div class="metadata-item">
-                                <div class="metadata-label">Review Notes</div>
-                                <div class="metadata-value">{{ submission.review_notes }}</div>
-                            </div>
-                            {% endif %}
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-user"></i> Submitter Information
+                    </h2>
+                </div>
+                <div class="card-body p-0">
+                    <div class="metadata-section">
+                        <div class="metadata-item">
+                            <div class="metadata-label">Username</div>
+                            <div class="metadata-value">{{ submission.user.user.username }}</div>
                         </div>
-                        
-                        {% if not submission.review_date %}
-                        <div class="review-buttons">
-                            <form method="post" action="{% url 'pda_reject' submission.id %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-times-circle"></i> Reject
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'pda_approve' submission.id %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-check-circle"></i> Approve
-                                </button>
-                            </form>
+                        {% if submission.user.user.email %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Email</div>
+                            <div class="metadata-value">{{ submission.user.user.email }}</div>
                         </div>
                         {% endif %}
+                        <div class="metadata-item">
+                            <div class="metadata-label">Join Date</div>
+                            <div class="metadata-value">{{ submission.user.user.date_joined|date:"M d, Y" }}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Submission Count</div>
+                            <div class="metadata-value">{{ submission.user.submission_count }}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Approval Rate</div>
+                            <div class="metadata-value">{{ submission.user.approval_rate|floatformat:1 }}%</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        {% if not submission.review_date %}
-        <div class="review-section">
-            <h5 class="mb-3">Moderation Review</h5>
-            <form method="post" id="reviewForm">
-                {% csrf_token %}
-                <div class="form-group mb-3">
-                    <label for="reviewNotes">Review Notes:</label>
-                    <textarea class="form-control" id="reviewNotes" name="review_notes" rows="3" placeholder="Add any notes about your decision (optional)"></textarea>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <button type="submit" formaction="{% url 'pda_reject' submission.id %}" class="btn btn-danger">
-                        <i class="fas fa-times-circle"></i> Reject Submission
-                    </button>
-                    <button type="submit" formaction="{% url 'pda_approve' submission.id %}" class="btn btn-success">
-                        <i class="fas fa-check-circle"></i> Approve Submission
-                    </button>
-                </div>
-            </form>
-        </div>
-        {% endif %}
     </div>
 </div>
+
+<div class="bottom-spacer"></div>
 {% endblock %} 

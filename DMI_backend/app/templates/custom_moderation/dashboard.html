@@ -596,10 +596,10 @@
                         <i class="fas fa-exclamation-circle text-danger me-1"></i> Needs attention
                     {% elif pda_pending_count > 0 %}
                         <i class="fas fa-info-circle text-warning me-1"></i> Awaiting review
-                    {% else %}
+                            {% else %}
                         <i class="fas fa-check-circle text-success me-1"></i> All caught up
-                    {% endif %}
-                </div>
+                            {% endif %}
+                        </div>
                 <div class="stat-card-progress">
                     {% if pda_pending_count > 10 %}
                         <div class="stat-card-progress-bar bg-danger" style="width: 100%"></div>
@@ -608,7 +608,7 @@
                     {% else %}
                         <div class="stat-card-progress-bar bg-success" style="width: 30%"></div>
                     {% endif %}
-                </div>
+                    </div>
                 <div class="stat-card-action">
                     <a href="{% url 'pda_moderation' %}" class="btn btn-primary btn-block">View PDA Queue</a>
                 </div>
@@ -620,8 +620,8 @@
             <div class="stat-card-header">
                 <div class="stat-card-icon bg-success-light">
                     <i class="fas fa-comments text-success"></i>
-                </div>
-            </div>
+        </div>
+    </div>
             <div class="stat-card-body">
                 <div class="stat-card-title">Pending Forum</div>
                 <div class="stat-card-value">{{ forum_pending_count }}</div>
@@ -632,10 +632,10 @@
                         <i class="fas fa-exclamation-triangle text-warning me-1"></i> Moderate volume
                     {% elif forum_pending_count > 0 %}
                         <i class="fas fa-info-circle text-success me-1"></i> Low volume
-                    {% else %}
+                            {% else %}
                         <i class="fas fa-check-circle text-success me-1"></i> All caught up
-                    {% endif %}
-                </div>
+                            {% endif %}
+                        </div>
                 <div class="stat-card-progress">
                     {% if forum_pending_count > 15 %}
                         <div class="stat-card-progress-bar bg-danger" style="width: 100%"></div>
@@ -644,20 +644,20 @@
                     {% else %}
                         <div class="stat-card-progress-bar bg-success" style="width: 30%"></div>
                     {% endif %}
-                </div>
+                    </div>
                 <div class="stat-card-action">
                     <a href="{% url 'forum_moderation' %}" class="btn btn-success btn-block">View Forum Queue</a>
-                </div>
             </div>
         </div>
+    </div>
 
         <!-- Reports Stat Card -->
         <div class="card stat-card">
             <div class="stat-card-header">
                 <div class="stat-card-icon bg-danger-light">
                     <i class="fas fa-flag text-danger"></i>
-                </div>
-            </div>
+                        </div>
+                    </div>
             <div class="stat-card-body">
                 <div class="stat-card-title">Reported Content</div>
                 <div class="stat-card-value">{{ reported_count }}</div>
@@ -676,12 +676,12 @@
                     {% else %}
                         <div class="stat-card-progress-bar bg-success" style="width: 5%"></div>
                     {% endif %}
-                </div>
+                    </div>
                 <div class="stat-card-action">
                     <a href="{% url 'reported_content' %}" class="btn btn-danger btn-block">View Reports</a>
-                </div>
-            </div>
         </div>
+    </div>
+</div>
 
         <!-- Activity Stat Card -->
         <div class="card stat-card">
@@ -752,7 +752,7 @@
                                         <a href="{{ item.reject_url }}" class="btn btn-danger btn-sm">
                                             <i class="fas fa-times me-1"></i> Reject
                                         </a>
-                                    </div>
+            </div>
                                 </li>
                             {% endfor %}
                         </ul>
@@ -781,7 +781,7 @@
                     </h2>
                     <span class="badge badge-primary">{{ moderator_actions_count }} actions</span>
                 </div>
-                <div class="card-body">
+                    <div class="card-body">
                     <div class="activity-summary mb-4">
                         <div class="activity-summary-icon">
                             <i class="fas fa-clipboard-check fa-2x text-primary"></i>
@@ -792,15 +792,15 @@
                                 <div class="activity-stat">
                                     <span class="status-indicator status-success"></span>
                                     <span class="activity-stat-label text-success">{{ approved_count }} Approved</span>
-                                </div>
+                    </div>
                                 <div class="activity-stat">
                                     <span class="status-indicator status-danger"></span>
                                     <span class="activity-stat-label text-danger">{{ rejected_count }} Rejected</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
+            </div>
+        </div>
+    </div>
+</div>
+
                     {% if moderator_actions %}
                         <ul class="item-list">
                             {% for action in moderator_actions|slice:":5" %}
@@ -810,18 +810,18 @@
                                         <span class="badge {% if action.action_type == 'approve' %}badge-success{% elif action.action_type == 'reject' %}badge-danger{% else %}badge-warning{% endif %}">
                                             {% if action.action_type == 'approve' %}Approved{% elif action.action_type == 'reject' %}Rejected{% else %}{{ action.action_type|title }}{% endif %}
                                         </span>
-                                    </div>
+            </div>
                                     <div class="item-list-meta">
                                         <span class="me-3"><i class="fas fa-tag me-1"></i> {{ action.content_type }}</span>
                                         <span><i class="fas fa-clock me-1"></i> {{ action.timestamp|timesince }} ago</span>
-                                    </div>
+                                </div>
                                     {% if action.notes %}
                                         <div class="item-list-meta">
                                             <i class="fas fa-sticky-note me-1"></i> {{ action.notes|truncatechars:100 }}
-                                        </div>
+                                </div>
                                     {% endif %}
                                 </li>
-                            {% endfor %}
+                        {% endfor %}
                         </ul>
                     {% else %}
                         <div class="empty-state">
@@ -837,7 +837,7 @@
                     <a href="{% url 'moderation_profile' %}?tab=activity" class="btn btn-primary">
                         <i class="fas fa-history me-1"></i> View Full Activity History
                     </a>
-                </div>
+            </div>
             </div>
         </div>
         
@@ -870,9 +870,9 @@
                             {% else %}
                                 <div class="content-status-progress-bar bg-success" style="width: 30%"></div>
                             {% endif %}
-                        </div>
-                    </div>
-                    
+        </div>
+    </div>
+
                     <!-- Forum Status -->
                     <div class="content-status-item">
                         <div class="content-status-header">
@@ -893,7 +893,7 @@
                                 <div class="content-status-progress-bar bg-success" style="width: 30%"></div>
                             {% endif %}
                         </div>
-                    </div>
+            </div>
                     
                     <!-- Reported Status -->
                     <div class="content-status-item">
@@ -911,7 +911,7 @@
                                 <div class="content-status-progress-bar bg-danger" style="width: 100%"></div>
                             {% elif reported_count > 0 %}
                                 <div class="content-status-progress-bar bg-warning" style="width: 60%"></div>
-                            {% else %}
+                    {% else %}
                                 <div class="content-status-progress-bar bg-success" style="width: 5%"></div>
                             {% endif %}
                         </div>

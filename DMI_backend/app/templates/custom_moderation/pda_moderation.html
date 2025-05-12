@@ -3,193 +3,555 @@
 
 {% block extrastyle %}
 <style>
+    :root {
+        --primary: #4361ee;
+        --primary-light: rgba(67, 97, 238, 0.1);
+        --secondary: #3f37c9;
+        --success: #4cc9f0;
+        --info: #4895ef;
+        --warning: #f72585;
+        --danger: #ff4d6d;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --gray: #6c757d;
+        --gray-light: #f1f3f5;
+        --gray-dark: #343a40;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-muted: #adb5bd;
+        --border-color: #e9ecef;
+        --shadow-sm: 0 .125rem .25rem rgba(0, 0, 0, .075);
+        --shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, .175);
+        --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --border-radius: 12px;
+        --border-radius-sm: 8px;
+        --border-radius-lg: 16px;
+        --transition: all 0.2s ease-in-out;
+    }
+
+    /* PDA Moderation Layout */
+    .pda-moderation-container {
+        margin-bottom: 80px;
+        padding-bottom: 40px;
+    }
+    
+    .pda-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+    
+    .pda-header {
+        grid-column: span 12;
+    }
+    
+    .pda-content {
+        grid-column: span 12;
+    }
+    
+    .bottom-spacer {
+        height: 60px;
+        width: 100%;
+    }
+    
+    /* PDA item styling */
     .pda-item {
-        transition: all 0.2s;
-        border-left: 3px solid transparent;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        transition: var(--transition);
+        display: grid;
+        grid-template-columns: 120px 3fr 1fr 1fr 1fr;
+        align-items: center;
+        gap: 16px;
     }
     
     .pda-item:hover {
-        background-color: rgba(54, 185, 204, 0.05);
-        border-left-color: #36b9cc;
+        background-color: var(--gray-light);
     }
     
     .pda-title {
         font-weight: 600;
-        color: #333;
+        color: var(--text-primary);
+        margin-bottom: 8px;
     }
     
     .pda-details {
         font-size: 0.8rem;
-        color: #6c757d;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
     }
     
-    .pda-item .actions {
-        visibility: hidden;
-        opacity: 0;
-        transition: all 0.2s;
+    .pda-details i {
+        margin-right: 4px;
     }
     
-    .pda-item:hover .actions {
-        visibility: visible;
-        opacity: 1;
+    .pda-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
     
-    .pda-tag {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.5rem;
-        margin-right: 0.25rem;
-        border-radius: 10rem;
-    }
-    
-    .empty-state {
-        padding: 3rem;
-        text-align: center;
-        color: #6c757d;
-    }
-    
-    .empty-state-icon {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.4;
-    }
-    
+    /* Media thumbnail */
     .media-thumbnail {
         width: 100px;
-        height: 60px;
+        height: 70px;
         background-size: cover;
         background-position: center;
-        border-radius: 0.25rem;
-        background-color: #e9ecef;
+        border-radius: var(--border-radius-sm);
+        background-color: var(--gray-light);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #6c757d;
+        color: var(--text-secondary);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .media-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    /* Status badges */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.3px;
+    }
+    
+    .badge-primary {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+    
+    .badge-success {
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
+    }
+    
+    .badge-danger {
+        background-color: rgba(255, 77, 109, 0.1);
+        color: var(--danger);
+    }
+    
+    .badge-warning {
+        background-color: rgba(247, 37, 133, 0.1);
+        color: var(--warning);
+    }
+    
+    /* Button styling */
+    .btn {
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: var(--border-radius-sm);
+        border: none;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .btn-sm {
+        padding: 4px 12px;
+        font-size: 0.75rem;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--secondary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-success {
+        background-color: var(--success);
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background-color: var(--info);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-danger {
+        background-color: var(--danger);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background-color: var(--warning);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-light {
+        background-color: white;
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+    
+    .btn-light:hover {
+        background-color: var(--gray-light);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* Empty state */
+    .empty-state {
+        padding: 48px 24px;
+        text-align: center;
+        background: linear-gradient(180deg, rgba(249, 250, 251, 0) 0%, rgba(249, 250, 251, 0.5) 100%);
+    }
+    
+    .empty-state-icon {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        display: inline-block;
+        color: var(--gray);
+        opacity: 0.5;
+    }
+    
+    .empty-state-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+    
+    .empty-state-message {
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    /* Pagination */
+    .pagination {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        gap: 4px;
+    }
+    
+    .pagination .page-item .page-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--border-radius-sm);
+        background-color: white;
+        color: var(--text-primary);
+        text-decoration: none;
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+    }
+    
+    .pagination .page-item .page-link:hover {
+        background-color: var(--gray-light);
+        border-color: var(--gray);
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .pagination .page-item.disabled .page-link {
+        color: var(--text-muted);
+        pointer-events: none;
+        background-color: var(--light);
+    }
+    
+    /* Card styling */
+    .card {
+        background: white;
+        border-radius: var(--border-radius);
+        border: none;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+    
+    .card:hover {
+        box-shadow: var(--shadow);
+    }
+    
+    .card-header {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-title i {
+        margin-right: 8px;
+    }
+    
+    .card-body {
+        padding: 0;
+    }
+    
+    /* Table Header */
+    .pda-header-row {
+        display: grid;
+        grid-template-columns: 120px 3fr 1fr 1fr 1fr;
+        padding: 12px 24px;
+        background-color: var(--gray-light);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        gap: 16px;
+    }
+    
+    /* Utility classes */
+    .d-flex { display: flex !important; }
+    .align-items-center { align-items: center !important; }
+    .justify-content-between { justify-content: space-between !important; }
+    .justify-content-center { justify-content: center !important; }
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-1 { margin-bottom: 4px !important; }
+    .mb-2 { margin-bottom: 8px !important; }
+    .mb-3 { margin-bottom: 16px !important; }
+    .mb-4 { margin-bottom: 24px !important; }
+    .mt-1 { margin-top: 4px !important; }
+    .mt-2 { margin-top: 8px !important; }
+    .mt-3 { margin-top: 16px !important; }
+    .mt-4 { margin-top: 24px !important; }
+    .ms-1 { margin-left: 4px !important; }
+    .ms-2 { margin-left: 8px !important; }
+    .me-1 { margin-right: 4px !important; }
+    .me-2 { margin-right: 8px !important; }
+    .gap-1 { gap: 4px !important; }
+    .gap-2 { gap: 8px !important; }
+    
+    @media (max-width: 992px) {
+        .pda-item, .pda-header-row {
+            grid-template-columns: 100px 2fr 1fr 1fr;
+        }
+        
+        .pda-item {
+            padding: 16px;
+        }
+        
+        .pda-header-row > div:nth-child(n+5),
+        .pda-item > div:nth-child(n+5) {
+            display: none;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .pda-item, .pda-header-row {
+            grid-template-columns: 80px 1fr;
+            gap: 12px;
+        }
+        
+        .pda-header-row > div:nth-child(n+3),
+        .pda-item > div:nth-child(n+3) {
+            display: none;
+        }
+        
+        .media-thumbnail {
+            width: 80px;
+            height: 60px;
+        }
+        
+        .pda-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .pda-meta > div {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+        }
+        
+        .pda-meta > div i {
+            margin-right: 4px;
+        }
+        
+        .pda-actions {
+            margin-top: 8px;
+            flex-direction: row;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">PDA Moderation</h1>
-    <div>
-        <span class="badge bg-warning text-dark me-2">
-            <i class="fas fa-clock"></i> {{ pending_count }} Pending
-        </span>
+<div class="pda-grid pda-moderation-container">
+    <!-- Header -->
+    <div class="pda-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 font-weight-bold mb-0">PDA Moderation</h1>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge badge-warning">
+                    <i class="fas fa-clock me-1"></i> {{ pending_count }} Pending
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDA Content -->
+    <div class="pda-content">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-photo-video"></i> Public Deepfake Archive Submissions
+                </h2>
+            </div>
+            <div class="card-body">
+                {% if pending_submissions %}
+                    <!-- PDA Header -->
+                    <div class="pda-header-row">
+                        <div>Media</div>
+                        <div>Title</div>
+                        <div>Submitter</div>
+                        <div>Date</div>
+                        <div>Actions</div>
+                    </div>
+                    
+                    <!-- PDA Items -->
+                    {% for submission in pending_submissions %}
+                    <div class="pda-item">
+                        <div>
+                            <div class="media-thumbnail">
+                                {% if submission.thumbnail_url %}
+                                <img src="{{ submission.thumbnail_url }}" alt="Thumbnail">
+                                {% else %}
+                                <i class="fas fa-photo-video"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div>
+                            <div class="pda-title">{{ submission.title }}</div>
+                            <div class="pda-details">
+                                <i class="fas fa-tag"></i> {{ submission.category|default:"Uncategorized" }}
+                            </div>
+                            <!-- Mobile-only meta data -->
+                            <div class="pda-meta d-none">
+                                <div><i class="fas fa-user"></i> {{ submission.user.user.username }}</div>
+                                <div><i class="fas fa-calendar"></i> {{ submission.submission_date|date:"M d, Y" }}</div>
+                                <div class="pda-actions">
+                                    <a href="{% url 'pda_detail' submission.id %}" class="btn btn-primary btn-sm me-1">
+                                        <i class="fas fa-eye me-1"></i> View
+                                    </a>
+                                    <a href="{% url 'pda_approve' submission.id %}" class="btn btn-success btn-sm me-1">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    <a href="{% url 'pda_reject' submission.id %}" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div>{{ submission.user.user.username }}</div>
+                        <div>{{ submission.submission_date|date:"M d, Y" }}</div>
+                        <div class="pda-actions">
+                            <a href="{% url 'pda_detail' submission.id %}" class="btn btn-primary btn-sm mb-1">
+                                <i class="fas fa-eye me-1"></i> View
+                            </a>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'pda_approve' submission.id %}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                                <a href="{% url 'pda_reject' submission.id %}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Pagination -->
+                    {% if pending_submissions.has_other_pages %}
+                    <div class="d-flex justify-content-center mt-4 mb-4">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                {% if pending_submissions.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ pending_submissions.previous_page_number }}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in pending_submissions.paginator.page_range %}
+                                    {% if pending_submissions.number == num %}
+                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                    {% else %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if pending_submissions.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ pending_submissions.next_page_number }}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-photo-video"></i>
+                        </div>
+                        <h4 class="empty-state-title">No PDA submissions to moderate</h4>
+                        <p class="empty-state-message">There are currently no Public Deepfake Archive submissions requiring moderation.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-        <h6 class="m-0 font-weight-bold text-primary">Public Deepfake Archive Submissions</h6>
-    </div>
-    <div class="card-body">
-        {% if pending_submissions %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th width="110">Media</th>
-                            <th>Title</th>
-                            <th>Submitter</th>
-                            <th>Date</th>
-                            <th width="150">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for submission in pending_submissions %}
-                        <tr class="pda-item">
-                            <td>
-                                <div class="media-thumbnail">
-                                    {% if submission.thumbnail_url %}
-                                    <img src="{{ submission.thumbnail_url }}" alt="Thumbnail" class="img-fluid">
-                                    {% else %}
-                                    <i class="fas fa-photo-video"></i>
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td>
-                                <div class="pda-title">{{ submission.title }}</div>
-                                <div class="pda-details">
-                                    <span><i class="fas fa-tag fa-sm"></i> {{ submission.category|default:"Uncategorized" }}</span>
-                                </div>
-                            </td>
-                            <td>{{ submission.user.user.username }}</td>
-                            <td>{{ submission.submission_date|date:"M d, Y" }}</td>
-                            <td>
-                                <div class="actions">
-                                    <a href="{% url 'pda_detail' submission.id %}" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <div class="btn-group mt-1">
-                                        <a href="{% url 'pda_approve' submission.id %}" class="btn btn-sm btn-success">
-                                            <i class="fas fa-check"></i>
-                                        </a>
-                                        <a href="{% url 'pda_reject' submission.id %}" class="btn btn-sm btn-danger">
-                                            <i class="fas fa-times"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Pagination -->
-            {% if pending_submissions.has_other_pages %}
-            <div class="d-flex justify-content-center mt-4">
-                <nav aria-label="Page navigation">
-                    <ul class="pagination">
-                        {% if pending_submissions.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ pending_submissions.previous_page_number }}" aria-label="Previous">
-                                <span aria-hidden="true">&laquo;</span>
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled">
-                            <a class="page-link" href="#" aria-label="Previous">
-                                <span aria-hidden="true">&laquo;</span>
-                            </a>
-                        </li>
-                        {% endif %}
-                        
-                        {% for num in pending_submissions.paginator.page_range %}
-                            {% if pending_submissions.number == num %}
-                            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
-                            {% else %}
-                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-                            {% endif %}
-                        {% endfor %}
-                        
-                        {% if pending_submissions.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ pending_submissions.next_page_number }}" aria-label="Next">
-                                <span aria-hidden="true">&raquo;</span>
-                            </a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled">
-                            <a class="page-link" href="#" aria-label="Next">
-                                <span aria-hidden="true">&raquo;</span>
-                            </a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
-            {% endif %}
-            
-        {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    <i class="fas fa-photo-video"></i>
-                </div>
-                <h4>No PDA submissions to moderate</h4>
-                <p>There are currently no Public Deepfake Archive submissions requiring moderation.</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
+<div class="bottom-spacer"></div>
 {% endblock %} 

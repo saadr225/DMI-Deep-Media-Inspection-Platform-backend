@@ -1,419 +1,790 @@
-{% extends "custom_admin/base.html" %}
-{% block title %}Dashboard{% endblock %}
-
-{% block extrastyle %}
+{% extends "custom_admin/base.html" %} {% block title %}Dashboard{% endblock %} {% block extrastyle %}
 <style>
-    .stat-card {
-        border-radius: 0.5rem;
-        transition: transform 0.3s;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .stat-icon {
-        font-size: 2rem;
-        opacity: 0.8;
-    }
-    
-    .stat-count {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    
-    .stat-label {
-        font-size: 0.9rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    
-    .activity-item {
-        position: relative;
-        padding: 0.75rem 1.25rem;
-        transition: background-color 0.3s;
-        border-radius: -50px;
-    }
-    
-    .activity-item:hover {
-        background-color: rgba(0, 0, 0, 0.03);
-    }
-    
-    .activity-item:not(:last-child) {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-    }
-    
-    .activity-time {
-        font-size: 0.75rem;
-        color: #6c757d;
-    }
-    
-    .action-card {
-        height: 100%;
-        transition: transform 0.3s;
-    }
-    
-    .action-card:hover {
-        transform: translateY(-5px);
-    }
-    
-    .action-icon {
-        font-size: 1.75rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .chart-container {
-        position: relative;
-        height: 300px;
+  :root {
+    --primary: #2ecc71;
+    --primary-light: rgba(46, 204, 113, 0.1);
+    --secondary: #27ae60;
+    --success: #3498db;
+    --info: #1abc9c;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray: #6c757d;
+    --gray-light: #f1f3f5;
+    --gray-dark: #343a40;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    --border-color: #e9ecef;
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --border-radius: 12px;
+    --border-radius-sm: 8px;
+    --border-radius-lg: 16px;
+    --transition: all 0.2s ease-in-out;
+  }
+
+  body {
+    background-color: #f9fafb;
+    font-family: var(--font-family);
+    color: var(--text-primary);
+    min-height: 100vh;
+  }
+
+  /* Dashboard layout */
+  .dashboard-container {
+    margin-bottom: 80px;
+    padding-bottom: 40px;
+  }
+
+  .bottom-spacer {
+    height: 60px;
+    width: 100%;
+  }
+
+  /* Dashboard Grid Layout */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: 24px;
+  }
+
+  .dashboard-header {
+    grid-column: span 12;
+  }
+
+  .dashboard-stats {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 20px;
+  }
+
+  .dashboard-content {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: 24px;
+  }
+
+  .content-left {
+    grid-column: span 8;
+  }
+
+  .content-right {
+    grid-column: span 4;
+  }
+
+  @media (max-width: 1200px) {
+    .dashboard-stats {
+      grid-template-columns: repeat(2, 1fr);
     }
 
+    .content-left,
+    .content-right {
+      grid-column: span 12;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-stats {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Card styling */
+  .card {
+    background: white;
+    border-radius: var(--border-radius);
+    border: none;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    height: 100%;
+  }
+
+  .card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+  }
+
+  .card-header {
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0;
+    color: var(--text-primary);
+  }
+
+  .card-body {
+    padding: 24px;
+  }
+
+  .card-footer {
+    background: white;
+    border-top: 1px solid var(--border-color);
+    padding: 16px 24px;
+  }
+
+  /* Stats Card */
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card-header {
+    padding: 24px 24px 16px;
+  }
+
+  .stat-card-body {
+    padding: 0 24px 24px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+  }
+
+  .stat-card-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: baseline;
+  }
+
+  .stat-card-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+  }
+
+  .stat-card-progress {
+    height: 4px;
+    border-radius: 2px;
+    background-color: var(--gray-light);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .stat-card-progress-bar {
+    height: 100%;
+    border-radius: 2px;
+  }
+
+  .stat-card-action {
+    margin-top: auto;
+  }
+
+  /* Items list styling */
+  .item-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item-list-item {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+  }
+
+  .item-list-item:last-child {
+    border-bottom: none;
+  }
+
+  .item-list-item:hover {
+    background-color: var(--gray-light);
+  }
+
+  .item-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .item-list-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .item-list-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .item-list-meta {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .item-list-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Action item styling */
+  .action-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+    text-decoration: none;
+    color: var(--text-primary);
+  }
+
+  .action-item:last-child {
+    border-bottom: none;
+  }
+
+  .action-item:hover {
+    background-color: var(--gray-light);
+    color: var(--text-primary);
+  }
+
+  .action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    flex-shrink: 0;
+  }
+
+  .icon-bg-primary {
+    background-color: var(--primary-light);
+    color: var(--primary);
+  }
+
+  .icon-bg-success {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--success);
+  }
+
+  .icon-bg-info {
+    background-color: rgba(26, 188, 156, 0.1);
+    color: var(--info);
+  }
+
+  .icon-bg-warning {
+    background-color: rgba(243, 156, 18, 0.1);
+    color: var(--warning);
+  }
+
+  .icon-bg-danger {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: var(--danger);
+  }
+
+  /* Content status styling */
+  .content-status-item {
+    margin-bottom: 20px;
+  }
+
+  .content-status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .content-status-title {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+  }
+
+  .content-status-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+  }
+
+  .content-status-progress {
+    height: 8px;
+    border-radius: 4px;
+    background-color: var(--gray-light);
+    overflow: hidden;
+  }
+
+  .content-status-progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+
+  /* Empty State */
+  .empty-state {
+    padding: 48px 24px;
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    font-size: 2.5rem;
+    margin-bottom: 16px;
+    display: inline-block;
+    color: var(--text-muted);
+  }
+
+  .empty-state-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .empty-state-message {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+  }
+
+  /* Utility classes */
+  .mb-0 {
+    margin-bottom: 0 !important;
+  }
+  .mb-1 {
+    margin-bottom: 4px !important;
+  }
+  .mb-2 {
+    margin-bottom: 8px !important;
+  }
+  .mb-3 {
+    margin-bottom: 16px !important;
+  }
+  .mb-4 {
+    margin-bottom: 24px !important;
+  }
+  .mb-5 {
+    margin-bottom: 32px !important;
+  }
+
+  .mt-0 {
+    margin-top: 0 !important;
+  }
+  .mt-1 {
+    margin-top: 4px !important;
+  }
+  .mt-2 {
+    margin-top: 8px !important;
+  }
+  .mt-3 {
+    margin-top: 16px !important;
+  }
+  .mt-4 {
+    margin-top: 24px !important;
+  }
+  .mt-5 {
+    margin-top: 32px !important;
+  }
+
+  .ms-1 {
+    margin-left: 4px !important;
+  }
+  .ms-2 {
+    margin-left: 8px !important;
+  }
+  .ms-3 {
+    margin-left: 16px !important;
+  }
+
+  .me-1 {
+    margin-right: 4px !important;
+  }
+  .me-2 {
+    margin-right: 8px !important;
+  }
+  .me-3 {
+    margin-right: 16px !important;
+  }
+
+  .p-0 {
+    padding: 0 !important;
+  }
+
+  .bg-primary-light {
+    background-color: var(--primary-light) !important;
+  }
+  .bg-success-light {
+    background-color: rgba(52, 152, 219, 0.1) !important;
+  }
+  .bg-info-light {
+    background-color: rgba(26, 188, 156, 0.1) !important;
+  }
+  .bg-danger-light {
+    background-color: rgba(231, 76, 60, 0.1) !important;
+  }
+  .bg-warning-light {
+    background-color: rgba(243, 156, 18, 0.1) !important;
+  }
+
+  .badge-primary {
+    background-color: var(--primary-light);
+    color: var(--primary);
+  }
+
+  .badge-success {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--success);
+  }
+
+  .badge-danger {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: var(--danger);
+  }
+
+  .badge-warning {
+    background-color: rgba(243, 156, 18, 0.1);
+    color: var(--warning);
+  }
 </style>
-{% endblock %}
-
-{% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Admin Dashboard</h1>
-    <div>
-        <a href="{% url 'custom_admin_analytics' %}" class="btn btn-primary btn-sm ms-2">
-            <i class="fas fa-chart-line fa-sm"></i> View Analytics
+{% endblock %} {% block content %}
+<div class="dashboard-grid dashboard-container">
+  <!-- Dashboard Header -->
+  <div class="dashboard-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="h3 font-weight-bold mb-1">Admin Dashboard</h1>
+        <p class="text-muted mb-0">Welcome back, {{ request.user.first_name|default:request.user.username }}</p>
+      </div>
+      <div>
+        <a href="{% url 'custom_admin_analytics' %}" class="btn btn-primary btn-sm">
+          <i class="fas fa-chart-line me-2"></i> View Analytics
         </a>
-        <a href="{% url 'custom_admin_settings' %}" class="btn btn-secondary btn-sm ms-2">
-            <i class="fas fa-cog fa-sm"></i> Settings
+        <a href="{% url 'custom_admin_settings' %}" class="btn btn-outline-primary btn-sm ms-2">
+          <i class="fas fa-cog me-2"></i> Settings
         </a>
+      </div>
     </div>
+  </div>
+
+  <!-- Dashboard Stats -->
+  <div class="dashboard-stats mb-4">
+    <!-- Total Users Stat -->
+    <div class="card stat-card">
+      <div class="stat-card-header">
+        <div class="stat-card-icon bg-primary-light">
+          <i class="fas fa-users text-primary"></i>
+        </div>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-title">Total Users</div>
+        <div class="stat-card-value">{{ total_users }}</div>
+        <div class="stat-card-label"><i class="fas fa-arrow-up text-success me-1"></i> {{ new_users_percent }}% from last month</div>
+        <div class="stat-card-progress">
+          <div class="stat-card-progress-bar bg-primary" style="width: {{ new_users_percent }}%"></div>
+        </div>
+        <div class="stat-card-action">
+          <a href="{% url 'custom_admin_users' %}" class="btn btn-primary btn-block">View Users</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PDA Submissions Stat -->
+    <div class="card stat-card">
+      <div class="stat-card-header">
+        <div class="stat-card-icon bg-success-light">
+          <i class="fas fa-photo-video text-success"></i>
+        </div>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-title">PDA Submissions</div>
+        <div class="stat-card-value">{{ total_pda }}</div>
+        <div class="stat-card-label"><i class="fas fa-arrow-up text-success me-1"></i> {{ new_pda_percent }}% from last month</div>
+        <div class="stat-card-progress">
+          <div class="stat-card-progress-bar bg-success" style="width: {{ new_pda_percent }}%"></div>
+        </div>
+        <div class="stat-card-action">
+          <a href="{% url 'custom_admin_pda_list' %}" class="btn btn-success btn-block">View PDA</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forum Threads Stat -->
+    <div class="card stat-card">
+      <div class="stat-card-header">
+        <div class="stat-card-icon bg-info-light">
+          <i class="fas fa-comments text-info"></i>
+        </div>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-title">Forum Threads</div>
+        <div class="stat-card-value">{{ total_threads }}</div>
+        <div class="stat-card-label"><i class="fas fa-arrow-up text-success me-1"></i> {{ new_threads_percent }}% from last month</div>
+        <div class="stat-card-progress">
+          <div class="stat-card-progress-bar bg-info" style="width: {{ new_threads_percent }}%"></div>
+        </div>
+        <div class="stat-card-action">
+          <a href="{% url 'custom_admin_forum' %}" class="btn btn-info btn-block">View Forum</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Approvals Stat -->
+    <div class="card stat-card">
+      <div class="stat-card-header">
+        <div class="stat-card-icon bg-warning-light">
+          <i class="fas fa-exclamation text-warning"></i>
+        </div>
+      </div>
+      <div class="stat-card-body">
+        <div class="stat-card-title">Pending Approvals</div>
+        <div class="stat-card-value">{{ pending_total }}</div>
+        <div class="stat-card-label"><i class="fas fa-exclamation-circle text-danger me-1"></i> Requires attention</div>
+        <div class="stat-card-progress">
+          {% if pending_total > 10 %}
+          <div class="stat-card-progress-bar bg-danger" style="width: 100%"></div>
+          {% elif pending_total > 5 %}
+          <div class="stat-card-progress-bar bg-warning" style="width: 60%"></div>
+          {% else %}
+          <div class="stat-card-progress-bar bg-success" style="width: 30%"></div>
+          {% endif %}
+        </div>
+        <div class="stat-card-action">
+          <a href="{% url 'custom_admin_pending' %}" class="btn btn-warning btn-block">View Pending</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div class="dashboard-content">
+    <!-- Main Content - Pending Approvals -->
+    <div class="content-left">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="card-title"><i class="fas fa-hourglass-half me-2"></i> Pending Approvals</h6>
+          <a href="{% url 'custom_admin_pending' %}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+          {% if pending_items %}
+          <ul class="item-list">
+            {% for item in pending_items %}
+            <li class="item-list-item">
+              <div class="item-list-header">
+                <h3 class="item-list-title">{{ item.title }}</h3>
+                <span
+                  class="badge {% if item.type == 'PDA' %}badge-success{% elif item.type == 'Thread' %}badge-info{% else %}badge-primary{% endif %}"
+                >
+                  {{ item.type }}
+                </span>
+              </div>
+              <div class="item-list-meta">
+                <span class="me-3"><i class="fas fa-user me-1"></i> {{ item.author }}</span>
+                <span><i class="fas fa-clock me-1"></i> {{ item.submission_date|timesince }} ago</span>
+              </div>
+              <div class="item-list-actions">
+                <a href="{{ item.url }}" class="btn btn-sm btn-primary"> <i class="fas fa-eye me-1"></i> Review </a>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="empty-state">
+            <span class="empty-state-icon">
+              <i class="fas fa-check-circle"></i>
+            </span>
+            <h5 class="empty-state-title">All Clear!</h5>
+            <p class="empty-state-message">No pending approvals at this time.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="card">
+        <div class="card-header">
+          <h6 class="card-title"><i class="fas fa-history me-2"></i> Recent Activity</h6>
+          <a href="{% url 'custom_admin_logs' %}" class="btn btn-sm btn-outline-primary">View Logs</a>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_activities %}
+          <ul class="item-list">
+            {% for activity in recent_activities %}
+            <li class="item-list-item">
+              <div class="item-list-header">
+                <h3 class="item-list-title">{{ activity.description }}</h3>
+                <span
+                  class="badge {% if activity.action_type == 'add' %}badge-primary{% elif activity.action_type == 'edit' %}badge-info{% elif activity.action_type == 'delete' %}badge-danger{% else %}badge-success{% endif %}"
+                >
+                  {{ activity.action_type|title }}
+                </span>
+              </div>
+              <div class="item-list-meta">
+                <span class="me-3"><i class="fas fa-user me-1"></i> {{ activity.user }}</span>
+                <span><i class="fas fa-clock me-1"></i> {{ activity.timestamp|timesince }} ago</span>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="empty-state">
+            <span class="empty-state-icon">
+              <i class="fas fa-history"></i>
+            </span>
+            <h5 class="empty-state-title">No Recent Activity</h5>
+            <p class="empty-state-message">Activity logs will appear here.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Content -->
+    <div class="content-right">
+      <!-- Quick Actions -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="card-title"><i class="fas fa-bolt me-2"></i> Quick Actions</h6>
+        </div>
+        <div class="card-body p-0">
+          <a href="{% url 'custom_admin_user_add' %}" class="action-item">
+            <div class="action-icon icon-bg-primary">
+              <i class="fas fa-user-plus"></i>
+            </div>
+            <div>
+              <h6 class="mb-1">Add New User</h6>
+              <p class="text-muted mb-0 small">Create user account</p>
+            </div>
+          </a>
+          <a href="{% url 'custom_admin_moderators' %}" class="action-item">
+            <div class="action-icon icon-bg-success">
+              <i class="fas fa-user-shield"></i>
+            </div>
+            <div>
+              <h6 class="mb-1">Manage Moderators</h6>
+              <p class="text-muted mb-0 small">Review/assign permissions</p>
+            </div>
+          </a>
+          <a href="{% url 'custom_admin_pda_list' %}?filter=pending" class="action-item">
+            <div class="action-icon icon-bg-info">
+              <i class="fas fa-photo-video"></i>
+            </div>
+            <div>
+              <h6 class="mb-1">Approve PDA</h6>
+              <p class="text-muted mb-0 small">Review pending submissions</p>
+            </div>
+          </a>
+          <a href="{% url 'custom_admin_forum' %}" class="action-item">
+            <div class="action-icon icon-bg-warning">
+              <i class="fas fa-comments"></i>
+            </div>
+            <div>
+              <h6 class="mb-1">Forum Management</h6>
+              <p class="text-muted mb-0 small">Manage forum content</p>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Content Status -->
+      <div class="card">
+        <div class="card-header">
+          <h6 class="card-title"><i class="fas fa-signal me-2"></i> System Status</h6>
+        </div>
+        <div class="card-body">
+          <!-- PDA Status -->
+          <div class="content-status-item">
+            <div class="content-status-header">
+              <div class="content-status-title">
+                <div class="content-status-icon bg-primary-light">
+                  <i class="fas fa-photo-video text-primary"></i>
+                </div>
+                <span>PDA Content</span>
+              </div>
+              <span class="badge badge-primary">{{ total_pda }}</span>
+            </div>
+            <div class="content-status-progress">
+              <div class="content-status-progress-bar bg-primary" style="width: 75%"></div>
+            </div>
+          </div>
+
+          <!-- Forum Status -->
+          <div class="content-status-item">
+            <div class="content-status-header">
+              <div class="content-status-title">
+                <div class="content-status-icon bg-success-light">
+                  <i class="fas fa-comments text-success"></i>
+                </div>
+                <span>Forum Content</span>
+              </div>
+              <span class="badge badge-success">{{ total_threads }}</span>
+            </div>
+            <div class="content-status-progress">
+              <div class="content-status-progress-bar bg-success" style="width: 65%"></div>
+            </div>
+          </div>
+
+          <!-- Storage Status -->
+          <div class="content-status-item mb-0">
+            <div class="content-status-header">
+              <div class="content-status-title">
+                <div class="content-status-icon bg-info-light">
+                  <i class="fas fa-server text-info"></i>
+                </div>
+                <span>Storage Usage</span>
+              </div>
+              <span class="badge badge-info">65%</span>
+            </div>
+            <div class="content-status-progress">
+              <div class="content-status-progress-bar bg-info" style="width: 65%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Quick Stats Row -->
-<div class="row">
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Users</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_users }}</div>
-                        <div class="text-xs text-success">
-                            <i class="fas fa-arrow-up"></i> {{ new_users_percent }}% from last month
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-users fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">PDA Submissions</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pda }}</div>
-                        <div class="text-xs text-success">
-                            <i class="fas fa-arrow-up"></i> {{ new_pda_percent }}% from last month
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-photo-video fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Forum Threads</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_threads }}</div>
-                        <div class="text-xs text-success">
-                            <i class="fas fa-arrow-up"></i> {{ new_threads_percent }}% from last month
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-comments fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2 stat-card">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pending Approvals</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_total }}</div>
-                        <div class="text-xs text-danger">
-                            <i class="fas fa-exclamation-circle"></i> Requires attention
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-exclamation fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Activity and Actions Row -->
-<div class="row">
-    <!-- Activity Chart -->
-    <div class="col-lg-8">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Activity Overview</h6>
-                <div class="dropdown no-arrow">
-                    <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-end shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
-                        <a class="dropdown-item" href="#">Last 7 Days</a>
-                        <a class="dropdown-item" href="#">Last 30 Days</a>
-                        <a class="dropdown-item" href="#">Last 90 Days</a>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="activityChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Action Cards -->
-    <div class="col-lg-4">
-        <div class="row">
-            <div class="col-md-6 col-lg-12 mb-4">
-                <div class="card bg-primary text-white shadow action-card">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <i class="fas fa-user-plus action-icon"></i>
-                            <div class="text-uppercase mb-1">Add New User</div>
-                            <a href="{% url 'custom_admin_user_add' %}" class="btn btn-light btn-sm mt-2">Go</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-12 mb-4">
-                <div class="card bg-success text-white shadow action-card">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <i class="fas fa-shield-alt action-icon"></i>
-                            <div class="text-uppercase mb-1">Manage Moderators</div>
-                            <a href="{% url 'custom_admin_moderators' %}" class="btn btn-light btn-sm mt-2">Go</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-12 mb-4">
-                <div class="card bg-info text-white shadow action-card">
-                    <div class="card-body">
-                        <div class="text-center">
-                            <i class="fas fa-photo-video action-icon"></i>
-                            <div class="text-uppercase mb-1">Approve PDA</div>
-                            <a href="{% url 'custom_admin_pda_list' %}?filter=pending" class="btn btn-light btn-sm mt-2">Go</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Activities and Pending Approvals Row -->
-<div class="row">
-    <!-- Pending Approvals -->
-    <div class="col-lg-6">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Pending Approvals</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="list-group">
-                    {% if pending_items %}
-                        {% for item in pending_items %}
-                            <div class="list-group-item activity-item">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ item.title }}</h6>
-                                    <small class="activity-time">{{ item.submission_date|timesince }} ago</small>
-                                </div>
-                                <p class="mb-1">{{ item.type }} by {{ item.author }}</p>
-                                <div class="d-flex mt-2">
-                                    <a href="{{ item.url }}" class="btn btn-sm btn-primary">View</a>
-                                    <a href="{{ item.approve_url }}" class="btn btn-sm btn-success ms-2">Approve</a>
-                                    <a href="{{ item.reject_url }}" class="btn btn-sm btn-danger ms-2">Reject</a>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="list-group-item">
-                            <p class="mb-0 text-center">No pending approvals right now.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="card-footer">
-                <a href="{% url 'custom_admin_pending' %}" class="btn btn-primary btn-sm">View All Pending Items</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Recent Activities -->
-    <div class="col-lg-6">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Recent Activities</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="list-group">
-                    {% if recent_activities %}
-                        {% for activity in recent_activities %}
-                            <div class="list-group-item activity-item">
-                                <div class="d-flex w-100 justify-content-between">
-                                    <h6 class="mb-1">{{ activity.title }}</h6>
-                                    <small class="activity-time">{{ activity.timestamp|timesince }} ago</small>
-                                </div>
-                                <p class="mb-1">
-                                    {% if activity.action_type == 'create' %}
-                                        <span class="text-success"><i class="fas fa-plus-circle"></i> Created</span>
-                                    {% elif activity.action_type == 'update' %}
-                                        <span class="text-primary"><i class="fas fa-edit"></i> Updated</span>
-                                    {% elif activity.action_type == 'delete' %}
-                                        <span class="text-danger"><i class="fas fa-trash"></i> Deleted</span>
-                                    {% elif activity.action_type == 'approve' %}
-                                        <span class="text-success"><i class="fas fa-check-circle"></i> Approved</span>
-                                    {% elif activity.action_type == 'reject' %}
-                                        <span class="text-danger"><i class="fas fa-times-circle"></i> Rejected</span>
-                                    {% endif %}
-                                    {{ activity.content_type }} by {{ activity.user }}
-                                </p>
-                                {% if activity.url %}
-                                    <small><a href="{{ activity.url }}">View details</a></small>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="list-group-item">
-                            <p class="mb-0 text-center">No recent activities found.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="card-footer">
-                <a href="{% url 'custom_admin_logs' %}" class="btn btn-primary btn-sm">View All Activities</a>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="bottom-spacer"></div>
+{% endblock %} {% block extrascripts %}
+<!-- No additional scripts needed -->
 {% endblock %}
-
-{% block extrascripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Activity Chart
-    const activityCtx = document.getElementById('activityChart').getContext('2d');
-    const activityChart = new Chart(activityCtx, {
-        type: 'line',
-        data: {
-            labels: {{ days_labels|safe }},
-            datasets: [
-                {
-                    label: 'Users',
-                    borderColor: '#4e73df',
-                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                    data: {{ users_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#4e73df',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'PDA Submissions',
-                    borderColor: '#1cc88a',
-                    backgroundColor: 'rgba(28, 200, 138, 0.05)',
-                    data: {{ pda_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#1cc88a',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: 'Forum Threads',
-                    borderColor: '#36b9cc',
-                    backgroundColor: 'rgba(54, 185, 204, 0.05)',
-                    data: {{ threads_data|safe }},
-                    borderWidth: 3,
-                    pointBackgroundColor: '#36b9cc',
-                    pointBorderColor: '#fff',
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    tension: 0.3,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            maintainAspectRatio: false,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 25,
-                    top: 25,
-                    bottom: 0
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: "rgba(0, 0, 0, 0.05)",
-                        drawBorder: false
-                    },
-                    ticks: {
-                        maxTicksLimit: 5
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    backgroundColor: "rgb(255,255,255)",
-                    bodyColor: "#858796",
-                    titleColor: "#6e707e",
-                    titleMarginBottom: 10,
-                    borderColor: '#dddfeb',
-                    borderWidth: 1,
-                    padding: 15,
-                    displayColors: false,
-                    intersect: false,
-                    mode: 'index',
-                }
-            }
-        }
-    });
-});
-</script>
-{% endblock %} 

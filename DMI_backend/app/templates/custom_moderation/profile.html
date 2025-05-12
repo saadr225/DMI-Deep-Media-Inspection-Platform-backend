@@ -3,17 +3,76 @@
 
 {% block extrastyle %}
 <style>
+    :root {
+        --primary: #4361ee;
+        --primary-light: rgba(67, 97, 238, 0.1);
+        --secondary: #3f37c9;
+        --success: #4cc9f0;
+        --info: #4895ef;
+        --warning: #f72585;
+        --danger: #ff4d6d;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --gray: #6c757d;
+        --gray-light: #f1f3f5;
+        --gray-dark: #343a40;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --text-muted: #adb5bd;
+        --border-color: #e9ecef;
+        --shadow-sm: 0 .125rem .25rem rgba(0, 0, 0, .075);
+        --shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, .175);
+        --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --border-radius: 12px;
+        --border-radius-sm: 8px;
+        --border-radius-lg: 16px;
+        --transition: all 0.2s ease-in-out;
+    }
+
+    /* Profile Layout */
+    .profile-container {
+        margin-bottom: 80px;
+        padding-bottom: 40px;
+    }
+    
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+    
+    .profile-header-wrapper {
+        grid-column: span 12;
+        margin-bottom: 24px;
+    }
+    
+    .profile-content {
+        grid-column: span 12;
+    }
+    
+    .bottom-spacer {
+        height: 60px;
+        width: 100%;
+    }
+    
+    /* Profile Header */
     .profile-header {
-        background-color: #f7f9fc;
-        border-radius: 0.5rem;
-        padding: 2rem;
-        margin-bottom: 2rem;
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 32px;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+    
+    .profile-header:hover {
+        box-shadow: var(--shadow);
     }
     
     .profile-avatar {
         width: 100px;
         height: 100px;
-        border-radius: 50%;
+        border-radius: 24px;
         background-color: var(--primary);
         color: white;
         display: flex;
@@ -21,410 +80,595 @@
         justify-content: center;
         font-size: 2.5rem;
         font-weight: 700;
-        margin-right: 1.5rem;
+        margin-right: 32px;
+        box-shadow: 0 8px 20px rgba(67, 97, 238, 0.2);
     }
     
     .profile-info h2 {
-        margin-bottom: 0.5rem;
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: var(--text-primary);
     }
     
     .profile-info p {
-        color: #6c757d;
-        margin-bottom: 0.25rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
     }
     
+    .profile-info p i {
+        margin-right: 8px;
+        color: var(--primary);
+        width: 16px;
+        text-align: center;
+    }
+    
+    /* Profile Stats Cards */
     .profile-stat-card {
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 24px;
         height: 100%;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        border-left: 4px solid var(--primary);
+    }
+    
+    .profile-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow);
     }
     
     .profile-stat-value {
         font-size: 2rem;
         font-weight: 700;
-        margin-bottom: 0.25rem;
+        margin-bottom: 4px;
+        color: var(--text-primary);
     }
     
     .profile-stat-label {
-        color: #6c757d;
+        color: var(--text-secondary);
         font-size: 0.9rem;
     }
     
+    /* Activity List */
     .activity-item {
-        position: relative;
-        padding: 1rem;
-        transition: background-color 0.3s;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        transition: var(--transition);
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
     }
     
     .activity-item:hover {
-        background-color: rgba(0, 0, 0, 0.02);
+        background-color: var(--gray-light);
+    }
+    
+    .activity-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    
+    .activity-meta {
+        display: flex;
+        align-items: center;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+    }
+    
+    .activity-meta > div {
+        display: flex;
+        align-items: center;
+        margin-right: 16px;
+    }
+    
+    .activity-meta i {
+        margin-right: 4px;
     }
     
     .activity-time {
         font-size: 0.8rem;
-        color: #6c757d;
+        color: var(--text-secondary);
+    }
+    
+    /* Tabs */
+    .nav-tabs {
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 24px;
+    }
+    
+    .nav-tabs .nav-item {
+        margin-bottom: -1px;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-secondary);
+        padding: 12px 16px;
+        font-weight: 500;
+        transition: var(--transition);
+    }
+    
+    .nav-tabs .nav-link:hover {
+        color: var(--primary);
+        border-color: transparent;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: var(--primary);
+        border-color: var(--primary);
+        background-color: transparent;
+    }
+    
+    /* Action Badge */
+    .action-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border-radius: 4px;
+        letter-spacing: 0.3px;
+    }
+    
+    .action-approve {
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
+    }
+    
+    .action-reject {
+        background-color: rgba(255, 77, 109, 0.1);
+        color: var(--danger);
+    }
+    
+    .action-delete {
+        background-color: rgba(247, 37, 133, 0.1);
+        color: var(--warning);
+    }
+    
+    /* Form Controls */
+    .form-control {
+        border-radius: var(--border-radius-sm);
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.15);
+    }
+    
+    .form-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+    
+    .form-text {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    /* Button styling */
+    .btn {
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: var(--border-radius-sm);
+        border: none;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--secondary);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* Card styling */
+    .card {
+        background: white;
+        border-radius: var(--border-radius);
+        border: none;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+    
+    .card:hover {
+        box-shadow: var(--shadow);
+    }
+    
+    .card-header {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+    }
+    
+    .card-title i {
+        margin-right: 8px;
+        color: var(--primary);
+    }
+    
+    .card-body {
+        padding: 24px;
+    }
+    
+    /* Alert styling */
+    .alert {
+        border-radius: var(--border-radius-sm);
+        padding: 16px;
+        margin-bottom: 24px;
+        border: none;
+        display: flex;
+        align-items: center;
+    }
+    
+    .alert i {
+        margin-right: 12px;
+        font-size: 1.2rem;
+    }
+    
+    .alert-success {
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
+    }
+    
+    .alert-danger {
+        background-color: rgba(255, 77, 109, 0.1);
+        color: var(--danger);
+    }
+    
+    /* Activity Table */
+    .table-activity {
+        width: 100%;
+        margin-bottom: 0;
     }
     
     .table-activity th {
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        border-top: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 16px;
+        background-color: var(--gray-light);
     }
     
     .table-activity td {
         vertical-align: middle;
+        padding: 16px;
+        border-top: none;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
     }
     
-    .action-badge {
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
+    .table-activity tr:last-child td {
+        border-bottom: none;
     }
     
-    .action-approve {
-        background-color: rgba(28, 200, 138, 0.1);
-        color: #1cc88a;
+    .table-activity tr:hover {
+        background-color: var(--gray-light);
     }
     
-    .action-reject {
-        background-color: rgba(231, 74, 59, 0.1);
-        color: #e74a3b;
-    }
+    /* Utility classes */
+    .d-flex { display: flex !important; }
+    .align-items-center { align-items: center !important; }
+    .align-items-start { align-items: flex-start !important; }
+    .justify-content-between { justify-content: space-between !important; }
+    .flex-column { flex-direction: column !important; }
+    .mr-2 { margin-right: 0.5rem !important; }
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-1 { margin-bottom: 4px !important; }
+    .mb-2 { margin-bottom: 8px !important; }
+    .mb-3 { margin-bottom: 16px !important; }
+    .mb-4 { margin-bottom: 24px !important; }
+    .mt-1 { margin-top: 4px !important; }
+    .mt-2 { margin-top: 8px !important; }
+    .mt-3 { margin-top: 16px !important; }
+    .mt-4 { margin-top: 24px !important; }
+    .ms-1 { margin-left: 4px !important; }
+    .ms-2 { margin-left: 8px !important; }
+    .me-1 { margin-right: 4px !important; }
+    .me-2 { margin-right: 8px !important; }
+    .p-0 { padding: 0 !important; }
     
-    .action-delete {
-        background-color: rgba(246, 194, 62, 0.1);
-        color: #f6c23e;
+    @media (max-width: 768px) {
+        .profile-header {
+            padding: 24px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            margin-right: 20px;
+            font-size: 2rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="profile-header shadow-sm">
-    <div class="d-flex align-items-center">
-        <div class="profile-avatar">
-            {{ request.user.username.0|upper }}
-        </div>
-        <div class="profile-info">
-            <h2>{{ request.user.get_full_name|default:request.user.username }}</h2>
-            <p><i class="fas fa-envelope me-2"></i> {{ request.user.email }}</p>
-            <p><i class="fas fa-user-shield me-2"></i> Moderator</p>
-            <p><i class="fas fa-calendar-alt me-2"></i> Joined {{ join_date|date:"F d, Y" }}</p>
+<div class="profile-grid profile-container">
+    <!-- Profile Header -->
+    <div class="profile-header-wrapper">
+        <div class="profile-header">
+            <div class="d-flex align-items-start">
+                <div class="profile-avatar">
+                    {{ request.user.username.0|upper }}
+                </div>
+                <div class="profile-info">
+                    <h2>{{ request.user.get_full_name|default:request.user.username }}</h2>
+                    <p><i class="fas fa-envelope"></i> {{ request.user.email }}</p>
+                    <p><i class="fas fa-user-shield"></i> Moderator</p>
+                    <p><i class="fas fa-calendar-alt"></i> Joined {{ join_date|date:"F d, Y" }}</p>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Nav tabs -->
-<ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {% if not request.GET.tab or request.GET.tab == 'profile' %}active{% endif %}" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="{% if not request.GET.tab or request.GET.tab == 'profile' %}true{% else %}false{% endif %}">
-            <i class="fas fa-user me-2"></i> Profile
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {% if request.GET.tab == 'activity' %}active{% endif %}" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab" aria-controls="activity" aria-selected="{% if request.GET.tab == 'activity' %}true{% else %}false{% endif %}">
-            <i class="fas fa-history me-2"></i> Activity Log
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link {% if request.GET.tab == 'password' %}active{% endif %}" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="{% if request.GET.tab == 'password' %}true{% else %}false{% endif %}">
-            <i class="fas fa-lock me-2"></i> Change Password
-        </button>
-    </li>
-</ul>
+    <!-- Profile Content -->
+    <div class="profile-content">
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if not request.GET.tab or request.GET.tab == 'profile' %}active{% endif %}" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="{% if not request.GET.tab or request.GET.tab == 'profile' %}true{% else %}false{% endif %}">
+                    <i class="fas fa-user me-2"></i> Profile
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if request.GET.tab == 'activity' %}active{% endif %}" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" type="button" role="tab" aria-controls="activity" aria-selected="{% if request.GET.tab == 'activity' %}true{% else %}false{% endif %}">
+                    <i class="fas fa-history me-2"></i> Activity Log
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {% if request.GET.tab == 'password' %}active{% endif %}" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="{% if request.GET.tab == 'password' %}true{% else %}false{% endif %}">
+                    <i class="fas fa-lock me-2"></i> Change Password
+                </button>
+            </li>
+        </ul>
 
-<!-- Tab content -->
-<div class="tab-content">
-    <!-- Profile Tab -->
-    <div class="tab-pane fade {% if not request.GET.tab or request.GET.tab == 'profile' %}show active{% endif %}" id="profile" role="tabpanel" aria-labelledby="profile-tab">
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Profile Information</h6>
+        <!-- Tab content -->
+        <div class="tab-content">
+            <!-- Profile Tab -->
+            <div class="tab-pane fade {% if not request.GET.tab or request.GET.tab == 'profile' %}show active{% endif %}" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                <div class="profile-grid">
+                    <div class="col-lg-8" style="grid-column: span 8;">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="card-title"><i class="fas fa-user-edit"></i> Profile Information</h6>
+                            </div>
+                            <div class="card-body">
+                                {% if success_message %}
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-check-circle"></i> {{ success_message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if error_message %}
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-exclamation-circle"></i> {{ error_message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endif %}
+                                
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="username" value="{{ request.user.username }}" disabled>
+                                        <div class="form-text">Username cannot be changed.</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="first_name" class="form-label">First Name</label>
+                                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ request.user.first_name }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="last_name" class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ request.user.last_name }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email Address</label>
+                                        <input type="email" class="form-control" id="email" name="email" value="{{ request.user.email }}">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i> Save Changes
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        {% if success_message %}
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                <i class="fas fa-check-circle me-2"></i> {{ success_message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    
+                    <div class="col-lg-4" style="grid-column: span 4;">
+                        <div class="profile-grid" style="grid-template-columns: repeat(1, 1fr);">
+                            <div class="mb-4" style="grid-column: span 1;">
+                                <div class="profile-stat-card">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="profile-stat-value">{{ activity_stats.total_actions }}</div>
+                                            <div class="profile-stat-label">Total Moderation Actions</div>
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-clipboard-check fa-2x text-primary opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        {% endif %}
-                        
-                        {% if error_message %}
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                <i class="fas fa-exclamation-circle me-2"></i> {{ error_message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            
+                            <div class="mb-4" style="grid-column: span 1;">
+                                <div class="profile-stat-card" style="border-left-color: var(--success);">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="profile-stat-value">{{ activity_stats.approved_count }}</div>
+                                            <div class="profile-stat-label">Content Approved</div>
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-check-circle fa-2x text-success opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        {% endif %}
-                        
-                        <form method="post">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="username" value="{{ request.user.username }}" disabled>
-                                <div class="form-text text-muted">Username cannot be changed.</div>
+                            
+                            <div class="mb-4" style="grid-column: span 1;">
+                                <div class="profile-stat-card" style="border-left-color: var(--danger);">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="profile-stat-value">{{ activity_stats.rejected_count }}</div>
+                                            <div class="profile-stat-label">Content Rejected</div>
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-times-circle fa-2x text-danger opacity-50"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label for="first_name" class="form-label">First Name</label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" value="{{ request.user.first_name }}">
-                            </div>
-                            <div class="mb-3">
-                                <label for="last_name" class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="last_name" name="last_name" value="{{ request.user.last_name }}">
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control" id="email" name="email" value="{{ request.user.email }}">
-                            </div>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="col-lg-4">
-                <div class="row">
-                    <div class="col-md-6 col-lg-12 mb-4">
-                        <div class="card border-left-primary shadow h-100 py-2 profile-stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Actions</div>
-                                        <div class="profile-stat-value">{{ activity_stats.total_actions }}</div>
-                                        <div class="profile-stat-label">Moderation actions performed</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Activity Tab -->
+            <div class="tab-pane fade {% if request.GET.tab == 'activity' %}show active{% endif %}" id="activity" role="tabpanel" aria-labelledby="activity-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-history"></i> Activity History</h6>
                     </div>
-                    <div class="col-md-6 col-lg-12 mb-4">
-                        <div class="card border-left-success shadow h-100 py-2 profile-stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Approved</div>
-                                        <div class="profile-stat-value">{{ activity_stats.pda_approved|add:activity_stats.threads_approved }}</div>
-                                        <div class="profile-stat-label">Items approved</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 col-lg-12 mb-4">
-                        <div class="card border-left-danger shadow h-100 py-2 profile-stat-card">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Rejected</div>
-                                        <div class="profile-stat-value">{{ activity_stats.pda_rejected|add:activity_stats.threads_rejected }}</div>
-                                        <div class="profile-stat-label">Items rejected</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-times-circle fa-2x text-gray-300"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Activity Log Tab -->
-    <div class="tab-pane fade {% if request.GET.tab == 'activity' %}show active{% endif %}" id="activity" role="tabpanel" aria-labelledby="activity-tab">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">Activity Log</h6>
-                <div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
-                        <i class="fas fa-print me-1"></i> Print
-                    </button>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-activity mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>Action</th>
-                                <th>Content</th>
-                                <th>Type</th>
-                                <th>Date</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if all_actions %}
-                                {% for action in all_actions %}
+                    <div class="card-body p-0">
+                        {% if moderator_actions %}
+                            <table class="table table-activity">
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Content</th>
+                                        <th>Notes</th>
+                                        <th>Date/Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for action in moderator_actions %}
                                     <tr>
                                         <td>
-                                            <span class="action-badge 
-                                                {% if action.action_type == 'approve' %}action-approve
-                                                {% elif action.action_type == 'reject' %}action-reject
-                                                {% elif action.action_type == 'delete' %}action-delete{% endif %}">
+                                            <span class="action-badge {% if action.action_type == 'approve' %}action-approve{% elif action.action_type == 'reject' %}action-reject{% else %}action-delete{% endif %}">
                                                 {% if action.action_type == 'approve' %}
                                                     <i class="fas fa-check me-1"></i> Approved
                                                 {% elif action.action_type == 'reject' %}
                                                     <i class="fas fa-times me-1"></i> Rejected
-                                                {% elif action.action_type == 'delete' %}
-                                                    <i class="fas fa-trash me-1"></i> Deleted
                                                 {% else %}
-                                                    {{ action.action_type|title }}
+                                                    <i class="fas fa-trash me-1"></i> Deleted
                                                 {% endif %}
                                             </span>
                                         </td>
-                                        <td>{{ action.content_identifier }}</td>
-                                        <td>{{ action.content_type|title }}</td>
-                                        <td>{{ action.timestamp|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <div class="activity-title">{{ action.content_identifier }}</div>
+                                            <div class="activity-meta">
+                                                <div><i class="fas fa-tag"></i> {{ action.content_type }}</div>
+                                            </div>
+                                        </td>
                                         <td>
                                             {% if action.notes %}
-                                                <span data-bs-toggle="tooltip" title="{{ action.notes }}">
-                                                    <i class="fas fa-sticky-note text-info"></i> 
-                                                    {{ action.notes|truncatechars:20 }}
-                                                </span>
+                                                {{ action.notes }}
                                             {% else %}
-                                                -
+                                                <span class="text-muted">No notes</span>
                                             {% endif %}
                                         </td>
+                                        <td>
+                                            <div class="activity-time">
+                                                {{ action.timestamp|date:"M d, Y" }} at {{ action.timestamp|date:"h:i A" }}
+                                            </div>
+                                        </td>
                                     </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="5" class="text-center py-4">No activity recorded yet.</td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </div>
+                                <h4 class="empty-state-title">No Activity Yet</h4>
+                                <p class="empty-state-message">Your moderation activity will appear here.</p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-                
-                <!-- Pagination -->
-                {% if all_actions.paginator.num_pages > 1 %}
-                <div class="d-flex justify-content-center py-3">
-                    <nav aria-label="Activity pagination">
-                        <ul class="pagination">
-                            {% if all_actions.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?tab=activity&page=1" aria-label="First">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?tab=activity&page={{ all_actions.previous_page_number }}" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-                            {% else %}
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="First">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-                            {% endif %}
-                            
-                            {% for num in all_actions.paginator.page_range %}
-                                {% if all_actions.number == num %}
-                                    <li class="page-item active"><a class="page-link" href="?tab=activity&page={{ num }}">{{ num }}</a></li>
-                                {% elif num > all_actions.number|add:'-3' and num < all_actions.number|add:'3' %}
-                                    <li class="page-item"><a class="page-link" href="?tab=activity&page={{ num }}">{{ num }}</a></li>
-                                {% endif %}
-                            {% endfor %}
-                            
-                            {% if all_actions.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?tab=activity&page={{ all_actions.next_page_number }}" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?tab=activity&page={{ all_actions.paginator.num_pages }}" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                    </a>
-                                </li>
-                            {% else %}
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                    </a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
+            </div>
+            
+            <!-- Password Tab -->
+            <div class="tab-pane fade {% if request.GET.tab == 'password' %}show active{% endif %}" id="password" role="tabpanel" aria-labelledby="password-tab">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-lock"></i> Change Password</h6>
+                    </div>
+                    <div class="card-body">
+                        {% if password_success %}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="fas fa-check-circle"></i> {{ password_success }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endif %}
+                        
+                        {% if password_error %}
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="fas fa-exclamation-circle"></i> {{ password_error }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endif %}
+                        
+                        <form method="post" action="?tab=password">
+                            {% csrf_token %}
+                            <input type="hidden" name="form_type" value="password_change">
+                            <div class="mb-3">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="current_password" name="current_password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-key me-2"></i> Change Password
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Password Tab -->
-    <div class="tab-pane fade {% if request.GET.tab == 'password' %}show active{% endif %}" id="password" role="tabpanel" aria-labelledby="password-tab">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Change Password</h6>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label">Current Password</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="new_password" class="form-label">New Password</label>
-                        <input type="password" class="form-control" id="new_password" name="new_password" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="confirm_password" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                    </div>
-                    <div class="mb-3 form-text">
-                        <ul>
-                            <li>Password must be at least 8 characters long</li>
-                            <li>Password should contain a mix of letters, numbers, and special characters</li>
-                            <li>Avoid using common words or personal information</li>
-                        </ul>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update Password</button>
-                </form>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extrascripts %}
-<script>
-    // Initialize tooltips
-    document.addEventListener('DOMContentLoaded', function() {
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-        
-        // Set active tab based on URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get('tab');
-        if (tab) {
-            const tabEl = document.querySelector(`#${tab}-tab`);
-            if (tabEl) {
-                const tabInstance = new bootstrap.Tab(tabEl);
-                tabInstance.show();
-            }
-        }
-    });
-</script>
+<div class="bottom-spacer"></div>
 {% endblock %} 

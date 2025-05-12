@@ -3,284 +3,480 @@
 
 {% block extrastyle %}
 <style>
+    /* User Management layout */
+    .users-container {
+        margin-bottom: 60px;
+    }
+
+    .users-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        grid-gap: 24px;
+    }
+
+    .users-header {
+        grid-column: span 12;
+        margin-bottom: 24px;
+    }
+
+    .stats-grid {
+        grid-column: span 12;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .users-content {
+        grid-column: span 12;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Stat Card */
+    .stat-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow);
+    }
+
+    .stat-card-body {
+        padding: 24px;
+        display: flex;
+        align-items: center;
+    }
+
+    .stat-card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--border-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 16px;
+        flex-shrink: 0;
+    }
+
+    .icon-bg-primary {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .icon-bg-success {
+        background-color: rgba(76, 201, 240, 0.1);
+        color: var(--success);
+    }
+
+    .icon-bg-info {
+        background-color: rgba(72, 149, 239, 0.1);
+        color: var(--info);
+    }
+
+    .stat-card-content {
+        flex-grow: 1;
+    }
+
+    .stat-card-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        color: var(--text-primary);
+    }
+
+    .stat-card-label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    /* Search Box */
+    .search-box-container {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 16px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .search-input {
+        border-radius: var(--border-radius-sm);
+        border: 1px solid var(--border-color);
+        padding: 10px 16px;
+        transition: var(--transition);
+    }
+
+    .search-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.15);
+        outline: none;
+    }
+
+    /* User Item */
     .user-item {
-        transition: all 0.2s;
-        border-left: 3px solid transparent;
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        transition: var(--transition);
     }
-    
+
+    .user-item:last-child {
+        border-bottom: none;
+    }
+
     .user-item:hover {
-        background-color: rgba(78, 115, 223, 0.05);
-        border-left-color: #4e73df;
+        background-color: var(--primary-light);
     }
-    
-    .user-name {
-        font-weight: 600;
-        color: #333;
-    }
-    
-    .user-meta {
-        font-size: 0.8rem;
-        color: #6c757d;
-    }
-    
+
     .user-avatar {
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background-color: #4e73df;
-        color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
+        color: white;
+        font-weight: 600;
+        margin-right: 16px;
+        flex-shrink: 0;
     }
-    
+
     .user-avatar.admin {
-        background-color: #e74a3b;
+        background-color: var(--danger);
     }
-    
+
     .user-avatar.moderator {
-        background-color: #1cc88a;
+        background-color: var(--success);
     }
-    
+
     .user-avatar.verified {
-        background-color: #36b9cc;
+        background-color: var(--info);
     }
-    
+
+    .user-avatar.regular {
+        background-color: var(--primary);
+    }
+
+    .user-details {
+        flex-grow: 1;
+    }
+
+    .user-name {
+        font-weight: 600;
+        margin-bottom: 4px;
+        color: var(--text-primary);
+    }
+
+    .user-meta {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
     .user-role {
+        padding: 4px 8px;
+        border-radius: 20px;
         font-size: 0.7rem;
-        padding: 0.2rem 0.5rem;
-        border-radius: 10rem;
+        font-weight: 600;
     }
-    
-    .search-box {
-        border-radius: 10rem;
-        padding: 0.75rem 1rem;
-    }
-    
-    .user-item .actions {
+
+    .user-actions {
         visibility: hidden;
         opacity: 0;
-        transition: all 0.2s;
+        transition: var(--transition);
     }
-    
-    .user-item:hover .actions {
+
+    .user-item:hover .user-actions {
         visibility: visible;
         opacity: 1;
+    }
+
+    /* Empty State */
+    .empty-state {
+        padding: 48px 24px;
+        text-align: center;
+    }
+
+    .empty-state-icon {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        display: inline-block;
+        color: var(--text-muted);
+    }
+
+    .empty-state-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+
+    .empty-state-message {
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+    }
+
+    /* Table styling overrides */
+    .user-table {
+        width: 100%;
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .user-table th {
+        background-color: var(--gray-light);
+        padding: 16px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .user-table td {
+        padding: 12px 16px;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .user-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .user-table tr:hover td {
+        background-color: var(--primary-light);
+    }
+
+    .bottom-spacer {
+        height: 60px;
+        width: 100%;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">User Management</h1>
-    <div>
-        <a href="{% url 'custom_admin_user_add' %}" class="btn btn-sm btn-primary">
-            <i class="fas fa-user-plus fa-sm text-white-50"></i> Add New User
-        </a>
+<div class="users-grid users-container">
+    <!-- Users Header -->
+    <div class="users-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 font-weight-bold mb-1">User Management</h1>
+                <p class="text-muted mb-0">Manage users and permissions</p>
+            </div>
+            <div>
+                <a href="{% url 'custom_admin_user_add' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-user-plus me-2"></i> Add New User
+                </a>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Total Users
-                        </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_users }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-users fa-2x text-gray-300"></i>
-                    </div>
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <!-- Total Users Stat -->
+        <div class="stat-card">
+            <div class="stat-card-body">
+                <div class="stat-card-icon icon-bg-primary">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-card-content">
+                    <div class="stat-card-value">{{ total_users }}</div>
+                    <div class="stat-card-label">Total Users</div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Moderators
-                        </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_moderators }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-user-shield fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card border-left-info shadow h-100 py-2">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                            Admins
-                        </div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_admins }}</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-user-cog fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-        <h6 class="m-0 font-weight-bold text-primary">Users</h6>
-        <div class="dropdown no-arrow">
-            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-            </a>
-            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
-                <div class="dropdown-header">User Actions:</div>
-                <a class="dropdown-item" href="{% url 'custom_admin_user_add' %}">Add New User</a>
-                <a class="dropdown-item" href="{% url 'custom_admin_moderators' %}">Manage Moderators</a>
+        <!-- Moderators Stat -->
+        <div class="stat-card">
+            <div class="stat-card-body">
+                <div class="stat-card-icon icon-bg-success">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="stat-card-content">
+                    <div class="stat-card-value">{{ total_moderators }}</div>
+                    <div class="stat-card-label">Moderators</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admins Stat -->
+        <div class="stat-card">
+            <div class="stat-card-body">
+                <div class="stat-card-icon icon-bg-info">
+                    <i class="fas fa-user-cog"></i>
+                </div>
+                <div class="stat-card-content">
+                    <div class="stat-card-value">{{ total_admins }}</div>
+                    <div class="stat-card-label">Admins</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="card-body">
+
+    <!-- Users Content -->
+    <div class="users-content">
         <!-- Search Box -->
-        <div class="mb-4">
+        <div class="search-box-container">
             <form method="get" action="{% url 'custom_admin_users' %}">
                 <div class="input-group">
-                    <input type="text" class="form-control search-box bg-light border-0 small" 
-                           placeholder="Search for users..." name="search" value="{{ search_query }}" 
-                           aria-label="Search" aria-describedby="basic-addon2">
-                    <div class="input-group-append">
-                        <button class="btn btn-primary" type="submit">
-                            <i class="fas fa-search fa-sm"></i>
-                        </button>
-                    </div>
+                    <input type="text" class="form-control search-input" placeholder="Search users by name, email, or username..." name="search" value="{{ search_query }}" aria-label="Search">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search me-2"></i> Search
+                    </button>
                 </div>
             </form>
         </div>
 
         <!-- Users Table -->
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Full Name</th>
-                        <th>Join Date</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr class="user-item">
-                        <td>
-                            <div class="user-avatar {% if user.is_superuser %}admin{% elif user.is_staff %}admin{% elif user.groups.all.0.name == 'PDA_Moderator' %}moderator{% endif %}">
-                                {{ user.username.0|upper }}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="user-name">{{ user.username }}</div>
-                        </td>
-                        <td>{{ user.email }}</td>
-                        <td>{{ user.get_full_name|default:"-" }}</td>
-                        <td>{{ user.date_joined|date:"M d, Y" }}</td>
-                        <td>
-                            {% if user.is_superuser %}
-                                <span class="badge bg-danger user-role">Admin</span>
-                            {% elif user.is_staff %}
-                                <span class="badge bg-danger user-role">Staff</span>
-                            {% elif user.groups.all.0.name == 'PDA_Moderator' %}
-                                <span class="badge bg-success user-role">Moderator</span>
-                            {% else %}
-                                <span class="badge bg-secondary user-role">User</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if user.is_active %}
-                                <span class="badge bg-success">Active</span>
-                            {% else %}
-                                <span class="badge bg-danger">Inactive</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="actions">
-                                <a href="{% url 'custom_admin_user_detail' user.id %}" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="text-center py-4">
-                            <div class="text-muted">
-                                <i class="fas fa-user-slash mb-3" style="font-size: 2rem;"></i>
-                                <p>No users found</p>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Pagination -->
-        {% if users.has_other_pages %}
-        <div class="d-flex justify-content-center mt-4">
-            <nav aria-label="Page navigation">
-                <ul class="pagination">
-                    {% if users.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
-                            <span aria-hidden="true">&laquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" aria-label="Previous">
-                            <span aria-hidden="true">&laquo;</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    
-                    {% for num in users.paginator.page_range %}
-                        {% if users.number == num %}
-                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title">
+                    <i class="fas fa-users"></i> Users
+                </h6>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="userActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Actions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userActionsDropdown">
+                        <li><a class="dropdown-item" href="{% url 'custom_admin_user_add' %}"><i class="fas fa-user-plus me-2"></i> Add New User</a></li>
+                        <li><a class="dropdown-item" href="{% url 'custom_admin_moderators' %}"><i class="fas fa-user-shield me-2"></i> Manage Moderators</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i> Export Users</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Full Name</th>
+                                <th>Join Date</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="user-avatar {% if user.is_superuser %}admin{% elif user.is_staff %}admin{% elif user.groups.all.0.name == 'PDA_Moderator' %}moderator{% else %}regular{% endif %}">
+                                        {{ user.username.0|upper }}
+                                    </div>
+                                </td>
+                                <td class="user-name">{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.get_full_name|default:"-" }}</td>
+                                <td>{{ user.date_joined|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if user.is_superuser %}
+                                        <span class="badge bg-danger user-role">Admin</span>
+                                    {% elif user.is_staff %}
+                                        <span class="badge bg-danger user-role">Staff</span>
+                                    {% elif user.groups.all.0.name == 'PDA_Moderator' %}
+                                        <span class="badge bg-success user-role">Moderator</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary user-role">User</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="user-actions">
+                                        <a href="{% url 'custom_admin_user_detail' user.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-primary ms-1">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <span class="empty-state-icon">
+                        <i class="fas fa-user-slash"></i>
+                    </span>
+                    <h5 class="empty-state-title">No Users Found</h5>
+                    <p class="empty-state-message">Try adjusting your search parameters or add a new user.</p>
+                    <a href="{% url 'custom_admin_user_add' %}" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-2"></i> Add New User
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if users.has_other_pages %}
+            <div class="card-footer">
+                <nav aria-label="User pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if users.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
                         {% else %}
-                        <li class="page-item"><a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a></li>
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo;</span>
+                        </li>
                         {% endif %}
-                    {% endfor %}
-                    
-                    {% if users.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
-                            <span aria-hidden="true">&raquo;</span>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" aria-label="Next">
-                            <span aria-hidden="true">&raquo;</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
+                        
+                        {% for i in users.paginator.page_range %}
+                            {% if users.number == i %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ i }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if users.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&raquo;</span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 </div>
+
+<div class="bottom-spacer"></div>
 {% endblock %} 
