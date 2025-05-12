@@ -21,7 +21,10 @@
     <style>
       :root {
         --primary: #2ecc71;
-        --primary-light: rgba(46, 204, 113, 0.1);
+        --primary-light: #4cd787;
+        --primary-dark: #27ae60;
+        --primary-bg: #f0fff7;
+        --primary-transparent: rgba(46, 204, 113, 0.1);
         --secondary: #27ae60;
         --success: #3498db;
         --info: #1abc9c;
@@ -58,12 +61,12 @@
       /* Sidebar */
       .sidebar {
         min-height: 100vh;
-        background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
-        box-shadow: var(--shadow);
+        background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+        box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
         z-index: 100;
         position: fixed;
         width: var(--sidebar-width);
-        transition: var(--transition);
+        transition: all 0.3s ease;
         overflow-y: auto;
         overflow-x: hidden;
         scrollbar-width: thin;
@@ -139,8 +142,8 @@
         width: 100%;
         padding: 0.8rem 1.25rem;
         color: rgba(255, 255, 255, 0.8);
-        transition: var(--transition);
-        border-radius: var(--border-radius-sm);
+        transition: all 0.3s ease;
+        border-radius: 10px;
         margin: 0 0.5rem;
         white-space: nowrap;
         overflow: hidden;
@@ -157,7 +160,7 @@
         color: var(--primary);
         background: #fff;
         font-weight: 600;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       }
 
       .sidebar .nav-item .nav-link i {
@@ -179,10 +182,11 @@
         flex: 1 0 auto;
         width: calc(100% - var(--sidebar-width));
         margin-left: var(--sidebar-width);
-        transition: var(--transition);
+        transition: all 0.3s ease;
         padding: 1.5rem;
         min-height: 100vh;
         position: relative;
+        background-color: var(--primary-bg);
       }
 
       /* Page indicator */
@@ -211,7 +215,7 @@
       .topbar {
         height: 5rem;
         background: #fff;
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 4px 20px rgba(46, 204, 113, 0.1);
         border-radius: var(--border-radius);
         margin-bottom: 1.5rem;
       }
@@ -286,20 +290,20 @@
         border-radius: var(--border-radius);
         border: none;
         overflow: hidden;
-        box-shadow: var(--shadow-sm);
-        transition: var(--transition);
+        box-shadow: 0 4px 20px rgba(46, 204, 113, 0.08);
+        transition: all 0.3s ease;
         margin-bottom: 1.5rem;
       }
 
       .card:hover {
-        box-shadow: var(--shadow);
-        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(46, 204, 113, 0.12);
+        transform: translateY(-5px);
       }
 
       .card-header {
         background: white;
         border-bottom: 1px solid var(--border-color);
-        padding: 1rem 1.25rem;
+        padding: 1.25rem 1.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -362,7 +366,7 @@
         padding: 0.5rem 1rem;
         border-radius: var(--border-radius-sm);
         border: none;
-        transition: var(--transition);
+        transition: all 0.3s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -381,8 +385,8 @@
 
       .btn-primary:hover {
         background-color: var(--secondary);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 15px rgba(46, 204, 113, 0.3);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(46, 204, 113, 0.3);
       }
 
       .btn-outline-primary {
@@ -393,29 +397,31 @@
 
       .btn-outline-primary:hover {
         background-color: var(--primary-light);
-        transform: translateY(-1px);
+        transform: translateY(-3px);
       }
 
       .btn-success {
         background-color: var(--success);
         color: white;
+        box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2);
       }
 
       .btn-success:hover {
         background-color: var(--info);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-sm);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(52, 152, 219, 0.3);
       }
 
       .btn-danger {
         background-color: var(--danger);
         color: white;
+        box-shadow: 0 4px 10px rgba(231, 76, 60, 0.2);
       }
 
       .btn-danger:hover {
         background-color: var(--warning);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-sm);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(231, 76, 60, 0.3);
       }
 
       .btn i {
@@ -427,27 +433,32 @@
         width: 100%;
         margin-bottom: 1rem;
         color: var(--text-primary);
+        border-radius: var(--border-radius);
+        overflow: hidden;
       }
 
       .table thead th {
-        background-color: var(--gray-light);
+        background-color: var(--primary-bg);
         border-bottom: none;
-        color: var(--text-primary);
+        color: var(--primary-dark);
         font-weight: 600;
         text-transform: uppercase;
         font-size: 0.7rem;
         letter-spacing: 0.5px;
-        padding: 0.75rem 1rem;
+        padding: 0.85rem 1.25rem;
       }
 
       .table tbody td {
         vertical-align: middle;
-        padding: 0.75rem 1rem;
+        padding: 1rem 1.25rem;
         border-top: 1px solid var(--border-color);
+        transition: all 0.2s ease;
       }
 
       .table-hover tbody tr:hover {
         background-color: var(--primary-light);
+        transform: scale(1.01);
+        box-shadow: 0 3px 10px rgba(46, 204, 113, 0.1);
       }
 
       /* Utility classes */
