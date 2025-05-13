@@ -7,6 +7,7 @@ from .views import (
     pda_views,
     facial_watch_views,
     community_forum_views,
+    knowledge_base_views,
 )
 
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -88,10 +89,82 @@ urlpatterns = [
     path("forum/like/", community_forum_views.toggle_like, name="toggle_like"),
     path("forum/dislike/", community_forum_views.toggle_dislike, name="toggle_dislike"),
     path("forum/reaction/", community_forum_views.add_reaction, name="add_reaction"),
-    path("forum/threads/<int:thread_id>/reactions/", community_forum_views.get_reaction_counts, name="get_thread_reactions"),
-    path("forum/replies/<int:reply_id>/reactions/", community_forum_views.get_reaction_counts, name="get_reply_reactions"),
+    path(
+        "forum/threads/<int:thread_id>/reactions/",
+        community_forum_views.get_reaction_counts,
+        name="get_thread_reactions",
+    ),
+    path(
+        "forum/replies/<int:reply_id>/reactions/",
+        community_forum_views.get_reaction_counts,
+        name="get_reply_reactions",
+    ),
     path("forum/topics/", community_forum_views.get_topics, name="get_topics"),
     path("forum/tags/", community_forum_views.get_tags, name="get_tags"),
     path("forum/search/", community_forum_views.search_threads, name="search_threads"),
-    path("forum/threads/<int:thread_id>/replies/", community_forum_views.get_thread_replies, name="get_thread_replies"),
+    path(
+        "forum/threads/<int:thread_id>/replies/",
+        community_forum_views.get_thread_replies,
+        name="get_thread_replies",
+    ),
+    # Knowledge Base endpoints
+    path(
+        "knowledge-base/articles/", knowledge_base_views.get_articles, name="knowledge_baseget_articles"
+    ),
+    path(
+        "knowledge-base/articles/<int:article_id>/",
+        knowledge_base_views.get_article_detail,
+        name="knowledge_baseget_article_detail",
+    ),
+    path(
+        "knowledge-base/articles/create/",
+        knowledge_base_views.create_article,
+        name="knowledge_basecreate_article",
+    ),
+    path(
+        "knowledge-base/articles/<int:article_id>/update/",
+        knowledge_base_views.update_article,
+        name="knowledge_baseupdate_article",
+    ),
+    path(
+        "knowledge-base/articles/<int:article_id>/delete/",
+        knowledge_base_views.delete_article,
+        name="knowledge_basedelete_article",
+    ),
+    path("knowledge-base/topics/", knowledge_base_views.get_topics, name="knowledge_baseget_topics"),
+    path("knowledge-base/tags/", knowledge_base_views.get_tags, name="knowledge_baseget_tags"),
+    path(
+        "knowledge-base/search/",
+        knowledge_base_views.search_articles,
+        name="knowledge_basesearch_articles",
+    ),
+    path(
+        "knowledge-base/articles/<int:article_id>/share/",
+        knowledge_base_views.get_share_links,
+        name="knowledge_baseget_share_links",
+    ),
+    # Admin/Moderator Knowledge Base endpoints
+    path(
+        "knowledge-base/topics/create/",
+        knowledge_base_views.create_topic,
+        name="knowledge_basecreate_topic",
+    ),
+    path(
+        "knowledge-base/topics/<int:topic_id>/update/",
+        knowledge_base_views.update_topic,
+        name="knowledge_baseupdate_topic",
+    ),
+    path(
+        "knowledge-base/topics/<int:topic_id>/delete/",
+        knowledge_base_views.delete_topic,
+        name="knowledge_basedelete_topic",
+    ),
+    path(
+        "knowledge-base/tags/create/", knowledge_base_views.create_tag, name="knowledge_basecreate_tag"
+    ),
+    path(
+        "knowledge-base/tags/<int:tag_id>/delete/",
+        knowledge_base_views.delete_tag,
+        name="knowledge_basedelete_tag",
+    ),
 ]
