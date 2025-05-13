@@ -154,4 +154,6 @@ urlpatterns = [
         knowledge_base_views.delete_topic,
         name="knowledge_basedelete_topic",
     ),
+    # Add to urls.py
+    # path('knowledge_base/upload_image/', knowledge_base_views.upload_image, name='kb_upload_image'),
 ]

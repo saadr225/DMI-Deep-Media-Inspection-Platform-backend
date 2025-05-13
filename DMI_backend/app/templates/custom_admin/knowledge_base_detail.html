@@ -85,6 +85,18 @@
           <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-book-open me-1"></i> Content</h6>
         </div>
         <div class="card-body">
+          <!-- Banner Image (if exists) -->
+          {% if article.banner_image %}
+          <div class="article-banner mb-4">
+            <img
+              src="{{ article.banner_image }}"
+              alt="{{ article.title }}"
+              class="img-fluid w-100"
+              style="max-height: 300px; object-fit: cover; border-radius: 8px"
+            />
+          </div>
+          {% endif %}
+
           <h1 class="article-title">{{ article.title }}</h1>
 
           <div class="d-flex align-items-center mb-3">
@@ -102,7 +114,7 @@
             </div>
           </div>
 
-          <div class="article-content">{{ article.content|linebreaks }}</div>
+          <div class="article-content">{{ article.content|safe }}</div>
         </div>
       </div>
 

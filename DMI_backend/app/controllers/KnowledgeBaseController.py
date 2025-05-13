@@ -164,6 +164,7 @@ class KnowledgeBaseController:
             article_data = {
                 "id": article.id,
                 "title": article.title,
+                "banner_image": article.banner_image,
                 "author": {
                     "username": article.author.user.username,
                     "avatar": article.author.profile_image_url,
@@ -207,19 +208,20 @@ class KnowledgeBaseController:
                 "code": "KNOWLEDGE_DETAIL_ERROR",
             }
 
-    def create_article(self, title, content, author_id, topic_id=None, attachments=None):
+    def create_article(self, title, content, author_id, topic_id=None, attachments=None, banner_image=None):
         """
         Create a new knowledge base article
 
         Args:
             title: Article title
-            content: Article content
-            author_id: ID of the author (UserData)
+            content: Article content (HTML formatted)
+            author_id: ID of author (UserData)
             topic_id: Optional ID of topic
             attachments: Optional list of attachment files
+            banner_image: Optional URL of banner image
 
         Returns:
-            Dictionary containing new article info or error information
+            Dictionary with success status and article data if successful
         """
         try:
             # Validate input
@@ -249,6 +251,7 @@ class KnowledgeBaseController:
             article = KnowledgeBaseArticle.objects.create(
                 title=title,
                 content=content,
+                banner_image=banner_image,
                 author=author,
                 topic=topic,
                 is_published=True,  # Default to published
@@ -272,6 +275,7 @@ class KnowledgeBaseController:
                 "article": {
                     "id": article.id,
                     "title": article.title,
+                    "banner_image": article.banner_image,
                     "created_at": article.created_at.strftime("%Y-%m-%d"),
                     "author": {
                         "username": author.user.username,
@@ -305,7 +309,7 @@ class KnowledgeBaseController:
                 "code": "KNOWLEDGE_CREATE_ERROR",
             }
 
-    def update_article(self, article_id, title=None, content=None, topic_id=None, attachments=None):
+    def update_article(self, article_id, title=None, content=None, topic_id=None, attachments=None, banner_image=None):
         """
         Update an existing knowledge base article
 
@@ -315,6 +319,7 @@ class KnowledgeBaseController:
             content: Optional new content
             topic_id: Optional new topic ID
             attachments: Optional new attachments to add
+            banner_image: Optional URL of banner image
 
         Returns:
             Dictionary containing updated article info or error information
@@ -329,6 +334,9 @@ class KnowledgeBaseController:
 
             if content is not None:
                 article.content = content
+
+            if banner_image is not None:
+                article.banner_image = banner_image
 
             if topic_id is not None:
                 try:
@@ -359,6 +367,7 @@ class KnowledgeBaseController:
                 "article": {
                     "id": article.id,
                     "title": article.title,
+                    "banner_image": article.banner_image,
                     "updated_at": article.updated_at.strftime("%Y-%m-%d"),
                     "topic": (
                         {

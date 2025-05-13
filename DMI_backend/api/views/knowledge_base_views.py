@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from app.controllers.KnowledgeBaseController import KnowledgeBaseController
+from app.controllers.HelpersController import URLHelper
 from app.models import UserData
 
 logger = logging.getLogger(__name__)
@@ -77,11 +78,11 @@ def get_article_detail(request, article_id):
 @permission_classes([IsAuthenticated])
 def create_article(request):
     """
-    Create a new knowledge base article
+    Create a new knowledge base article with rich HTML content support
 
     Request body (multipart/form-data):
     - title: Article title
-    - content: Article content
+    - content: Article content (HTML formatted)
     - topic_id: Optional ID of topic
     - attachments: Optional file attachments
     """
@@ -94,7 +95,7 @@ def create_article(request):
 
         # Extract form data
         title = request.POST.get("title")
-        content = request.POST.get("content")
+        content = request.POST.get("content")  # This will now contain HTML content
         topic_id = request.POST.get("topic_id")
 
         # Get attachments from request.FILES
@@ -126,7 +127,7 @@ def update_article(request, article_id):
 
     Request body (multipart/form-data):
     - title: Optional new title
-    - content: Optional new content
+    - content: Optional new content (HTML formatted)
     - topic_id: Optional new topic ID
     - attachments: Optional new attachments to add
     """
@@ -391,3 +392,44 @@ def delete_topic(request, topic_id):
     except Exception as e:
         logger.error(f"Error in delete_topic: {str(e)}")
         return JsonResponse({"success": False, "error": str(e), "code": "KB_DELETE_TOPIC_ERROR"}, status=500)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def upload_image(request):
+    """
+    Upload an image for use in knowledge base articles
+
+    Request body (multipart/form-data):
+    - file: Image file to upload
+    """
+    try:
+        image_file = request.FILES.get("file")
+        if not image_file:
+            return JsonResponse({"success": False, "error": "No image file provided"}, status=400)
+
+        # Generate unique identifier
+        attachment_identifier = f"kb-img-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+        original_filename = image_file.name
+
+        # Ensure directory exists
+        upload_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base", "images")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Save file
+        file_extension = os.path.splitext(original_filename)[1].lower()
+        filename = f"{attachment_identifier}{file_extension}"
+        file_path = os.path.join(upload_dir, filename)
+
+        with open(file_path, "wb+") as destination:
+            for chunk in image_file.chunks():
+                destination.write(chunk)
+
+        # Use your public URL helper instead of direct concatenation
+        file_path_relative = os.path.join("knowledge_base", "images", filename)
+        file_url = URLHelper.convert_to_public_url(file_path_relative)  # Replace with your actual helper function
+
+        return JsonResponse({"success": True, "location": file_url})
+    except Exception as e:
+        logger.error(f"Error in upload_image: {str(e)}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

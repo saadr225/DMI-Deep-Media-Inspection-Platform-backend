@@ -39,6 +39,7 @@ urlpatterns = [
                     "knowledge-base/<int:article_id>/delete/", custom_admin_views.custom_admin_knowledge_base_delete_view, name="custom_admin_knowledge_base_delete"
                 ),
                 path("knowledge-base/topics/", custom_admin_views.custom_admin_knowledge_base_topics_view, name="custom_admin_knowledge_base_topics"),
+                path("upload_image/", custom_admin_views.admin_upload_image, name="admin_upload_image"),
             ]
         ),
     ),

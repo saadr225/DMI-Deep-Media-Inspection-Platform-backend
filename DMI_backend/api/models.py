@@ -442,6 +442,7 @@ class KnowledgeBaseArticle(models.Model):
 
     title = models.CharField(max_length=200)
     content = models.TextField()
+    banner_image = models.CharField(max_length=255, null=True, blank=True)
     author = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="knowledge_articles")
     topic = models.ForeignKey(KnowledgeBaseTopic, on_delete=models.SET_NULL, null=True, blank=True)
 

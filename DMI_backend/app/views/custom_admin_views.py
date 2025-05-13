@@ -1,7 +1,11 @@
 import json
 import logging
 from datetime import datetime, timedelta
+import os
+import uuid
+import time
 
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, login, logout
@@ -910,15 +914,21 @@ def custom_admin_knowledge_base_create_view(request):
             title = request.POST.get("title")
             content = request.POST.get("content")
             topic_id = request.POST.get("topic_id")
+            banner_image = request.POST.get("banner_image")
 
             # Get attachments
-            attachments = [request.FILES[file] for file in request.FILES]
+            attachments = []
+            for file_name in request.FILES:
+                if file_name != "banner_image_file":  # Skip banner image if it was uploaded as a file
+                    attachments.append(request.FILES[file_name])
 
             # Use admin user as author
             author_id = request.user.userdata.id
 
             # Create article
-            result = kb_controller.create_article(title=title, content=content, author_id=author_id, topic_id=topic_id, tags=None, attachments=attachments)
+            result = kb_controller.create_article(
+                title=title, content=content, author_id=author_id, topic_id=topic_id, attachments=attachments, banner_image=banner_image
+            )
 
             if result.get("success", False):
                 messages.success(request, "Knowledge base article created successfully")
@@ -986,14 +996,20 @@ def custom_admin_knowledge_base_edit_view(request, article_id):
             title = request.POST.get("title")
             content = request.POST.get("content")
             topic_id = request.POST.get("topic_id")
+            banner_image = request.POST.get("banner_image")
 
             # Get attachments
             attachments = None
             if request.FILES:
-                attachments = [request.FILES[file] for file in request.FILES]
+                attachments = []
+                for file_name in request.FILES:
+                    if file_name != "banner_image_file":  # Skip banner image if it was uploaded as a file
+                        attachments.append(request.FILES[file_name])
 
             # Update article
-            update_result = kb_controller.update_article(article_id=article_id, title=title, content=content, topic_id=topic_id, tags=None, attachments=attachments)
+            update_result = kb_controller.update_article(
+                article_id=article_id, title=title, content=content, topic_id=topic_id, attachments=attachments, banner_image=banner_image
+            )
 
             if update_result.get("success", False):
                 messages.success(request, "Knowledge base article updated successfully")
@@ -1127,3 +1143,44 @@ def custom_admin_knowledge_base_topics_view(request):
         logger.error(f"Error in knowledge base admin topics view: {str(e)}")
         messages.error(request, f"Error managing topics: {str(e)}")
         return redirect("custom_admin_knowledge_base_list")
+
+
+def admin_upload_image(request):
+    """
+    Admin-only endpoint to upload images for knowledge base articles
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Method not allowed"}, status=405)
+
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({"success": False, "error": "Authentication required"}, status=401)
+
+    try:
+        image_file = request.FILES.get("file")
+        if not image_file:
+            return JsonResponse({"success": False, "error": "No image file provided"}, status=400)
+
+        # Generate unique identifier
+        attachment_identifier = f"kb-img-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+        original_filename = image_file.name
+
+        # Ensure directory exists
+        upload_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base", "images")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # Save file
+        file_extension = os.path.splitext(original_filename)[1].lower()
+        filename = f"{attachment_identifier}{file_extension}"
+        file_path = os.path.join(upload_dir, filename)
+
+        with open(file_path, "wb+") as destination:
+            for chunk in image_file.chunks():
+                destination.write(chunk)
+
+        # Generate URL
+        file_url = f"{settings.MEDIA_URL}knowledge_base/images/{filename}"
+
+        return JsonResponse({"success": True, "location": file_url})
+    except Exception as e:
+        logger.error(f"Error in admin_upload_image: {str(e)}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)

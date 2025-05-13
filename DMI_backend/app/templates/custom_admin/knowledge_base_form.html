@@ -45,6 +45,146 @@
         color: var(--danger);
         margin-left: 0.25rem;
     }
+
+    /* Banner image upload styles */
+    .banner-upload-container {
+        position: relative;
+        margin-bottom: 1.5rem;
+        border: 2px dashed var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        background-color: #f8f9fa;
+        transition: all 0.2s ease;
+    }
+    
+    .banner-upload-container:hover {
+        border-color: var(--primary-light);
+    }
+    
+    .banner-preview {
+        width: 100%;
+        height: 200px;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        display: none;
+    }
+    
+    .banner-preview.has-banner {
+        display: block;
+    }
+    
+    .banner-controls {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    .remove-banner {
+        display: none;
+    }
+    
+    .has-banner .remove-banner {
+        display: block;
+    }
+
+    /* Custom styles for the enhanced editor */
+    .editor-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid var(--border-color);
+        border-bottom: none;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    
+    .editor-toolbar-group {
+        display: flex;
+        gap: 5px;
+        padding-right: 5px;
+        margin-right: 5px;
+        border-right: 1px solid var(--border-color);
+    }
+    
+    .editor-toolbar-group:last-child {
+        border-right: none;
+    }
+
+    .editor-toolbar button {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+
+    .editor-toolbar button:hover {
+        background-color: var(--primary-light);
+        color: white;
+    }
+
+    .editor-toolbar button.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .editor-container {
+        margin-bottom: 1rem;
+    }
+
+    #editor {
+        min-height: 300px;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+        outline: none;
+        overflow-y: auto;
+    }
+
+    #editor:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46, 204, 113, 0.25);
+    }
+
+    #editor img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Editor content styling */
+    #editor h1, #editor h2, #editor h3, #editor h4, #editor h5, #editor h6 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    #editor blockquote {
+        padding: 0.5rem 1rem;
+        margin-left: 0;
+        border-left: 4px solid var(--gray-light);
+        color: var(--gray-dark);
+    }
+    
+    #editor pre {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+    
+    #editor .text-center {
+        text-align: center;
+    }
+    
+    #editor .text-right {
+        text-align: right;
+    }
 </style>
 {% endblock %}
 
@@ -82,6 +222,24 @@
                     <div class="form-text">A clear, concise title that describes the article's content</div>
                 </div>
 
+                <!-- Banner Image Upload Section -->
+                <div class="mb-3">
+                    <label for="banner_image" class="form-label">Banner Image</label>
+                    <div class="banner-upload-container" id="bannerContainer">
+                        <div class="banner-preview" id="bannerPreview" {% if article.banner_image %}style="background-image: url('{{ article.banner_image }}'); display: block;"{% endif %}></div>
+                        <input type="hidden" id="banner_image" name="banner_image" value="{% if article.banner_image %}{{ article.banner_image }}{% endif %}">
+                        <div class="banner-controls">
+                            <button type="button" class="btn btn-danger remove-banner" id="removeBannerBtn">
+                                <i class="fas fa-times me-1"></i> Remove
+                            </button>
+                            <button type="button" class="btn btn-primary" id="uploadBannerBtn">
+                                <i class="fas fa-upload me-1"></i> {% if article.banner_image %}Change{% else %}Upload{% endif %} Banner
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text">Add a banner image to make your article more engaging (recommended size: 1200×400px)</div>
+                </div>
+
                 <div class="mb-3">
                     <label for="topic_id" class="form-label">Topic</label>
                     <select class="form-select" id="topic_id" name="topic_id">
@@ -97,18 +255,65 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="tags" class="form-label">Tags</label>
-                    <input type="text" class="form-control" id="tags" name="tags" 
-                           value="{% if current_tags %}{{ current_tags }}{% endif %}" 
-                           placeholder="Enter tags separated by commas">
-                    <div class="form-text">Enter tags separated by commas (e.g., deepfake, detection, machine learning)</div>
-                </div>
-
-                <div class="mb-3">
                     <label for="content" class="form-label required-field">Content</label>
-                    <textarea class="form-control" id="content" name="content" rows="15" required 
-                              placeholder="Enter article content">{% if article %}{{ article.content }}{% endif %}</textarea>
-                    <div class="form-text">Use markdown for formatting. HTML tags are also supported.</div>
+                    <!-- Enhanced HTML Editor Toolbar -->
+                    <div class="editor-toolbar">
+                        <!-- Text formatting -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="bold" title="Bold"><i class="fas fa-bold"></i></button>
+                            <button type="button" data-command="italic" title="Italic"><i class="fas fa-italic"></i></button>
+                            <button type="button" data-command="underline" title="Underline"><i class="fas fa-underline"></i></button>
+                            <button type="button" data-command="strikeThrough" title="Strikethrough"><i class="fas fa-strikethrough"></i></button>
+                        </div>
+                        
+                        <!-- Paragraph formatting -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="formatBlock" data-value="h1" title="Heading 1">H1</button>
+                            <button type="button" data-command="formatBlock" data-value="h2" title="Heading 2">H2</button>
+                            <button type="button" data-command="formatBlock" data-value="h3" title="Heading 3">H3</button>
+                            <button type="button" data-command="formatBlock" data-value="p" title="Paragraph">P</button>
+                        </div>
+                        
+                        <!-- Lists -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="insertUnorderedList" title="Bullet list"><i class="fas fa-list-ul"></i></button>
+                            <button type="button" data-command="insertOrderedList" title="Numbered list"><i class="fas fa-list-ol"></i></button>
+                            <button type="button" data-command="indent" title="Indent"><i class="fas fa-indent"></i></button>
+                            <button type="button" data-command="outdent" title="Outdent"><i class="fas fa-outdent"></i></button>
+                        </div>
+                        
+                        <!-- Alignment -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="justifyLeft" title="Align left"><i class="fas fa-align-left"></i></button>
+                            <button type="button" data-command="justifyCenter" title="Align center"><i class="fas fa-align-center"></i></button>
+                            <button type="button" data-command="justifyRight" title="Align right"><i class="fas fa-align-right"></i></button>
+                        </div>
+                        
+                        <!-- Special formatting -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="formatBlock" data-value="blockquote" title="Blockquote"><i class="fas fa-quote-right"></i></button>
+                            <button type="button" data-command="formatBlock" data-value="pre" title="Code block"><i class="fas fa-code"></i></button>
+                            <button type="button" data-command="insertHorizontalRule" title="Horizontal rule"><i class="fas fa-minus"></i></button>
+                        </div>
+                        
+                        <!-- Links and media -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="createLink" title="Insert link"><i class="fas fa-link"></i></button>
+                            <button type="button" data-command="unlink" title="Remove link"><i class="fas fa-unlink"></i></button>
+                            <button type="button" id="insertImageBtn" title="Insert image"><i class="fas fa-image"></i></button>
+                        </div>
+                        
+                        <!-- Undo/Redo -->
+                        <div class="editor-toolbar-group">
+                            <button type="button" data-command="undo" title="Undo"><i class="fas fa-undo"></i></button>
+                            <button type="button" data-command="redo" title="Redo"><i class="fas fa-redo"></i></button>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <div id="editor" contenteditable="true" class="form-control rich-editor"></div>
+                        <input type="hidden" id="content" name="content">
+                    </div>
+                    <div class="form-text">Use the editor to format text and add images. HTML supported.</div>
                 </div>
 
                 <div class="mb-4">
@@ -171,38 +376,525 @@
 {% block extrascripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Form validation
-    const form = document.getElementById('articleForm');
-    form.addEventListener('submit', function(event) {
-        const title = document.getElementById('title').value.trim();
-        const content = document.getElementById('content').value.trim();
+  const editor = document.getElementById('editor');
+  const contentField = document.getElementById('content');
+  const form = document.getElementById('articleForm');
+  const bannerPreview = document.getElementById('bannerPreview');
+  const bannerImageField = document.getElementById('banner_image');
+  const bannerContainer = document.getElementById('bannerContainer');
+  const uploadBannerBtn = document.getElementById('uploadBannerBtn');
+  const removeBannerBtn = document.getElementById('removeBannerBtn');
+  
+  // Initialize with existing content if editing
+  if (contentField.value) {
+    editor.innerHTML = contentField.value;
+  }
+  
+  // Set up banner image if it exists
+  if (bannerImageField.value) {
+    bannerContainer.classList.add('has-banner');
+  }
+  
+  // Banner image upload handler
+  uploadBannerBtn.addEventListener('click', function() {
+    // Create loading indicator
+    const originalButtonContent = this.innerHTML;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    this.disabled = true;
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
+    const button = this;
+    
+    fileInput.addEventListener('change', async function() {
+      if (fileInput.files && fileInput.files[0]) {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
         
-        if (!title) {
-            event.preventDefault();
-            alert('Please enter a title for the article');
-            document.getElementById('title').focus();
+        try {
+          // Upload the banner image
+          const response = await fetch('{% url "admin_upload_image" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            credentials: 'same-origin'
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            // Set the banner image preview and input value
+            bannerPreview.style.backgroundImage = `url('${data.location}')`;
+            bannerPreview.style.display = 'block';
+            bannerImageField.value = data.location;
+            bannerContainer.classList.add('has-banner');
+            button.innerHTML = '<i class="fas fa-upload me-1"></i> Change Banner';
+          } else {
+            alert('Error uploading banner image: ' + (data.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Banner image upload error:', error);
+          alert('Failed to upload banner image. Please try again.');
+        } finally {
+          // Restore button state
+          if (button.innerHTML.includes('spinner')) {
+            button.innerHTML = originalButtonContent;
+          }
+          button.disabled = false;
+          
+          // Clean up
+          document.body.removeChild(fileInput);
         }
-        else if (!content) {
-            event.preventDefault();
-            alert('Please enter content for the article');
-            document.getElementById('content').focus();
-        }
+      } else {
+        // User canceled the file selection
+        button.innerHTML = originalButtonContent;
+        button.disabled = false;
+      }
     });
     
-    // Optional: Add rich text editor if available
-    // If TinyMCE or other WYSIWYG editor is available in your project,
-    // initialize it here for the content field
-    /*
-    if (typeof tinymce !== 'undefined') {
-        tinymce.init({
-            selector: '#content',
-            height: 500,
-            plugins: 'link image code table lists',
-            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image | code',
-            toolbar_mode: 'floating',
-        });
+    fileInput.click();
+  });
+  
+  // Remove banner image
+  removeBannerBtn.addEventListener('click', function() {
+    bannerPreview.style.backgroundImage = '';
+    bannerPreview.style.display = 'none';
+    bannerImageField.value = '';
+    bannerContainer.classList.remove('has-banner');
+    uploadBannerBtn.innerHTML = '<i class="fas fa-upload me-1"></i> Upload Banner';
+  });
+  
+  // Set up toolbar buttons with enhanced functionality
+  document.querySelectorAll('.editor-toolbar button[data-command]').forEach(button => {
+    button.addEventListener('click', function() {
+      const command = this.dataset.command;
+      const value = this.dataset.value || null;
+      
+      switch(command) {
+        case 'createLink':
+          const selection = window.getSelection();
+          const selectedText = selection.toString();
+          const url = prompt('Enter the link URL:', 'https://');
+          
+          if (url) {
+            // If no text is selected, ask for link text
+            if (!selectedText) {
+              const linkText = prompt('Enter the link text:', 'Link text');
+              if (linkText) {
+                document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${linkText}</a>`);
+              }
+            } else {
+              document.execCommand(command, false, url);
+            }
+          }
+          break;
+          
+        case 'formatBlock':
+          document.execCommand(command, false, value);
+          break;
+          
+        default:
+          document.execCommand(command, false, null);
+      }
+      
+      editor.focus();
+      updateActiveState();
+    });
+  });
+  
+  // Enhanced function to update active state of buttons
+  function updateActiveState() {
+    document.querySelectorAll('.editor-toolbar button[data-command]').forEach(button => {
+      const command = button.dataset.command;
+      const value = button.dataset.value;
+      
+      // State tracking for simple toggles (bold, italic, etc.)
+      if (['bold', 'italic', 'underline', 'strikeThrough', 
+           'insertUnorderedList', 'insertOrderedList'].includes(command)) {
+        if (document.queryCommandState(command)) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      } 
+      // State tracking for block formats (h1, h2, blockquote, etc.)
+      else if (command === 'formatBlock' && value) {
+        const formatState = document.queryCommandValue('formatBlock').toLowerCase();
+        if (formatState === value.toLowerCase()) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      }
+      // State tracking for alignment
+      else if (['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'].includes(command)) {
+        if (document.queryCommandState(command)) {
+          button.classList.add('active');
+        } else {
+          button.classList.remove('active');
+        }
+      }
+    });
+  }
+  
+  // Add event listeners for selection changes in the editor
+  editor.addEventListener('mouseup', updateActiveState);
+  editor.addEventListener('keyup', updateActiveState);
+  editor.addEventListener('click', updateActiveState);
+  editor.addEventListener('input', updateActiveState);
+  
+  // Initial state update
+  setTimeout(updateActiveState, 100);
+  
+  // Enhanced inline image upload handler
+  document.getElementById('insertImageBtn').addEventListener('click', function() {
+    // Create loading indicator
+    const originalButtonContent = this.innerHTML;
+    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    this.disabled = true;
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
+    const button = this;
+    
+    fileInput.addEventListener('change', async function() {
+      if (fileInput.files && fileInput.files[0]) {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        
+        try {
+          // Save current selection
+          const selection = window.getSelection();
+          let range;
+          
+          if (selection.rangeCount > 0) {
+            range = selection.getRangeAt(0);
+          } else {
+            // If no selection, put at the end of the editor
+            range = document.createRange();
+            range.selectNodeContents(editor);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+          
+          // Use the correct URL with no leading slash to ensure proper resolution
+          const response = await fetch('{% url "admin_upload_image" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            credentials: 'same-origin'
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            // Restore selection before inserting image
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            // Insert the image with responsive class and alt text
+            const imgTag = `<img src="${data.location}" alt="Image" style="max-width: 100%; height: auto; margin: 10px 0;">`;
+            document.execCommand('insertHTML', false, imgTag);
+          } else {
+            alert('Error uploading image: ' + (data.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Image upload error:', error);
+          alert('Failed to upload image. Please try again.');
+        } finally {
+          // Restore button state
+          button.innerHTML = originalButtonContent;
+          button.disabled = false;
+          
+          // Clean up
+          document.body.removeChild(fileInput);
+        }
+      } else {
+        // User canceled the file selection
+        button.innerHTML = originalButtonContent;
+        button.disabled = false;
+      }
+    });
+    
+    fileInput.click();
+  });
+  
+  // Update hidden field on form submission
+  form.addEventListener('submit', function() {
+    // Clean up empty paragraphs before submitting
+    const content = editor.innerHTML.replace(/<p>&nbsp;<\/p>/g, '<p></p>');
+    contentField.value = content;
+  });
+  
+  // Enhanced link handling - edit link URL on click
+  editor.addEventListener('click', function(e) {
+    if (e.target.tagName === 'A') {
+      e.preventDefault();
+      const linkUrl = e.target.href;
+      const linkText = e.target.innerText;
+      const openInNewTab = e.target.target === '_blank';
+      
+      // Simple modal-like dialog
+      const dialog = document.createElement('div');
+      dialog.style.position = 'fixed';
+      dialog.style.top = '50%';
+      dialog.style.left = '50%';
+      dialog.style.transform = 'translate(-50%, -50%)';
+      dialog.style.backgroundColor = 'white';
+      dialog.style.padding = '20px';
+      dialog.style.borderRadius = '5px';
+      dialog.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
+      dialog.style.zIndex = '9999';
+      dialog.style.minWidth = '300px';
+      
+      dialog.innerHTML = `
+        <h5>Edit Link</h5>
+        <div class="mb-3">
+          <label class="form-label">URL:</label>
+          <input type="text" class="form-control" id="linkUrlInput" value="${linkUrl}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Text:</label>
+          <input type="text" class="form-control" id="linkTextInput" value="${linkText}">
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="newTabCheckbox" ${openInNewTab ? 'checked' : ''}>
+          <label class="form-check-label" for="newTabCheckbox">Open in new tab</label>
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-sm btn-danger" id="deleteLinkBtn">Delete Link</button>
+          <div>
+            <button class="btn btn-sm btn-secondary me-2" id="cancelLinkBtn">Cancel</button>
+            <button class="btn btn-sm btn-primary" id="saveLinkBtn">Save</button>
+          </div>
+        </div>
+      `;
+      
+      // Add backdrop
+      const backdrop = document.createElement('div');
+      backdrop.style.position = 'fixed';
+      backdrop.style.top = '0';
+      backdrop.style.left = '0';
+      backdrop.style.right = '0';
+      backdrop.style.bottom = '0';
+      backdrop.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      backdrop.style.zIndex = '9998';
+      
+      document.body.appendChild(backdrop);
+      document.body.appendChild(dialog);
+      
+      // Event listeners for the dialog
+      document.getElementById('cancelLinkBtn').addEventListener('click', function() {
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      });
+      
+      document.getElementById('saveLinkBtn').addEventListener('click', function() {
+        const newUrl = document.getElementById('linkUrlInput').value;
+        const newText = document.getElementById('linkTextInput').value;
+        const newTab = document.getElementById('newTabCheckbox').checked;
+        
+        if (newUrl && newText) {
+          e.target.href = newUrl;
+          e.target.innerText = newText;
+          e.target.target = newTab ? '_blank' : '';
+        }
+        
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      });
+      
+      document.getElementById('deleteLinkBtn').addEventListener('click', function() {
+        const parent = e.target.parentNode;
+        const text = e.target.innerText;
+        parent.replaceChild(document.createTextNode(text), e.target);
+        
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      });
     }
-    */
+  });
+  
+  // Make images resizable
+  editor.addEventListener('load', function(e) {
+    if (e.target.tagName === 'IMG') {
+      e.target.style.cursor = 'pointer';
+    }
+  }, true);
+  
+  // Image click handler for editing properties
+  editor.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG') {
+      e.preventDefault();
+      const img = e.target;
+      
+      // Simple image properties dialog
+      const dialog = document.createElement('div');
+      dialog.style.position = 'fixed';
+      dialog.style.top = '50%';
+      dialog.style.left = '50%';
+      dialog.style.transform = 'translate(-50%, -50%)';
+      dialog.style.backgroundColor = 'white';
+      dialog.style.padding = '20px';
+      dialog.style.borderRadius = '5px';
+      dialog.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
+      dialog.style.zIndex = '9999';
+      dialog.style.minWidth = '300px';
+      
+      dialog.innerHTML = `
+        <h5>Image Properties</h5>
+        <div class="mb-3">
+          <label class="form-label">Alt Text:</label>
+          <input type="text" class="form-control" id="imgAltInput" value="${img.alt || ''}">
+          <div class="form-text">Describe the image for accessibility</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Alignment:</label>
+          <select class="form-select" id="imgAlignSelect">
+            <option value="">None</option>
+            <option value="left" ${img.style.float === 'left' ? 'selected' : ''}>Left</option>
+            <option value="center" ${img.style.display === 'block' && img.style.margin === '0 auto' ? 'selected' : ''}>Center</option>
+            <option value="right" ${img.style.float === 'right' ? 'selected' : ''}>Right</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Size:</label>
+          <div class="row g-3">
+            <div class="col">
+              <select class="form-select" id="imgSizeSelect">
+                <option value="original">Original</option>
+                <option value="small">Small</option>
+                <option value="medium" selected>Medium (Default)</option>
+                <option value="large">Large</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="col" id="customSizeContainer" style="display: none;">
+              <div class="input-group">
+                <input type="number" class="form-control" id="imgWidthInput" placeholder="Width">
+                <span class="input-group-text">px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-sm btn-danger" id="deleteImgBtn">Delete Image</button>
+          <div>
+            <button class="btn btn-sm btn-secondary me-2" id="cancelImgBtn">Cancel</button>
+            <button class="btn btn-sm btn-primary" id="saveImgBtn">Save</button>
+          </div>
+        </div>
+      `;
+      
+      // Add backdrop
+      const backdrop = document.createElement('div');
+      backdrop.style.position = 'fixed';
+      backdrop.style.top = '0';
+      backdrop.style.left = '0';
+      backdrop.style.right = '0';
+      backdrop.style.bottom = '0';
+      backdrop.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      backdrop.style.zIndex = '9998';
+      
+      document.body.appendChild(backdrop);
+      document.body.appendChild(dialog);
+      
+      // Toggle custom width input based on size selection
+      document.getElementById('imgSizeSelect').addEventListener('change', function() {
+        const customSizeContainer = document.getElementById('customSizeContainer');
+        if (this.value === 'custom') {
+          customSizeContainer.style.display = 'block';
+          document.getElementById('imgWidthInput').value = img.width;
+        } else {
+          customSizeContainer.style.display = 'none';
+        }
+      });
+      
+      // Event listeners for the dialog
+      document.getElementById('cancelImgBtn').addEventListener('click', function() {
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      });
+      
+      document.getElementById('saveImgBtn').addEventListener('click', function() {
+        const altText = document.getElementById('imgAltInput').value;
+        const alignment = document.getElementById('imgAlignSelect').value;
+        const sizeOption = document.getElementById('imgSizeSelect').value;
+        
+        // Set alt text
+        img.alt = altText;
+        
+        // Apply alignment
+        img.style.float = '';
+        img.style.display = '';
+        img.style.margin = '';
+        
+        if (alignment === 'left') {
+          img.style.float = 'left';
+          img.style.marginRight = '15px';
+          img.style.marginBottom = '10px';
+        } else if (alignment === 'right') {
+          img.style.float = 'right';
+          img.style.marginLeft = '15px';
+          img.style.marginBottom = '10px';
+        } else if (alignment === 'center') {
+          img.style.display = 'block';
+          img.style.margin = '10px auto';
+        }
+        
+        // Apply size
+        switch (sizeOption) {
+          case 'original':
+            img.style.maxWidth = '';
+            img.style.width = '';
+            break;
+          case 'small':
+            img.style.maxWidth = '25%';
+            img.style.width = 'auto';
+            break;
+          case 'medium':
+            img.style.maxWidth = '50%';
+            img.style.width = 'auto';
+            break;
+          case 'large':
+            img.style.maxWidth = '100%';
+            img.style.width = 'auto';
+            break;
+          case 'custom':
+            const customWidth = document.getElementById('imgWidthInput').value;
+            if (customWidth && !isNaN(customWidth)) {
+              img.style.width = customWidth + 'px';
+              img.style.maxWidth = '100%';
+            }
+            break;
+        }
+        
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      });
+      
+      document.getElementById('deleteImgBtn').addEventListener('click', function() {
+        img.parentNode.removeChild(img);
+        document.body.removeChild(dialog);
+        document.body.removeChild(backdrop);
+      });
+    }
+  });
 });
 </script>
 {% endblock %}
