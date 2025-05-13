@@ -10,6 +10,9 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count, F
 from django.utils import timezone
 
+# Use URLHelper to convert to public URL
+from app.controllers.HelpersController import URLHelper
+
 from api.models import (
     KnowledgeBaseArticle,
     KnowledgeBaseTopic,
@@ -617,7 +620,7 @@ class KnowledgeBaseController:
         if relative_url.startswith("http"):
             return relative_url
 
-        return f"{settings.MEDIA_URL}{relative_url}"
+        return URLHelper.convert_to_public_url(relative_url)
 
     def _get_related_articles(self, article, max_results=3):
         """Get related articles based on topic only (tags removed)"""
