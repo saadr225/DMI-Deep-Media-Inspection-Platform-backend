@@ -83,9 +83,7 @@
         <div class="mb-3">
           {% if article.topic %}
           <span class="badge bg-primary me-1">{{ article.topic.name }}</span>
-          {% endif %} {% for tag in article.tags %}
-          <span class="badge bg-secondary me-1">{{ tag.name }}</span>
-          {% endfor %}
+          {% endif %}
         </div>
 
         <div class="article-preview-content">{{ article.content|truncatewords:100|linebreaks }}</div>

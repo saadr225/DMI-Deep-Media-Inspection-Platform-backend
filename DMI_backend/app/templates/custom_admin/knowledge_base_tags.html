@@ -1,6 +1,6 @@
-{% extends "custom_admin/base.html" %} {% block title %}Knowledge Base Tags{% endblock %} {% block extrastyle %}
+{% extends "custom_admin/base.html" %} {% block title %}Knowledge Base Articles{% endblock %} {% block extrastyle %}
 <style>
-  .tag-card {
+  .article-card {
     border-radius: 15px;
     overflow: hidden;
   }
@@ -24,34 +24,6 @@
     font-weight: 500;
   }
 
-  .tag-badge {
-    font-size: 90%;
-    padding: 8px 12px;
-    border-radius: 20px;
-    margin-right: 8px;
-    margin-bottom: 8px;
-    background-color: #e9ecef;
-    color: #495057;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .tag-badge .delete-icon {
-    margin-left: 8px;
-    cursor: pointer;
-  }
-
-  .tag-badge .delete-icon:hover {
-    color: var(--danger);
-  }
-
-  .tag-cloud {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 15px;
-  }
-
   .required-field::after {
     content: "*";
     color: var(--danger);
@@ -62,167 +34,136 @@
 <div class="container-fluid">
   <!-- Page Heading -->
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-tags me-2"></i> Knowledge Base Tags</h1>
+    <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-book me-2"></i> Knowledge Base Articles</h1>
     <div>
-      <a href="{% url 'custom_admin_knowledge_base_list' %}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-1"></i> Back to Articles
+      <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
       </a>
     </div>
   </div>
 
   <div class="row">
-    <!-- Create New Tag Form Card -->
+    <!-- Create New Article Form Card -->
     <div class="col-lg-4 mb-4">
       <div class="card shadow form-card">
         <div class="card-header py-3">
-          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus me-1"></i> Create New Tag</h6>
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-plus me-1"></i> Create New Article</h6>
         </div>
         <div class="card-body">
-          <form method="post" id="createTagForm">
+          <form method="post" id="createArticleForm">
             {% csrf_token %}
             <input type="hidden" name="create" value="1" />
 
             <div class="mb-3">
-              <label for="name" class="form-label required-field">Tag Name</label>
-              <input type="text" class="form-control" id="name" name="name" required placeholder="Enter tag name" />
-              <div class="form-text">Use short, descriptive keywords that help categorize content</div>
+              <label for="title" class="form-label required-field">Article Title</label>
+              <input type="text" class="form-control" id="title" name="title" required placeholder="Enter article title" />
+              <div class="form-text">Be concise and descriptive</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="content" class="form-label required-field">Content</label>
+              <textarea class="form-control" id="content" name="content" rows="4" required placeholder="Enter article content"></textarea>
+              <div class="form-text">Use clear and simple language</div>
             </div>
 
             <div class="d-grid">
-              <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i> Create Tag</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-plus me-1"></i> Create Article</button>
             </div>
           </form>
         </div>
       </div>
 
-      <!-- Tag Management Tips -->
+      <!-- Article Management Tips -->
       <div class="card shadow mb-4 form-card">
         <div class="card-header py-3">
-          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-lightbulb me-1"></i> Tag Management Tips</h6>
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-lightbulb me-1"></i> Article Management Tips</h6>
         </div>
         <div class="card-body">
           <ul class="mb-0">
-            <li class="mb-2">Use specific, descriptive tags</li>
-            <li class="mb-2">Keep tags short and simple</li>
-            <li class="mb-2">Use consistent naming conventions</li>
-            <li class="mb-2">Avoid creating duplicate tags with similar meanings</li>
-            <li>Consider merging similar tags to keep the tag list manageable</li>
+            <li class="mb-2">Write clear and informative titles</li>
+            <li class="mb-2">Use headings and subheadings for structure</li>
+            <li class="mb-2">Include images or videos to enhance content</li>
+            <li class="mb-2">Regularly update articles to keep content fresh</li>
+            <li>Monitor article performance and user feedback for improvements</li>
           </ul>
         </div>
       </div>
     </div>
 
-    <!-- Tags List Card -->
+    <!-- Articles List Card -->
     <div class="col-lg-8">
-      <div class="card shadow tag-card mb-4">
+      <div class="card shadow article-card mb-4">
         <div class="card-header py-3">
-          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-list me-1"></i> Tag Cloud</h6>
-        </div>
-        <div class="card-body tag-cloud">
-          {% if tags %} {% for tag in tags %}
-          <span class="tag-badge" title="{{ tag.article_count }} article{% if tag.article_count != 1 %}s{% endif %}">
-            {{ tag.name }}
-            <span class="badge bg-light text-dark ms-1">{{ tag.article_count }}</span>
-            <button
-              type="button"
-              class="btn btn-sm"
-              data-bs-toggle="modal"
-              data-bs-target="#deleteTagModal{{ tag.id }}"
-              title="Delete this tag"
-              style="padding: 0 0.25rem; margin-left: 0.5rem"
-            >
-              <i class="fas fa-times text-danger"></i>
-            </button>
-          </span>
-
-          <!-- Delete Tag Modal -->
-          <div
-            class="modal fade"
-            id="deleteTagModal{{ tag.id }}"
-            tabindex="-1"
-            aria-labelledby="deleteTagModalLabel{{ tag.id }}"
-            aria-hidden="true"
-          >
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <form method="post">
-                  {% csrf_token %}
-                  <input type="hidden" name="delete" value="1" />
-                  <input type="hidden" name="tag_id" value="{{ tag.id }}" />
-
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="deleteTagModalLabel{{ tag.id }}">Confirm Tag Deletion</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                    <div class="alert alert-warning">
-                      <i class="fas fa-exclamation-triangle me-2"></i>
-                      <strong>Warning:</strong> Are you sure you want to delete the tag "<strong>{{ tag.name }}</strong>"?
-                    </div>
-
-                    {% if tag.article_count > 0 %}
-                    <div class="alert alert-info">
-                      <i class="fas fa-info-circle me-2"></i>
-                      This tag is used in {{ tag.article_count }} article{% if tag.article_count != 1 %}s{% endif %}. Deleting it will
-                      remove the tag from those articles, but the articles themselves will not be deleted.
-                    </div>
-                    {% endif %}
-
-                    <p>This action cannot be undone.</p>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i> Delete Tag</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-          {% endfor %} {% else %}
-          <div class="text-center py-5 w-100">
-            <i class="fas fa-tags fa-3x text-muted mb-3"></i>
-            <h4 class="text-muted">No tags created yet</h4>
-            <p>Create your first tag to help categorize and search knowledge base articles.</p>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Tags Table Card -->
-      <div class="card shadow tag-card">
-        <div class="card-header py-3">
-          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-table me-1"></i> All Tags</h6>
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-list me-1"></i> All Articles</h6>
         </div>
         <div class="card-body">
-          {% if tags %}
+          {% if articles %}
           <div class="table-responsive">
             <table class="table table-hover table-striped">
               <thead>
                 <tr>
-                  <th>Tag Name</th>
-                  <th>Articles</th>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>Published Date</th>
                   <th width="100">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {% for tag in tags %}
+                {% for article in articles %}
                 <tr>
-                  <td>{{ tag.name }}</td>
+                  <td>{{ article.title }}</td>
+                  <td>{{ article.author }}</td>
+                  <td>{{ article.published_date|date:"SHORT_DATE_FORMAT" }}</td>
                   <td>
-                    {% if tag.article_count > 0 %}
-                    <a href="{% url 'custom_admin_knowledge_base_list' %}?tag_id={{ tag.id }}">
-                      {{ tag.article_count }} article{% if tag.article_count != 1 %}s{% endif %}
+                    <a href="{% url 'custom_admin_knowledge_base_edit' article.id %}" class="btn btn-sm btn-warning">
+                      <i class="fas fa-edit"></i>
                     </a>
-                    {% else %}
-                    <span class="text-muted">0 articles</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteTagModal{{ tag.id }}">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger"
+                      data-bs-toggle="modal"
+                      data-bs-target="#deleteArticleModal{{ article.id }}"
+                    >
                       <i class="fas fa-trash"></i>
                     </button>
                   </td>
                 </tr>
+
+                <!-- Delete Article Modal -->
+                <div
+                  class="modal fade"
+                  id="deleteArticleModal{{ article.id }}"
+                  tabindex="-1"
+                  aria-labelledby="deleteArticleModalLabel{{ article.id }}"
+                  aria-hidden="true"
+                >
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete" value="1" />
+                        <input type="hidden" name="article_id" value="{{ article.id }}" />
+
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="deleteArticleModalLabel{{ article.id }}">Confirm Article Deletion</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Warning:</strong> Are you sure you want to delete the article "<strong>{{ article.title }}</strong>"?
+                          </div>
+
+                          <p>This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                          <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i> Delete Article</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
                 {% endfor %}
               </tbody>
             </table>
@@ -230,10 +171,10 @@
           {% else %}
           <div class="text-center py-5">
             <div class="mb-3">
-              <i class="fas fa-tags fa-4x text-muted"></i>
+              <i class="fas fa-book fa-4x text-muted"></i>
             </div>
-            <h4 class="text-muted">No tags created yet</h4>
-            <p>Create your first tag to help categorize and search knowledge base articles.</p>
+            <h4 class="text-muted">No articles created yet</h4>
+            <p>Create your first article to share knowledge and information.</p>
           </div>
           {% endif %}
         </div>
@@ -245,15 +186,20 @@
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     // Form validation
-    const createTagForm = document.getElementById("createTagForm");
-    if (createTagForm) {
-      createTagForm.addEventListener("submit", function (event) {
-        const tagName = document.getElementById("name").value.trim();
+    const createArticleForm = document.getElementById("createArticleForm");
+    if (createArticleForm) {
+      createArticleForm.addEventListener("submit", function (event) {
+        const title = document.getElementById("title").value.trim();
+        const content = document.getElementById("content").value.trim();
 
-        if (!tagName) {
+        if (!title) {
           event.preventDefault();
-          alert("Please enter a tag name");
-          document.getElementById("name").focus();
+          alert("Please enter an article title");
+          document.getElementById("title").focus();
+        } else if (!content) {
+          event.preventDefault();
+          alert("Please enter article content");
+          document.getElementById("content").focus();
         }
       });
     }

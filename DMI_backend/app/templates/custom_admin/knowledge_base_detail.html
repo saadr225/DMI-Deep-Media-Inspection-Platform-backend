@@ -102,12 +102,6 @@
             </div>
           </div>
 
-          <div class="mb-4">
-            {% if article.tags %} {% for tag in article.tags %}
-            <span class="badge bg-secondary me-1">{{ tag.name }}</span>
-            {% endfor %} {% endif %}
-          </div>
-
           <div class="article-content">{{ article.content|linebreaks }}</div>
         </div>
       </div>

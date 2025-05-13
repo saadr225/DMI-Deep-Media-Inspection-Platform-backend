@@ -119,187 +119,15 @@
                   <th width="120">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {% for topic in topics %}
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <div class="topic-icon">
-                        <i class="fas {% if topic.icon %}fa-{{ topic.icon }}{% else %}fa-folder{% endif %}"></i>
-                      </div>
-                      <span>{{ topic.name }}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {% if topic.description %} {{ topic.description|truncatechars:60 }} {% else %}
-                    <span class="text-muted">No description</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if topic.article_count > 0 %}
-                    <a href="{% url 'custom_admin_knowledge_base_list' %}?topic_id={{ topic.id }}">
-                      {{ topic.article_count }} article{% if topic.article_count != 1 %}s{% endif %}
-                    </a>
-                    {% else %}
-                    <span class="text-muted">0 articles</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if topic.is_active %}
-                    <span class="badge bg-success">Active</span>
-                    {% else %}
-                    <span class="badge bg-danger">Inactive</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-warning"
-                      data-bs-toggle="modal"
-                      data-bs-target="#editTopicModal{{ topic.id }}"
-                    >
-                      <i class="fas fa-edit"></i>
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-danger"
-                      data-bs-toggle="modal"
-                      data-bs-target="#deleteTopicModal{{ topic.id }}"
-                    >
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-
-                <!-- Edit Topic Modal -->
-                <div
-                  class="modal fade"
-                  id="editTopicModal{{ topic.id }}"
-                  tabindex="-1"
-                  aria-labelledby="editTopicModalLabel{{ topic.id }}"
-                  aria-hidden="true"
-                >
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-                      <form method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="update" value="1" />
-                        <input type="hidden" name="topic_id" value="{{ topic.id }}" />
-
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="editTopicModalLabel{{ topic.id }}">Edit Topic</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <div class="mb-3">
-                            <label for="edit_name{{ topic.id }}" class="form-label required-field">Topic Name</label>
-                            <input
-                              type="text"
-                              class="form-control"
-                              id="edit_name{{ topic.id }}"
-                              name="name"
-                              value="{{ topic.name }}"
-                              required
-                            />
-                          </div>
-
-                          <div class="mb-3">
-                            <label for="edit_description{{ topic.id }}" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_description{{ topic.id }}" name="description" rows="3">
-{{ topic.description }}</textarea
-                            >
-                          </div>
-
-                          <div class="mb-3">
-                            <label for="edit_icon{{ topic.id }}" class="form-label">Icon (FontAwesome)</label>
-                            <div class="input-group">
-                              <span class="input-group-text">fa-</span>
-                              <input type="text" class="form-control" id="edit_icon{{ topic.id }}" name="icon" value="{{ topic.icon }}" />
-                            </div>
-                            <div class="form-text">Enter a FontAwesome icon name without the 'fa-' prefix</div>
-                          </div>
-
-                          <div class="form-check form-switch mb-3">
-                            <input
-                              class="form-check-input"
-                              type="checkbox"
-                              id="is_active{{ topic.id }}"
-                              name="is_active"
-                              {%
-                              if
-                              topic.is_active
-                              %}checked{%
-                              endif
-                              %}
-                            />
-                            <label class="form-check-label" for="is_active{{ topic.id }}">Active</label>
-                            <div class="form-text">Inactive topics won't appear in the frontend selection</div>
-                          </div>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Save Changes</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Delete Topic Modal -->
-                <div
-                  class="modal fade"
-                  id="deleteTopicModal{{ topic.id }}"
-                  tabindex="-1"
-                  aria-labelledby="deleteTopicModalLabel{{ topic.id }}"
-                  aria-hidden="true"
-                >
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-                      <form method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="delete" value="1" />
-                        <input type="hidden" name="topic_id" value="{{ topic.id }}" />
-
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="deleteTopicModalLabel{{ topic.id }}">Confirm Topic Deletion</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Warning:</strong> Are you sure you want to delete the topic "<strong>{{ topic.name }}</strong>"?
-                          </div>
-
-                          {% if topic.article_count > 0 %}
-                          <div class="alert alert-danger">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Important:</strong> This topic has {{ topic.article_count }} article{% if topic.article_count != 1 %}s{%
-                            endif %} associated with it.
-                            <hr />
-                            <p class="mb-0">
-                              Instead of deleting, we'll mark it as <strong>inactive</strong> to prevent issues with existing articles.
-                            </p>
-                          </div>
-                          {% else %}
-                          <p>This topic will be permanently removed from the system. This action cannot be undone.</p>
-                          {% endif %}
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                          <button type="submit" class="btn btn-danger">
-                            {% if topic.article_count > 0 %}
-                            <i class="fas fa-ban me-1"></i> Make Inactive {% else %} <i class="fas fa-trash me-1"></i> Delete Topic {% endif
-                            %}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-                {% endfor %}
+              <tbody id="topics-table-body">
+                <!-- Table content will be generated by JavaScript -->
               </tbody>
             </table>
           </div>
+
+          <!-- This div will contain all modals, generated by JavaScript -->
+          <div id="topic-modals-container"></div>
+
           {% else %}
           <div class="text-center py-5">
             <div class="mb-3">
@@ -314,6 +142,22 @@
     </div>
   </div>
 </div>
+
+<!-- Pass topics data to JavaScript -->
+<script>
+  var topicsData = [
+    {% for topic in topics %}
+      {
+        id: {{ topic.id }},
+        name: "{{ topic.name|escapejs }}",
+        description: "{{ topic.description|default:''|escapejs }}",
+        icon: "{{ topic.icon|default:''|escapejs }}",
+        articleCount: {{ topic.article_count }},
+        isActive: {{ topic.is_active|yesno:"true,false" }}
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+</script>
 {% endblock %} {% block extrascripts %}
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -322,6 +166,224 @@
       var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
       tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+    }
+
+    // Generate table rows and modals from topics data
+    const tableBody = document.getElementById("topics-table-body");
+    const modalsContainer = document.getElementById("topic-modals-container");
+
+    // Only proceed if we have topics data and the container elements
+    if (typeof topicsData !== "undefined" && tableBody && modalsContainer) {
+      topicsData.forEach(function (topic) {
+        // Generate table row
+        const row = document.createElement("tr");
+
+        // Name cell with icon
+        const nameCell = document.createElement("td");
+        nameCell.innerHTML = `
+          <div class="d-flex align-items-center">
+            <div class="topic-icon">
+              <i class="fas fa-${topic.icon || "folder"}"></i>
+            </div>
+            <span>${topic.name}</span>
+          </div>
+        `;
+
+        // Description cell
+        const descriptionCell = document.createElement("td");
+        if (topic.description) {
+          // Truncate to 60 chars
+          descriptionCell.textContent = topic.description.length > 60 ? topic.description.substring(0, 57) + "..." : topic.description;
+        } else {
+          descriptionCell.innerHTML = '<span class="text-muted">No description</span>';
+        }
+
+        // Articles cell
+        const articlesCell = document.createElement("td");
+        if (topic.articleCount > 0) {
+          articlesCell.innerHTML = `
+            <a href="?topic_id=${topic.id}">
+              ${topic.articleCount} article${topic.articleCount !== 1 ? "s" : ""}
+            </a>
+          `;
+        } else {
+          articlesCell.innerHTML = '<span class="text-muted">0 articles</span>';
+        }
+
+        // Status cell
+        const statusCell = document.createElement("td");
+        statusCell.innerHTML = `
+          <span class="badge bg-${topic.isActive ? "success" : "danger"}">
+            ${topic.isActive ? "Active" : "Inactive"}
+          </span>
+        `;
+
+        // Actions cell
+        const actionsCell = document.createElement("td");
+        actionsCell.innerHTML = `
+          <button
+            type="button"
+            class="btn btn-sm btn-warning me-2"
+            data-bs-toggle="modal"
+            data-bs-target="#editTopicModal${topic.id}"
+          >
+            <i class="fas fa-edit"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-danger"
+            data-bs-toggle="modal"
+            data-bs-target="#deleteTopicModal${topic.id}"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
+        `;
+
+        // Add all cells to the row
+        row.appendChild(nameCell);
+        row.appendChild(descriptionCell);
+        row.appendChild(articlesCell);
+        row.appendChild(statusCell);
+        row.appendChild(actionsCell);
+
+        // Add row to table body
+        tableBody.appendChild(row);
+
+        // Generate edit modal
+        const editModal = document.createElement("div");
+        editModal.className = "modal fade";
+        editModal.id = `editTopicModal${topic.id}`;
+        editModal.setAttribute("tabindex", "-1");
+        editModal.setAttribute("aria-labelledby", `editTopicModalLabel${topic.id}`);
+        editModal.setAttribute("aria-hidden", "true");
+        editModal.innerHTML = `
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="update" value="1" />
+                <input type="hidden" name="topic_id" value="${topic.id}" />
+
+                <div class="modal-header">
+                  <h5 class="modal-title" id="editTopicModalLabel${topic.id}">Edit Topic</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <!-- Topic Name -->
+                  <div class="mb-3">
+                    <label for="edit_name${topic.id}" class="form-label required-field">Topic Name</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="edit_name${topic.id}"
+                      name="name"
+                      value="${topic.name}"
+                      required
+                    />
+                  </div>
+
+                  <!-- Description -->
+                  <div class="mb-3">
+                    <label for="edit_description${topic.id}" class="form-label">Description</label>
+                    <textarea class="form-control" id="edit_description${topic.id}" name="description" rows="3">${
+          topic.description
+        }</textarea>
+                  </div>
+
+                  <!-- Icon -->
+                  <div class="mb-3">
+                    <label for="edit_icon${topic.id}" class="form-label">Icon (FontAwesome)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">fa-</span>
+                      <input type="text" class="form-control" id="edit_icon${topic.id}" name="icon" value="${topic.icon}" />
+                    </div>
+                    <div class="form-text">Enter a FontAwesome icon name without the 'fa-' prefix</div>
+                  </div>
+
+                  <!-- Active Switch -->
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="is_active${topic.id}"
+                      name="is_active"
+                      ${topic.isActive ? "checked" : ""}
+                    />
+                    <label class="form-check-label" for="is_active${topic.id}">Active</label>
+                    <div class="form-text">Inactive topics won't appear in the frontend selection</div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        // Generate delete modal
+        const deleteModal = document.createElement("div");
+        deleteModal.className = "modal fade";
+        deleteModal.id = `deleteTopicModal${topic.id}`;
+        deleteModal.setAttribute("tabindex", "-1");
+        deleteModal.setAttribute("aria-labelledby", `deleteTopicModalLabel${topic.id}`);
+        deleteModal.setAttribute("aria-hidden", "true");
+        deleteModal.innerHTML = `
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="delete" value="1" />
+                <input type="hidden" name="topic_id" value="${topic.id}" />
+
+                <div class="modal-header">
+                  <h5 class="modal-title" id="deleteTopicModalLabel${topic.id}">Confirm Topic Deletion</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> Are you sure you want to delete the topic "<strong>${topic.name}</strong>"?
+                  </div>
+
+                  ${
+                    topic.articleCount > 0
+                      ? `<div class="alert alert-danger">
+                      <i class="fas fa-info-circle me-2"></i>
+                      <strong>Important:</strong> This topic has ${topic.articleCount} article${
+                          topic.articleCount !== 1 ? "s" : ""
+                        } associated with it.
+                      <hr />
+                      <p class="mb-0">
+                        Instead of deleting, we'll mark it as <strong>inactive</strong> to prevent issues with existing articles.
+                      </p>
+                    </div>`
+                      : `<p>This topic will be permanently removed from the system. This action cannot be undone.</p>`
+                  }
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button
+                    type="submit"
+                    class="btn btn-danger"
+                  >
+                    ${
+                      topic.articleCount > 0
+                        ? '<i class="fas fa-ban me-1"></i> Make Inactive'
+                        : '<i class="fas fa-trash me-1"></i> Delete Topic'
+                    }
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+
+        // Add modals to container
+        modalsContainer.appendChild(editModal);
+        modalsContainer.appendChild(deleteModal);
       });
     }
   });

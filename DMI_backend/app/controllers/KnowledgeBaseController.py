@@ -13,7 +13,6 @@ from django.utils import timezone
 from api.models import (
     KnowledgeBaseArticle,
     KnowledgeBaseTopic,
-    KnowledgeBaseTag,
     KnowledgeBaseAttachment,
     KnowledgeBaseStatistics,
     UserData,
@@ -28,13 +27,12 @@ class KnowledgeBaseController:
     Handles article creation, retrieval, search, and statistics tracking.
     """
 
-    def get_articles(self, topic_id=None, tag_id=None, page=1, items_per_page=10, search_query=None):
+    def get_articles(self, topic_id=None, page=1, items_per_page=10, search_query=None):
         """
         Get knowledge base articles with optional filtering and pagination.
 
         Args:
             topic_id: Optional ID of topic to filter by
-            tag_id: Optional ID of tag to filter by
             page: Page number for pagination
             items_per_page: Number of items per page
             search_query: Optional search string to filter articles
@@ -51,15 +49,9 @@ class KnowledgeBaseController:
             if topic_id:
                 articles = articles.filter(topic_id=topic_id)
 
-            if tag_id:
-                articles = articles.filter(tags__id=tag_id)
-
             if search_query:
                 articles = articles.filter(
-                    Q(title__icontains=search_query)
-                    | Q(content__icontains=search_query)
-                    | Q(author__user__username__icontains=search_query)
-                    | Q(tags__name__icontains=search_query)
+                    Q(title__icontains=search_query) | Q(content__icontains=search_query) | Q(author__user__username__icontains=search_query)
                 ).distinct()
 
             # Order by most recent
@@ -80,9 +72,6 @@ class KnowledgeBaseController:
             # Format articles for response
             result_articles = []
             for article in paginated_articles:
-                # Get tags for the article
-                tags = [{"id": tag.id, "name": tag.name} for tag in article.tags.all()]
-
                 # Calculate read time (average reading speed: 200 words per minute)
                 word_count = len(article.content.split())
                 read_time = max(1, round(word_count / 200))
@@ -106,13 +95,7 @@ class KnowledgeBaseController:
                             if article.topic
                             else None
                         ),
-                        "tags": tags,
-                        "preview": (
-                            article.content[:200] + "..."
-                            if len(article.content) > 200
-                            else article.content
-                        ),
-                        "read_time": read_time,
+                        "preview": (article.content[:200] + "..." if len(article.content) > 200 else article.content),
                         "view_count": getattr(article, "view_count", 0),
                         "has_attachments": article.attachments.exists(),
                     }
@@ -148,12 +131,7 @@ class KnowledgeBaseController:
         """
         try:
             # Get the article
-            article = KnowledgeBaseArticle.objects.get(
-                id=article_id, is_published=True, is_deleted=False
-            )
-
-            # Get tags for the article
-            tags = [{"id": tag.id, "name": tag.name} for tag in article.tags.all()]
+            article = KnowledgeBaseArticle.objects.get(id=article_id, is_published=True, is_deleted=False)
 
             # Get attachments
             attachments = []
@@ -202,7 +180,6 @@ class KnowledgeBaseController:
                     if article.topic
                     else None
                 ),
-                "tags": tags,
                 "content": article.content,
                 "read_time": read_time,
                 "view_count": view_count,
@@ -230,7 +207,7 @@ class KnowledgeBaseController:
                 "code": "KNOWLEDGE_DETAIL_ERROR",
             }
 
-    def create_article(self, title, content, author_id, topic_id=None, tags=None, attachments=None):
+    def create_article(self, title, content, author_id, topic_id=None, attachments=None):
         """
         Create a new knowledge base article
 
@@ -239,7 +216,6 @@ class KnowledgeBaseController:
             content: Article content
             author_id: ID of the author (UserData)
             topic_id: Optional ID of topic
-            tags: Optional list of tag IDs or names
             attachments: Optional list of attachment files
 
         Returns:
@@ -278,10 +254,6 @@ class KnowledgeBaseController:
                 is_published=True,  # Default to published
             )
 
-            # Process tags
-            if tags:
-                self._process_tags(article, tags)
-
             # Process attachments
             if attachments:
                 attachment_data = self._process_attachments(article, attachments)
@@ -313,7 +285,6 @@ class KnowledgeBaseController:
                         if topic
                         else None
                     ),
-                    "tags": [{"id": tag.id, "name": tag.name} for tag in article.tags.all()],
                     "read_time": read_time,
                     "attachments": attachment_data,
                 },
@@ -334,9 +305,7 @@ class KnowledgeBaseController:
                 "code": "KNOWLEDGE_CREATE_ERROR",
             }
 
-    def update_article(
-        self, article_id, title=None, content=None, topic_id=None, tags=None, attachments=None
-    ):
+    def update_article(self, article_id, title=None, content=None, topic_id=None, attachments=None):
         """
         Update an existing knowledge base article
 
@@ -345,7 +314,6 @@ class KnowledgeBaseController:
             title: Optional new title
             content: Optional new content
             topic_id: Optional new topic ID
-            tags: Optional new list of tag IDs or names
             attachments: Optional new attachments to add
 
         Returns:
@@ -377,12 +345,6 @@ class KnowledgeBaseController:
             article.updated_at = timezone.now()
             article.save()
 
-            # Process tags if provided
-            if tags is not None:
-                # Clear existing tags
-                article.tags.clear()
-                self._process_tags(article, tags)
-
             # Process attachments if provided
             attachment_data = []
             if attachments:
@@ -406,7 +368,6 @@ class KnowledgeBaseController:
                         if article.topic
                         else None
                     ),
-                    "tags": [{"id": tag.id, "name": tag.name} for tag in article.tags.all()],
                     "read_time": read_time,
                     "attachments": attachment_data,
                 },
@@ -475,8 +436,7 @@ class KnowledgeBaseController:
             topics = topics.annotate(
                 article_count=Count(
                     "knowledgebasearticle",
-                    filter=Q(knowledgebasearticle__is_published=True)
-                    & Q(knowledgebasearticle__is_deleted=False),
+                    filter=Q(knowledgebasearticle__is_published=True) & Q(knowledgebasearticle__is_deleted=False),
                 )
             )
 
@@ -504,43 +464,6 @@ class KnowledgeBaseController:
                 "success": False,
                 "error": f"Error fetching topics: {str(e)}",
                 "code": "KNOWLEDGE_TOPICS_ERROR",
-            }
-
-    def get_tags(self):
-        """
-        Get all knowledge base tags
-
-        Returns:
-            Dictionary containing tags or error information
-        """
-        try:
-            tags = KnowledgeBaseTag.objects.all()
-
-            # Annotate with article counts
-            tags = tags.annotate(
-                article_count=Count(
-                    "knowledgebasearticle",
-                    filter=Q(knowledgebasearticle__is_published=True)
-                    & Q(knowledgebasearticle__is_deleted=False),
-                )
-            )
-
-            tags_data = []
-            for tag in tags:
-                tags_data.append({"id": tag.id, "name": tag.name, "article_count": tag.article_count})
-
-            return {
-                "success": True,
-                "tags": tags_data,
-                "code": "KNOWLEDGE_TAGS_FETCHED",
-            }
-
-        except Exception as e:
-            logger.error(f"Error fetching knowledge base tags: {str(e)}")
-            return {
-                "success": False,
-                "error": f"Error fetching tags: {str(e)}",
-                "code": "KNOWLEDGE_TAGS_ERROR",
             }
 
     def search_articles(self, query, page=1, items_per_page=10):
@@ -576,9 +499,7 @@ class KnowledgeBaseController:
             Dictionary containing sharing links or error information
         """
         try:
-            article = KnowledgeBaseArticle.objects.get(
-                id=article_id, is_published=True, is_deleted=False
-            )
+            article = KnowledgeBaseArticle.objects.get(id=article_id, is_published=True, is_deleted=False)
 
             # Generate base URL for article
             base_url = f"{settings.SITE_URL}/knowledge/article/{article.id}"
@@ -616,9 +537,7 @@ class KnowledgeBaseController:
     def _track_article_view(self, article):
         """Increment view count for an article"""
         try:
-            stats, created = KnowledgeBaseStatistics.objects.get_or_create(
-                article=article, defaults={"view_count": 1}
-            )
+            stats, created = KnowledgeBaseStatistics.objects.get_or_create(article=article, defaults={"view_count": 1})
 
             if not created:
                 stats.view_count += 1
@@ -626,21 +545,6 @@ class KnowledgeBaseController:
 
         except Exception as e:
             logger.error(f"Error tracking article view: {str(e)}")
-
-    def _process_tags(self, article, tags):
-        """Process and associate tags with an article"""
-        for tag_data in tags:
-            if isinstance(tag_data, int) or tag_data.isdigit():
-                # Tag ID provided
-                try:
-                    tag = KnowledgeBaseTag.objects.get(id=tag_data)
-                    article.tags.add(tag)
-                except KnowledgeBaseTag.DoesNotExist:
-                    continue
-            else:
-                # Tag name provided - get or create
-                tag, created = KnowledgeBaseTag.objects.get_or_create(name=tag_data)
-                article.tags.add(tag)
 
     def _process_attachments(self, article, attachments):
         """Process and save attachments for an article"""
@@ -679,9 +583,7 @@ class KnowledgeBaseController:
                     file_type = "document"
 
                 # Create attachment record
-                attachment = KnowledgeBaseAttachment.objects.create(
-                    article=article, filename=original_filename, file_url=file_url, file_type=file_type
-                )
+                attachment = KnowledgeBaseAttachment.objects.create(article=article, filename=original_filename, file_url=file_url, file_type=file_type)
 
                 # Add to response data
                 attachment_data.append(
@@ -709,63 +611,30 @@ class KnowledgeBaseController:
         return f"{settings.MEDIA_URL}{relative_url}"
 
     def _get_related_articles(self, article, max_results=3):
-        """Get related articles based on tags and topic"""
-        # Get articles with same topic or tags, excluding current article
+        """Get related articles based on topic only (tags removed)"""
         related_by_topic = []
-        related_by_tags = []
-
-        # Get articles with same topic
         if article.topic:
-            related_by_topic = list(
-                KnowledgeBaseArticle.objects.filter(
-                    topic=article.topic, is_published=True, is_deleted=False
-                ).exclude(id=article.id)[: max_results + 2]
-            )  # Get a few extra for filtering
-
-        # Get articles with same tags
-        article_tags = article.tags.all()
-        if article_tags:
-            related_by_tags = list(
-                KnowledgeBaseArticle.objects.filter(
-                    tags__in=article_tags, is_published=True, is_deleted=False
-                )
-                .exclude(id=article.id)
-                .distinct()[: max_results + 2]
-            )  # Get a few extra
+            related_by_topic = KnowledgeBaseArticle.objects.filter(topic=article.topic, is_published=True, is_deleted=False).exclude(id=article.id)[:max_results]
 
         # Combine and remove duplicates while preserving order
         seen = set()
         related_articles = []
 
-        # Add topic-related first (usually more relevant)
         for related in related_by_topic:
-            if related.id not in seen and len(related_articles) < max_results:
-                seen.add(related.id)
-                related_articles.append(related)
-
-        # Then add tag-related
-        for related in related_by_tags:
-            if related.id not in seen and len(related_articles) < max_results:
+            if related.id not in seen:
                 seen.add(related.id)
                 related_articles.append(related)
 
         # Format for response
         result = []
         for related in related_articles:
-            # Calculate read time
-            word_count = len(related.content.split())
-            read_time = max(1, round(word_count / 200))
-
             result.append(
                 {
                     "id": related.id,
                     "title": related.title,
                     "author": related.author.user.username,
                     "created_at": related.created_at.strftime("%Y-%m-%d"),
-                    "read_time": read_time,
-                    "topic": (
-                        {"id": related.topic.id, "name": related.topic.name} if related.topic else None
-                    ),
+                    "topic": ({"id": related.topic.id, "name": related.topic.name} if related.topic else None),
                 }
             )
 

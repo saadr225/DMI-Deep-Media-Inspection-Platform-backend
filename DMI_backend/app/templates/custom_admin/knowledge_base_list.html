@@ -64,9 +64,6 @@
                 <a href="{% url 'custom_admin_knowledge_base_topics' %}" class="btn btn-outline-secondary">
                     <i class="fas fa-folder me-1"></i> Manage Topics
                 </a>
-                <a href="{% url 'custom_admin_knowledge_base_tags' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-tags me-1"></i> Manage Tags
-                </a>
             </div>
         </div>
     </div>
@@ -86,17 +83,6 @@
                             {% for topic in topics %}
                             <option value="{{ topic.id }}" {% if selected_topic_id == topic.id|stringformat:"s" %}selected{% endif %}>
                                 {{ topic.name }} ({{ topic.article_count }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="tag_id" class="form-label">Tag</label>
-                        <select name="tag_id" id="tag_id" class="form-select">
-                            <option value="">-- All Tags --</option>
-                            {% for tag in tags %}
-                            <option value="{{ tag.id }}" {% if selected_tag_id == tag.id|stringformat:"s" %}selected{% endif %}>
-                                {{ tag.name }} ({{ tag.article_count }})
                             </option>
                             {% endfor %}
                         </select>
@@ -136,7 +122,6 @@
                             <th>Title</th>
                             <th>Topic</th>
                             <th>Author</th>
-                            <th>Tags</th>
                             <th>Created</th>
                             <th>Views</th>
                             <th>Actions</th>
@@ -166,13 +151,6 @@
                                 <i class="fas fa-check-circle text-success ms-1" data-bs-toggle="tooltip" title="Verified user"></i>
                                 {% endif %}
                             </td>
-                            <td>
-                                {% for tag in article.tags %}
-                                <span class="badge bg-secondary">{{ tag.name }}</span>
-                                {% empty %}
-                                <span class="text-muted">—</span>
-                                {% endfor %}
-                            </td>
                             <td>{{ article.created_at }}</td>
                             <td>{{ article.view_count }}</td>
                             <td>
@@ -200,12 +178,12 @@
                 <ul class="pagination justify-content-center">
                     {% if page > 1 %}
                     <li class="page-item">
-                        <a class="page-link" href="?page=1{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="First">
+                        <a class="page-link" href="?page=1{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="First">
                             <span aria-hidden="true">&laquo;&laquo;</span>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page|add:'-1' }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                        <a class="page-link" href="?page={{ page|add:'-1' }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -218,20 +196,20 @@
                     </li>
                     {% endif %}
 
-                    {% for i in pages|get_range %}
+                    {% for i in page_range %}
                     <li class="page-item {% if i == page %}active{% endif %}">
-                        <a class="page-link" href="?page={{ i }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a>
+                        <a class="page-link" href="?page={{ i }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a>
                     </li>
                     {% endfor %}
 
                     {% if page < pages %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page|add:'1' }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                        <a class="page-link" href="?page={{ page|add:'1' }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ pages }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Last">
+                        <a class="page-link" href="?page={{ pages }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Last">
                             <span aria-hidden="true">&raquo;&raquo;</span>
                         </a>
                     </li>

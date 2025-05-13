@@ -83,9 +83,7 @@ urlpatterns = [
     ),
     path("forum/threads/<int:thread_id>/reply/", community_forum_views.add_reply, name="add_reply"),
     path("forum/replies/<int:reply_id>/edit/", community_forum_views.edit_reply, name="edit_reply"),
-    path(
-        "forum/replies/<int:reply_id>/delete/", community_forum_views.delete_reply, name="delete_reply"
-    ),
+    path("forum/replies/<int:reply_id>/delete/", community_forum_views.delete_reply, name="delete_reply"),
     path("forum/like/", community_forum_views.toggle_like, name="toggle_like"),
     path("forum/dislike/", community_forum_views.toggle_dislike, name="toggle_dislike"),
     path("forum/reaction/", community_forum_views.add_reaction, name="add_reaction"),
@@ -108,9 +106,7 @@ urlpatterns = [
         name="get_thread_replies",
     ),
     # Knowledge Base endpoints
-    path(
-        "knowledge-base/articles/", knowledge_base_views.get_articles, name="knowledge_baseget_articles"
-    ),
+    path("knowledge-base/articles/", knowledge_base_views.get_articles, name="knowledge_baseget_articles"),
     path(
         "knowledge-base/articles/<int:article_id>/",
         knowledge_base_views.get_article_detail,
@@ -132,7 +128,6 @@ urlpatterns = [
         name="knowledge_basedelete_article",
     ),
     path("knowledge-base/topics/", knowledge_base_views.get_topics, name="knowledge_baseget_topics"),
-    path("knowledge-base/tags/", knowledge_base_views.get_tags, name="knowledge_baseget_tags"),
     path(
         "knowledge-base/search/",
         knowledge_base_views.search_articles,
@@ -158,13 +153,5 @@ urlpatterns = [
         "knowledge-base/topics/<int:topic_id>/delete/",
         knowledge_base_views.delete_topic,
         name="knowledge_basedelete_topic",
-    ),
-    path(
-        "knowledge-base/tags/create/", knowledge_base_views.create_tag, name="knowledge_basecreate_tag"
-    ),
-    path(
-        "knowledge-base/tags/<int:tag_id>/delete/",
-        knowledge_base_views.delete_tag,
-        name="knowledge_basedelete_tag",
     ),
 ]

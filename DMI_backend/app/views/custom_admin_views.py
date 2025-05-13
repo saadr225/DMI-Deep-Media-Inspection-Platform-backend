@@ -21,10 +21,8 @@ from api.models import (
     PublicDeepfakeArchive,
 )
 from app.models import UserData, ModeratorAction
-
 from app.controllers.KnowledgeBaseController import KnowledgeBaseController
-from app.decorators import admin_required, staff_required
-from api.models import KnowledgeBaseArticle, KnowledgeBaseTopic, KnowledgeBaseTag, UserData
+from api.models import KnowledgeBaseArticle, KnowledgeBaseTopic, UserData
 
 logger = logging.getLogger(__name__)
 kb_controller = KnowledgeBaseController()
@@ -384,6 +382,7 @@ def custom_admin_pda_list_view(request):
         "approved_count": PublicDeepfakeArchive.objects.filter(is_approved=True).count(),
         "rejected_count": PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=False).count(),
         "total_count": PublicDeepfakeArchive.objects.count(),
+        "page_range": range(1, paginator.num_pages + 1),
     }
 
     return render(request, "custom_admin/pda_list.html", context)
@@ -489,6 +488,7 @@ def custom_admin_forum_view(request):
         "approved_count": ForumThread.objects.filter(approval_status="approved", is_deleted=False).count(),
         "rejected_count": ForumThread.objects.filter(approval_status="rejected", is_deleted=False).count(),
         "total_count": ForumThread.objects.filter(is_deleted=False).count(),
+        "page_range": range(1, paginator.num_pages + 1),
     }
 
     return render(request, "custom_admin/forum_list.html", context)
@@ -852,30 +852,27 @@ def custom_admin_pending_view(request):
 
 
 @login_required
-@staff_required
 def custom_admin_knowledge_base_list_view(request):
     """View for listing and managing knowledge base articles"""
+    # Check if user is staff member
+    if not request.user.is_staff:
+        messages.error(request, "Staff privileges required to access this page.")
+        return redirect("custom_admin_login")
     try:
         # Get filter parameters
         topic_id = request.GET.get("topic_id")
-        tag_id = request.GET.get("tag_id")
         search_query = request.GET.get("search")
         page = request.GET.get("page", 1)
 
         # Get articles using controller
-        result = kb_controller.get_articles(
-            topic_id=topic_id, tag_id=tag_id, page=page, items_per_page=20, search_query=search_query  # Show more items in admin panel
-        )
+        result = kb_controller.get_articles(topic_id=topic_id, page=page, items_per_page=20, search_query=search_query)  # Show more items in admin panel
 
-        # Get topics and tags for filter options
+        # Get topics for filter options
         topics = KnowledgeBaseTopic.objects.filter(is_active=True)
         topics = topics.annotate(article_count=Count("knowledgebasearticle"))
 
-        tags = KnowledgeBaseTag.objects.all()
-        tags = tags.annotate(article_count=Count("knowledgebasearticle"))
-
         # Check if any filter is applied
-        is_filtered = bool(topic_id or tag_id or search_query)
+        is_filtered = bool(topic_id or search_query)
 
         # Prepare context
         context = {
@@ -884,13 +881,12 @@ def custom_admin_knowledge_base_list_view(request):
             "pages": result.get("pages", 1),
             "total": result.get("total", 0),
             "topics": topics,
-            "tags": tags,
             "selected_topic_id": topic_id,
-            "selected_tag_id": tag_id,
             "search_query": search_query,
             "is_filtered": is_filtered,
             "title": "Knowledge Base Management",
             "section": "knowledge_base",
+            "page_range": range(1, result.get("pages", 1) + 1),
         }
 
         return render(request, "custom_admin/knowledge_base_list.html", context)
@@ -902,27 +898,18 @@ def custom_admin_knowledge_base_list_view(request):
 
 
 @login_required
-@staff_required
 def custom_admin_knowledge_base_create_view(request):
     """View for creating a new knowledge base article"""
+    # Check if user is staff member
+    if not request.user.is_staff:
+        messages.error(request, "Staff privileges required to access this page.")
+        return redirect("custom_admin_login")
     try:
         if request.method == "POST":
             # Extract form data
             title = request.POST.get("title")
             content = request.POST.get("content")
             topic_id = request.POST.get("topic_id")
-            tags_raw = request.POST.get("tags")
-
-            # Process tags
-            tags = None
-            if tags_raw:
-                if tags_raw.startswith("["):
-                    try:
-                        tags = json.loads(tags_raw)
-                    except json.JSONDecodeError:
-                        tags = [tag.strip() for tag in tags_raw.split(",")]
-                else:
-                    tags = [tag.strip() for tag in tags_raw.split(",")]
 
             # Get attachments
             attachments = [request.FILES[file] for file in request.FILES]
@@ -931,7 +918,7 @@ def custom_admin_knowledge_base_create_view(request):
             author_id = request.user.userdata.id
 
             # Create article
-            result = kb_controller.create_article(title=title, content=content, author_id=author_id, topic_id=topic_id, tags=tags, attachments=attachments)
+            result = kb_controller.create_article(title=title, content=content, author_id=author_id, topic_id=topic_id, tags=None, attachments=attachments)
 
             if result.get("success", False):
                 messages.success(request, "Knowledge base article created successfully")
@@ -939,11 +926,10 @@ def custom_admin_knowledge_base_create_view(request):
             else:
                 messages.error(request, result.get("error", "Unknown error creating article"))
 
-        # Get topics and tags for form options
+        # Get topics for form options
         topics = KnowledgeBaseTopic.objects.filter(is_active=True)
-        tags = KnowledgeBaseTag.objects.all()
 
-        context = {"topics": topics, "tags": tags, "title": "Create Knowledge Base Article", "section": "knowledge_base"}
+        context = {"topics": topics, "title": "Create Knowledge Base Article", "section": "knowledge_base"}
 
         return render(request, "custom_admin/knowledge_base_form.html", context)
 
@@ -954,9 +940,12 @@ def custom_admin_knowledge_base_create_view(request):
 
 
 @login_required
-@staff_required
 def custom_admin_knowledge_base_detail_view(request, article_id):
     """View for viewing a knowledge base article details"""
+    # Check if user is staff member
+    if not request.user.is_staff:
+        messages.error(request, "Staff privileges required to access this page.")
+        return redirect("custom_admin_login")
     try:
         # Get article details
         result = kb_controller.get_article_detail(article_id, track_view=False)
@@ -976,9 +965,12 @@ def custom_admin_knowledge_base_detail_view(request, article_id):
 
 
 @login_required
-@staff_required
 def custom_admin_knowledge_base_edit_view(request, article_id):
     """View for editing a knowledge base article"""
+    # Check if user is staff member
+    if not request.user.is_staff:
+        messages.error(request, "Staff privileges required to access this page.")
+        return redirect("custom_admin_login")
     try:
         # Get article to edit
         result = kb_controller.get_article_detail(article_id, track_view=False)
@@ -994,18 +986,6 @@ def custom_admin_knowledge_base_edit_view(request, article_id):
             title = request.POST.get("title")
             content = request.POST.get("content")
             topic_id = request.POST.get("topic_id")
-            tags_raw = request.POST.get("tags")
-
-            # Process tags
-            tags = None
-            if tags_raw:
-                if tags_raw.startswith("["):
-                    try:
-                        tags = json.loads(tags_raw)
-                    except json.JSONDecodeError:
-                        tags = [tag.strip() for tag in tags_raw.split(",")]
-                else:
-                    tags = [tag.strip() for tag in tags_raw.split(",")]
 
             # Get attachments
             attachments = None
@@ -1013,7 +993,7 @@ def custom_admin_knowledge_base_edit_view(request, article_id):
                 attachments = [request.FILES[file] for file in request.FILES]
 
             # Update article
-            update_result = kb_controller.update_article(article_id=article_id, title=title, content=content, topic_id=topic_id, tags=tags, attachments=attachments)
+            update_result = kb_controller.update_article(article_id=article_id, title=title, content=content, topic_id=topic_id, tags=None, attachments=attachments)
 
             if update_result.get("success", False):
                 messages.success(request, "Knowledge base article updated successfully")
@@ -1021,18 +1001,12 @@ def custom_admin_knowledge_base_edit_view(request, article_id):
             else:
                 messages.error(request, update_result.get("error", "Unknown error updating article"))
 
-        # Get topics and tags for form options
+        # Get topics for form options
         topics = KnowledgeBaseTopic.objects.filter(is_active=True)
-        tags = KnowledgeBaseTag.objects.all()
-
-        # Format current tags for form
-        current_tags = ",".join([tag["name"] for tag in article["tags"]]) if article.get("tags") else ""
 
         context = {
             "article": article,
             "topics": topics,
-            "tags": tags,
-            "current_tags": current_tags,
             "title": f"Edit Article: {article['title']}",
             "section": "knowledge_base",
             "is_edit": True,
@@ -1047,9 +1021,12 @@ def custom_admin_knowledge_base_edit_view(request, article_id):
 
 
 @login_required
-@admin_required
 def custom_admin_knowledge_base_delete_view(request, article_id):
     """View for deleting a knowledge base article"""
+    # Check if user is admin (superuser or staff)
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "Admin privileges required to access this page.")
+        return redirect("custom_admin_login")
     try:
         if request.method == "POST":
             # Delete article
@@ -1080,9 +1057,12 @@ def custom_admin_knowledge_base_delete_view(request, article_id):
 
 
 @login_required
-@admin_required
 def custom_admin_knowledge_base_topics_view(request):
     """View for managing knowledge base topics"""
+    # Check if user is admin (superuser or staff)
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "Admin privileges required to access this page.")
+        return redirect("custom_admin_login")
     try:
         # Handle topic creation
         if request.method == "POST":
@@ -1146,50 +1126,4 @@ def custom_admin_knowledge_base_topics_view(request):
     except Exception as e:
         logger.error(f"Error in knowledge base admin topics view: {str(e)}")
         messages.error(request, f"Error managing topics: {str(e)}")
-        return redirect("custom_admin_knowledge_base_list")
-
-
-@login_required
-@staff_required
-def custom_admin_knowledge_base_tags_view(request):
-    """View for managing knowledge base tags"""
-    try:
-        # Handle tag creation
-        if request.method == "POST":
-            if "create" in request.POST:
-                name = request.POST.get("name")
-
-                if name:
-                    # Create tag if it doesn't exist
-                    tag, created = KnowledgeBaseTag.objects.get_or_create(name=name)
-                    if created:
-                        messages.success(request, f"Tag '{name}' created successfully")
-                    else:
-                        messages.info(request, f"Tag '{name}' already exists")
-                else:
-                    messages.error(request, "Tag name is required")
-
-            # Handle tag deletion
-            elif "delete" in request.POST:
-                tag_id = request.POST.get("tag_id")
-
-                if tag_id:
-                    tag = KnowledgeBaseTag.objects.get(id=tag_id)
-                    tag_name = tag.name
-                    tag.delete()
-                    messages.success(request, f"Tag '{tag_name}' deleted successfully")
-                else:
-                    messages.error(request, "Tag ID is required for deletion")
-
-        # Get all tags with article counts
-        tags = KnowledgeBaseTag.objects.all()
-        tags = tags.annotate(article_count=Count("knowledgebasearticle"))
-
-        context = {"tags": tags, "title": "Manage Knowledge Base Tags", "section": "knowledge_base"}
-
-        return render(request, "custom_admin/knowledge_base_tags.html", context)
-
-    except Exception as e:
-        logger.error(f"Error in knowledge base admin tags view: {str(e)}")
-        messages.error(request, f"Error managing tags: {str(e)}")
         return redirect("custom_admin_knowledge_base_list")

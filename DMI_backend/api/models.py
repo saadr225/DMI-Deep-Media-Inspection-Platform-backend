@@ -99,14 +99,10 @@ class PublicDeepfakeArchive(models.Model):
     category = models.CharField(max_length=3, choices=DEEPFAKE_CATEGORIES)
     context = models.TextField(blank=True, null=True, max_length=256)
     source_url = models.URLField(blank=True, null=True)
-    detection_result = models.OneToOneField(
-        DeepfakeDetectionResult, on_delete=models.CASCADE, null=False, related_name="archive_submission"
-    )
+    detection_result = models.OneToOneField(DeepfakeDetectionResult, on_delete=models.CASCADE, null=False, related_name="archive_submission")
     is_approved = models.BooleanField(default=False)  # For moderation purposes
     submission_date = models.DateTimeField(default=timezone.now)
-    reviewed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_submissions"
-    )
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_submissions")
     review_date = models.DateTimeField(null=True, blank=True)
     review_notes = models.TextField(blank=True)
 
@@ -142,9 +138,7 @@ class FacialWatchMatch(models.Model):
 
 
 class PDASubmissionProfiledFace(models.Model):
-    pda_submission = models.ForeignKey(
-        PublicDeepfakeArchive, on_delete=models.CASCADE, related_name="detected_faces"
-    )
+    pda_submission = models.ForeignKey(PublicDeepfakeArchive, on_delete=models.CASCADE, related_name="detected_faces")
     face_embedding = models.JSONField()  # Store face embedding vectors as JSON
     face_location = models.JSONField()  # Store bounding box coordinates
     frame_id = models.CharField(max_length=100, null=True)  # For videos, store frame ID
@@ -214,9 +208,7 @@ class ForumThread(models.Model):
     is_pinned = models.BooleanField(default=False)  # For pinning important threads
     is_locked = models.BooleanField(default=False)  # For preventing new replies
 
-    reviewed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_threads"
-    )
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_threads")
     review_date = models.DateTimeField(null=True, blank=True)
     review_notes = models.TextField(blank=True, null=True)
 
@@ -252,9 +244,7 @@ class ForumReply(models.Model):
     content = models.TextField()
     author = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_replies")
     thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, related_name="replies")
-    parent_reply = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="child_replies"
-    )
+    parent_reply = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="child_replies")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -289,22 +279,15 @@ class ForumLike(models.Model):
     ]
 
     user = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_likes")
-    thread = models.ForeignKey(
-        ForumThread, on_delete=models.CASCADE, null=True, blank=True, related_name="likes"
-    )
-    reply = models.ForeignKey(
-        ForumReply, on_delete=models.CASCADE, null=True, blank=True, related_name="likes"
-    )
+    thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, null=True, blank=True, related_name="likes")
+    reply = models.ForeignKey(ForumReply, on_delete=models.CASCADE, null=True, blank=True, related_name="likes")
     like_type = models.CharField(max_length=10, choices=LIKE_TYPES, default="like")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(
-                    models.Q(thread__isnull=False, reply__isnull=True)
-                    | models.Q(thread__isnull=True, reply__isnull=False)
-                ),
+                check=(models.Q(thread__isnull=False, reply__isnull=True) | models.Q(thread__isnull=True, reply__isnull=False)),
                 name="like_either_thread_or_reply",
             ),
             models.UniqueConstraint(
@@ -347,22 +330,15 @@ class ForumReaction(models.Model):
     ]
 
     user = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="forum_reactions")
-    thread = models.ForeignKey(
-        ForumThread, on_delete=models.CASCADE, null=True, blank=True, related_name="reactions"
-    )
-    reply = models.ForeignKey(
-        ForumReply, on_delete=models.CASCADE, null=True, blank=True, related_name="reactions"
-    )
+    thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, null=True, blank=True, related_name="reactions")
+    reply = models.ForeignKey(ForumReply, on_delete=models.CASCADE, null=True, blank=True, related_name="reactions")
     reaction_type = models.CharField(max_length=10, choices=REACTION_TYPES)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(
-                    models.Q(thread__isnull=False, reply__isnull=True)
-                    | models.Q(thread__isnull=True, reply__isnull=False)
-                ),
+                check=(models.Q(thread__isnull=False, reply__isnull=True) | models.Q(thread__isnull=True, reply__isnull=False)),
                 name="reaction_either_thread_or_reply",
             ),
             models.UniqueConstraint(
@@ -428,9 +404,7 @@ class ForumNotification(models.Model):
     # References to related content
     thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, null=True, blank=True)
     reply = models.ForeignKey(ForumReply, on_delete=models.CASCADE, null=True, blank=True)
-    from_user = models.ForeignKey(
-        UserData, on_delete=models.SET_NULL, null=True, related_name="sent_notifications"
-    )
+    from_user = models.ForeignKey(UserData, on_delete=models.SET_NULL, null=True, related_name="sent_notifications")
 
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -463,19 +437,6 @@ class KnowledgeBaseTopic(models.Model):
         return self.name
 
 
-class KnowledgeBaseTag(models.Model):
-    """Tags for knowledge base articles"""
-
-    name = models.CharField(max_length=50, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["name"]
-
-    def __str__(self):
-        return self.name
-
-
 class KnowledgeBaseArticle(models.Model):
     """Main knowledge base article model"""
 
@@ -483,7 +444,6 @@ class KnowledgeBaseArticle(models.Model):
     content = models.TextField()
     author = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="knowledge_articles")
     topic = models.ForeignKey(KnowledgeBaseTopic, on_delete=models.SET_NULL, null=True, blank=True)
-    tags = models.ManyToManyField(KnowledgeBaseTag, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -501,9 +461,7 @@ class KnowledgeBaseArticle(models.Model):
 class KnowledgeBaseAttachment(models.Model):
     """Files attached to knowledge base articles"""
 
-    article = models.ForeignKey(
-        KnowledgeBaseArticle, on_delete=models.CASCADE, related_name="attachments"
-    )
+    article = models.ForeignKey(KnowledgeBaseArticle, on_delete=models.CASCADE, related_name="attachments")
     filename = models.CharField(max_length=255)
     file_url = models.CharField(max_length=255)
     file_type = models.CharField(max_length=50)  # image, video, audio, pdf, document
@@ -516,9 +474,7 @@ class KnowledgeBaseAttachment(models.Model):
 class KnowledgeBaseStatistics(models.Model):
     """Statistics for knowledge base articles"""
 
-    article = models.OneToOneField(
-        KnowledgeBaseArticle, on_delete=models.CASCADE, related_name="statistics"
-    )
+    article = models.OneToOneField(KnowledgeBaseArticle, on_delete=models.CASCADE, related_name="statistics")
     view_count = models.PositiveIntegerField(default=0)
     last_viewed = models.DateTimeField(auto_now=True)
 
