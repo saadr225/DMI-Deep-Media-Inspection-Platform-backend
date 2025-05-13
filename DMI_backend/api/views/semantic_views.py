@@ -94,7 +94,8 @@ print("DeepfakeDetectionPipeline initialized")
 # Initialize AIGeneratedMediaDetection
 print("Initializing AIGeneratedMediaDetection...")
 ai_generated_media_detection_pipeline = AIGeneratedMediaDetectionPipeline(
-    model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_media_detection_model']}",
+    # model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_media_detection_model']}",
+    model_name="haywoodsloan/ai-image-detector-deploy",
     synthetic_media_dir=f"{settings.MEDIA_ROOT}/temp/temp_synthetic_media/",
     threshold=0.5,
     log_level=0,
@@ -146,7 +147,7 @@ def process_deepfake_media(request):
                 file_type=deepfake_detection_pipeline.media_processor.check_media_type(file_path),
                 purpose="Deepfake-Analysis",
             )
-            
+
             metatdata = metadata_analysis_pipeline.extract_metadata(file_path)
             # Save metadata
             MediaUploadMetadata.objects.create(media_upload=media_upload, metadata=metatdata)
@@ -263,7 +264,7 @@ def process_ai_generated_media(request):
             # Process media
             results = ai_generated_media_detection_pipeline.process_image(file_path)
 
-            is_generated = results["prediction"] == "fake"
+            is_generated = results["prediction"] == "artificial"
 
             ai_generated_result = AIGeneratedMediaResult.objects.create(
                 media_upload=media_upload,

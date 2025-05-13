@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deep Media Inspection - Login Portal</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        /* Admin Panel Colors */
+        --admin-primary: #2ecc71;
+        --admin-primary-light: #f0fff7;
+        --admin-primary-dark: #27ae60;
+
+        /* Moderator Panel Colors */
+        --mod-primary: #4361ee;
+        --mod-primary-light: #f0f0ff;
+        --mod-primary-dark: #3f37c9;
+
+        /* Shared system colors */
+        --success: #059669;
+        --success-light: #ecfdf5;
+        --info: #0284c7;
+        --info-light: #ecf8ff;
+        --warning: #ea580c;
+        --warning-light: #fff7ed;
+        --danger: #dc2626;
+        --danger-light: #fef2f2;
+        --light: #f9fafb;
+        --dark: #111827;
+        --gray: #6b7280;
+        --gray-light: #f3f4f6;
+        --gray-dark: #374151;
+
+        /* Text colors */
+        --text-primary: #0f172a;
+        --text-secondary: #334155;
+        --text-muted: #64748b;
+
+        /* Design system */
+        --border-color: #e2e8f0;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+        --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+        --shadow-focus: 0 0 0 4px rgba(46, 204, 113, 0.25);
+        --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --heading-font: "Poppins", var(--font-family);
+        --border-radius: 12px;
+        --border-radius-sm: 8px;
+        --border-radius-lg: 16px;
+        --border-radius-xl: 24px;
+        --transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+      }
+
+      body {
+        font-family: var(--font-family);
+        background: linear-gradient(135deg, #f8fafc 0%, #f7f8fa 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        color: var(--text-primary);
+      }
+
+      .portal-container {
+        max-width: 1140px;
+        width: 100%;
+        padding: 2rem;
+      }
+
+      .portal-header {
+        text-align: center;
+        margin-bottom: 3.5rem;
+      }
+
+      .portal-logo {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1rem;
+      }
+
+      .portal-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        margin-bottom: 2rem;
+        font-weight: 500;
+      }
+
+      .not-logged-badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--gray-light);
+        color: var(--text-secondary);
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1rem;
+        font-weight: 500;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .not-logged-badge i {
+        margin-right: 0.5rem;
+        color: var(--gray);
+      }
+
+      .card-panel {
+        background-color: #fff;
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-md);
+        transition: var(--transition);
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+        border: 1px solid rgba(242, 242, 242, 0.8);
+      }
+
+      .card-panel:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .card-panel-admin {
+        border-top: 5px solid var(--admin-primary);
+      }
+
+      .card-panel-moderator {
+        border-top: 5px solid var(--mod-primary);
+      }
+
+      .card-header {
+        position: relative;
+        padding: 2.5rem 2rem 2rem;
+        text-align: center;
+        background: linear-gradient(to bottom, rgba(249, 250, 251, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .card-header-admin {
+        background: linear-gradient(to bottom, var(--admin-primary-light) 0%, rgba(255, 255, 255, 0) 100%);
+      }
+
+      .card-header-moderator {
+        background: linear-gradient(to bottom, var(--mod-primary-light) 0%, rgba(255, 255, 255, 0) 100%);
+      }
+
+      .card-icon {
+        width: 110px;
+        height: 110px;
+        border-radius: var(--border-radius-xl);
+        margin: 0 auto 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+        position: relative;
+        z-index: 1;
+      }
+
+      .card-icon:before {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border-radius: inherit;
+        padding: 5px;
+        background: linear-gradient(135deg, rgba(46, 204, 113, 0.3) 0%, rgba(67, 97, 238, 0.3) 100%);
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        opacity: 0.7;
+        z-index: -1;
+      }
+
+      .card-icon-admin {
+        background: linear-gradient(135deg, var(--admin-primary-light) 0%, rgba(46, 204, 113, 0.1) 100%);
+        color: var(--admin-primary);
+      }
+
+      .card-icon-moderator {
+        background: linear-gradient(135deg, var(--mod-primary-light) 0%, rgba(67, 97, 238, 0.1) 100%);
+        color: var(--mod-primary);
+      }
+
+      .card-icon i {
+        font-size: 3.25rem;
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.1));
+      }
+
+      .card-title {
+        font-family: var(--heading-font);
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        color: var(--dark);
+        letter-spacing: -0.5px;
+      }
+
+      .card-desc {
+        color: var(--text-secondary);
+        margin-bottom: 0;
+        font-size: 1.05rem;
+      }
+
+      .card-body {
+        padding: 2.5rem 2rem;
+        text-align: center;
+      }
+
+      .login-btn {
+        width: 100%;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+        letter-spacing: 0.5px;
+        border: none;
+      }
+
+      .login-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 0;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.1);
+        transition: width 0.4s ease;
+        z-index: -1;
+      }
+
+      .login-btn:hover::before {
+        width: 100%;
+      }
+
+      .login-btn-admin {
+        background: linear-gradient(45deg, var(--admin-primary) 0%, var(--admin-primary-dark) 100%);
+        box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3);
+        color: white;
+      }
+
+      .login-btn-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(46, 204, 113, 0.4);
+      }
+
+      .login-btn-moderator {
+        background: linear-gradient(45deg, var(--mod-primary) 0%, var(--mod-primary-dark) 100%);
+        box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        color: white;
+      }
+
+      .login-btn-moderator:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(67, 97, 238, 0.4);
+      }
+
+      .alert {
+        border: none;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+        background-color: var(--info-light);
+        color: var(--info);
+        padding: 1rem 1.5rem;
+      }
+
+      .alert i {
+        font-size: 1.1rem;
+      }
+
+      @media (max-width: 767px) {
+        .portal-container {
+          padding: 1.5rem 1rem;
+        }
+
+        .portal-logo {
+          font-size: 2.25rem;
+          flex-direction: column;
+        }
+
+        .portal-logo i {
+          margin-right: 0;
+          margin-bottom: 1rem;
+        }
+
+        .portal-subtitle {
+          font-size: 1.1rem;
+        }
+
+        .card-panel {
+          margin-bottom: 2.5rem;
+        }
+
+        .card-header {
+          padding: 2rem 1.5rem 1.5rem;
+        }
+
+        .card-body {
+          padding: 2rem 1.5rem;
+        }
+
+        .card-icon {
+          width: 90px;
+          height: 90px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="portal-container">
+      <div class="portal-header">
+        <div class="portal-logo"><i class="fas fa-layer-group me-2"></i> Deep Media Inspection</div>
+        <div class="portal-subtitle">Administrative Control Panel</div>
+
+        <div class="mb-4">
+          <div class="not-logged-badge">
+            <i class="fas fa-user-slash"></i>
+            Not logged in
+          </div>
+          <p class="text-muted mt-2">Select one of the options below to access the system</p>
+        </div>
+
+        {% if messages %}
+        <div class="alert alert-dismissible fade show mb-4" role="alert">
+          {% for message in messages %}
+          <i class="fas fa-info-circle me-2"></i> {{ message }} {% endfor %}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="row g-4">
+        <!-- Admin Login Card -->
+        <div class="col-md-6 mb-4 mb-md-0">
+          <div class="card-panel card-panel-admin">
+            <div class="card-header card-header-admin">
+              <div class="card-icon card-icon-admin">
+                <i class="fas fa-crown"></i>
+              </div>
+              <h2 class="card-title">Admin Login</h2>
+              <p class="card-desc">For administrators with full system access</p>
+            </div>
+            <div class="card-body">
+              <a href="{% url 'custom_admin_login' %}" class="btn login-btn login-btn-admin">
+                <i class="fas fa-sign-in-alt me-2"></i> Continue to Admin Login
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Moderator Login Card -->
+        <div class="col-md-6">
+          <div class="card-panel card-panel-moderator">
+            <div class="card-header card-header-moderator">
+              <div class="card-icon card-icon-moderator">
+                <i class="fas fa-shield-alt"></i>
+              </div>
+              <h2 class="card-title">Moderator Login</h2>
+              <p class="card-desc">For content moderators and forum managers</p>
+            </div>
+            <div class="card-body">
+              <a href="{% url 'moderation_login' %}" class="btn login-btn login-btn-moderator">
+                <i class="fas fa-sign-in-alt me-2"></i> Continue to Moderator Login
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
