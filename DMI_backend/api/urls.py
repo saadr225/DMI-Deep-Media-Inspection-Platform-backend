@@ -129,6 +129,11 @@ urlpatterns = [
     ),
     path("knowledge-base/topics/", knowledge_base_views.get_topics, name="knowledge_baseget_topics"),
     path(
+        "knowledge-base/topics/<int:topic_id>/articles/",
+        knowledge_base_views.get_articles_by_topic,
+        name="knowledge_baseget_articles_by_topic",
+    ),
+    path(
         "knowledge-base/search/",
         knowledge_base_views.search_articles,
         name="knowledge_basesearch_articles",

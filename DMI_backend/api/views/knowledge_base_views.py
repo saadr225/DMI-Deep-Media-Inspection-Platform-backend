@@ -394,42 +394,73 @@ def delete_topic(request, topic_id):
         return JsonResponse({"success": False, "error": str(e), "code": "KB_DELETE_TOPIC_ERROR"}, status=500)
 
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def upload_image(request):
-    """
-    Upload an image for use in knowledge base articles
+# Image upload moved to custom_admin_views.py due to authentication issues with custom admin panel
 
-    Request body (multipart/form-data):
-    - file: Image file to upload
+# @api_view(["POST"])
+# @permission_classes([IsAuthenticated])
+# def upload_image(request):
+#     """
+#     Upload an image for use in knowledge base articles
+
+#     Request body (multipart/form-data):
+#     - file: Image file to upload
+#     """
+#     try:
+#         image_file = request.FILES.get("file")
+#         if not image_file:
+#             return JsonResponse({"success": False, "error": "No image file provided"}, status=400)
+
+#         # Generate unique identifier
+#         attachment_identifier = f"kb-img-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+#         original_filename = image_file.name
+
+#         # Ensure directory exists
+#         upload_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base", "images")
+#         os.makedirs(upload_dir, exist_ok=True)
+
+#         # Save file
+#         file_extension = os.path.splitext(original_filename)[1].lower()
+#         filename = f"{attachment_identifier}{file_extension}"
+#         file_path = os.path.join(upload_dir, filename)
+
+#         with open(file_path, "wb+") as destination:
+#             for chunk in image_file.chunks():
+#                 destination.write(chunk)
+
+#         # Use your public URL helper instead of direct concatenation
+#         file_path_relative = os.path.join("knowledge_base", "images", filename)
+#         file_url = URLHelper.convert_to_public_url(file_path_relative)  # Replace with your actual helper function
+
+
+#         return JsonResponse({"success": True, "location": file_url})
+#     except Exception as e:
+#         logger.error(f"Error in upload_image: {str(e)}")
+#         return JsonResponse({"success": False, "error": str(e)}, status=500)
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_articles_by_topic(request, topic_id):
+    """
+    Get knowledge base articles filtered by a specific topic
+
+    URL parameters:
+    - topic_id: ID of the topic to filter articles by
+
+    Query parameters:
+    - page: Page number for pagination (default: 1)
+    - items_per_page: Number of items per page (default: 10)
     """
     try:
-        image_file = request.FILES.get("file")
-        if not image_file:
-            return JsonResponse({"success": False, "error": "No image file provided"}, status=400)
+        page = int(request.GET.get("page", 1))
+        items_per_page = int(request.GET.get("items_per_page", 10))
 
-        # Generate unique identifier
-        attachment_identifier = f"kb-img-{uuid.uuid4().hex[:8]}-{int(time.time())}"
-        original_filename = image_file.name
+        result = kb_controller.get_articles(
+            topic_id=topic_id,
+            page=page,
+            items_per_page=items_per_page,
+        )
 
-        # Ensure directory exists
-        upload_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base", "images")
-        os.makedirs(upload_dir, exist_ok=True)
+        return JsonResponse(result)
 
-        # Save file
-        file_extension = os.path.splitext(original_filename)[1].lower()
-        filename = f"{attachment_identifier}{file_extension}"
-        file_path = os.path.join(upload_dir, filename)
-
-        with open(file_path, "wb+") as destination:
-            for chunk in image_file.chunks():
-                destination.write(chunk)
-
-        # Use your public URL helper instead of direct concatenation
-        file_path_relative = os.path.join("knowledge_base", "images", filename)
-        file_url = URLHelper.convert_to_public_url(file_path_relative)  # Replace with your actual helper function
-
-        return JsonResponse({"success": True, "location": file_url})
     except Exception as e:
-        logger.error(f"Error in upload_image: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        logger.error(f"Error in get_articles_by_topic: {str(e)}")
+        return JsonResponse({"success": False, "error": str(e), "code": "KB_GET_TOPIC_ARTICLES_ERROR"}, status=500)
