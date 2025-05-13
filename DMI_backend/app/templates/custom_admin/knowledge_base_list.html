@@ -1,0 +1,277 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Knowledge Base Management{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .kb-list-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .kb-list-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .badge {
+        font-size: 85%;
+        font-weight: 500;
+    }
+    
+    .article-title {
+        color: var(--dark);
+        text-decoration: none;
+        font-weight: 600;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    
+    .empty-state .icon {
+        font-size: 4rem;
+        color: var(--gray-light);
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-book me-2"></i> Knowledge Base Articles
+        </h1>
+        <div>
+            <a href="{% url 'custom_admin_knowledge_base_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i> Create New Article
+            </a>
+            <div class="btn-group ms-2">
+                <a href="{% url 'custom_admin_knowledge_base_topics' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-folder me-1"></i> Manage Topics
+                </a>
+                <a href="{% url 'custom_admin_knowledge_base_tags' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-tags me-1"></i> Manage Tags
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Card -->
+    <div class="card shadow mb-4 filter-container">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filter Articles</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{% url 'custom_admin_knowledge_base_list' %}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="topic_id" class="form-label">Topic</label>
+                        <select name="topic_id" id="topic_id" class="form-select">
+                            <option value="">-- All Topics --</option>
+                            {% for topic in topics %}
+                            <option value="{{ topic.id }}" {% if selected_topic_id == topic.id|stringformat:"s" %}selected{% endif %}>
+                                {{ topic.name }} ({{ topic.article_count }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="tag_id" class="form-label">Tag</label>
+                        <select name="tag_id" id="tag_id" class="form-select">
+                            <option value="">-- All Tags --</option>
+                            {% for tag in tags %}
+                            <option value="{{ tag.id }}" {% if selected_tag_id == tag.id|stringformat:"s" %}selected{% endif %}>
+                                {{ tag.name }} ({{ tag.article_count }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="search" class="form-label">Search Keywords</label>
+                        <input type="text" class="form-control" id="search" name="search" value="{{ search_query|default:'' }}" placeholder="Search by title, content, author...">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i> Apply Filters
+                    </button>
+                    {% if is_filtered %}
+                    <a href="{% url 'custom_admin_knowledge_base_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-sync-alt me-1"></i> Reset Filters
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Articles List -->
+    <div class="card shadow mb-4 kb-list-card">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-book me-1"></i> Articles ({{ total }})
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if articles %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Topic</th>
+                            <th>Author</th>
+                            <th>Tags</th>
+                            <th>Created</th>
+                            <th>Views</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for article in articles %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'custom_admin_knowledge_base_detail' article.id %}" class="article-title">
+                                    {{ article.title }}
+                                </a>
+                                {% if article.has_attachments %}
+                                <i class="fas fa-paperclip text-muted ms-1" data-bs-toggle="tooltip" title="Has attachments"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if article.topic %}
+                                <span class="badge bg-primary">{{ article.topic.name }}</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ article.author.username }}
+                                {% if article.author.is_verified %}
+                                <i class="fas fa-check-circle text-success ms-1" data-bs-toggle="tooltip" title="Verified user"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% for tag in article.tags %}
+                                <span class="badge bg-secondary">{{ tag.name }}</span>
+                                {% empty %}
+                                <span class="text-muted">—</span>
+                                {% endfor %}
+                            </td>
+                            <td>{{ article.created_at }}</td>
+                            <td>{{ article.view_count }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'custom_admin_knowledge_base_detail' article.id %}" class="btn btn-info" data-bs-toggle="tooltip" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'custom_admin_knowledge_base_edit' article.id %}" class="btn btn-warning" data-bs-toggle="tooltip" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'custom_admin_knowledge_base_delete' article.id %}" class="btn btn-danger" data-bs-toggle="tooltip" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="First">
+                            <span aria-hidden="true">&laquo;&laquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page|add:'-1' }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;&laquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&laquo;</span>
+                    </li>
+                    {% endif %}
+
+                    {% for i in pages|get_range %}
+                    <li class="page-item {% if i == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ i }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ i }}</a>
+                    </li>
+                    {% endfor %}
+
+                    {% if page < pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page|add:'1' }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pages }}{% if topic_id %}&topic_id={{ topic_id }}{% endif %}{% if tag_id %}&tag_id={{ tag_id }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Last">
+                            <span aria-hidden="true">&raquo;&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">&raquo;&raquo;</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <div class="icon">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <h4 class="text-muted">No articles found</h4>
+                {% if is_filtered %}
+                <p>Try adjusting your search criteria or <a href="{% url 'custom_admin_knowledge_base_list' %}">clear all filters</a>.</p>
+                {% else %}
+                <p>Get started by <a href="{% url 'custom_admin_knowledge_base_create' %}">creating your first article</a>.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends "custom_admin/base.html" %} {% block title %}Knowledge Base Article: {{ article.title }}{% endblock %} {% block extrastyle %}
+<style>
+  .kb-detail-card {
+    border-radius: 15px;
+    overflow: hidden;
+  }
+
+  .article-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .article-content {
+    line-height: 1.7;
+    font-size: 1.05rem;
+  }
+
+  .article-content img {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+    border-radius: 8px;
+  }
+
+  .article-content blockquote {
+    border-left: 4px solid var(--primary);
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #505050;
+  }
+
+  .metadata-section {
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .metadata-section:last-child {
+    border-bottom: none;
+  }
+
+  .metadata-title {
+    color: var(--gray);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.75rem;
+  }
+
+  .attachment-card {
+    transition: all 0.2s ease;
+  }
+
+  .attachment-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid">
+  <!-- Page Heading -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-book me-2"></i> Article Details</h1>
+    <div>
+      <div class="btn-group">
+        <a href="{% url 'custom_admin_knowledge_base_edit' article.id %}" class="btn btn-warning">
+          <i class="fas fa-edit me-1"></i> Edit
+        </a>
+        <a href="{% url 'custom_admin_knowledge_base_delete' article.id %}" class="btn btn-danger">
+          <i class="fas fa-trash me-1"></i> Delete
+        </a>
+      </div>
+      <a href="{% url 'custom_admin_knowledge_base_list' %}" class="btn btn-outline-secondary ms-2">
+        <i class="fas fa-arrow-left me-1"></i> Back to Articles
+      </a>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Article Content Column -->
+    <div class="col-lg-8">
+      <!-- Main Article Content -->
+      <div class="card shadow mb-4 kb-detail-card">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-book-open me-1"></i> Content</h6>
+        </div>
+        <div class="card-body">
+          <h1 class="article-title">{{ article.title }}</h1>
+
+          <div class="d-flex align-items-center mb-3">
+            <div class="me-3">
+              <i class="far fa-calendar-alt text-muted me-1"></i>
+              <span>Published: {{ article.created_at }}</span>
+            </div>
+            <div class="me-3">
+              <i class="fas fa-book-reader text-muted me-1"></i>
+              <span>{{ article.read_time }} min read</span>
+            </div>
+            <div>
+              <i class="far fa-eye text-muted me-1"></i>
+              <span>{{ article.view_count }} views</span>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {% if article.tags %} {% for tag in article.tags %}
+            <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+            {% endfor %} {% endif %}
+          </div>
+
+          <div class="article-content">{{ article.content|linebreaks }}</div>
+        </div>
+      </div>
+
+      <!-- Attachments Section -->
+      {% if article.attachments %}
+      <div class="card shadow mb-4 kb-detail-card">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-paperclip me-1"></i> Attachments ({{ article.attachments|length }})
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="row row-cols-1 row-cols-md-3 g-3">
+            {% for attachment in article.attachments %}
+            <div class="col">
+              <div class="card attachment-card h-100">
+                {% if attachment.file_type == 'image' %}
+                <img
+                  src="{{ attachment.file_url }}"
+                  class="card-img-top"
+                  alt="{{ attachment.filename }}"
+                  style="height: 150px; object-fit: cover"
+                />
+                {% else %}
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 150px">
+                  <i
+                    class="fas {% if attachment.file_type == 'pdf' %}fa-file-pdf{% elif attachment.file_type == 'video' %}fa-file-video{% elif attachment.file_type == 'audio' %}fa-file-audio{% else %}fa-file{% endif %} fa-3x {% if attachment.file_type == 'pdf' %}text-danger{% elif attachment.file_type == 'video' %}text-primary{% elif attachment.file_type == 'audio' %}text-success{% else %}text-secondary{% endif %}"
+                  ></i>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                  <h6 class="card-title text-truncate" title="{{ attachment.filename }}">{{ attachment.filename }}</h6>
+                  <p class="card-text">
+                    <span
+                      class="badge {% if attachment.file_type == 'image' %}bg-info{% elif attachment.file_type == 'pdf' %}bg-danger{% elif attachment.file_type == 'video' %}bg-primary{% elif attachment.file_type == 'audio' %}bg-success{% else %}bg-secondary{% endif %}"
+                    >
+                      {{ attachment.file_type }}
+                    </span>
+                  </p>
+                  <a href="{{ attachment.file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-external-link-alt me-1"></i> Open
+                  </a>
+                  <a href="{{ attachment.file_url }}" download class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-download me-1"></i> Download
+                  </a>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Related Articles Section -->
+      {% if article.related_articles %}
+      <div class="card shadow mb-4 kb-detail-card">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-project-diagram me-1"></i> Related Articles</h6>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            {% for related in article.related_articles %}
+            <a href="{% url 'custom_admin_knowledge_base_detail' related.id %}" class="list-group-item list-group-item-action">
+              <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">{{ related.title }}</h6>
+                <small>{{ related.created_at }}</small>
+              </div>
+              <div class="d-flex align-items-center small text-muted">
+                <div class="me-3"><i class="far fa-clock me-1"></i> {{ related.read_time }} min read</div>
+                {% if related.topic %}
+                <div><i class="far fa-folder me-1"></i> {{ related.topic.name }}</div>
+                {% endif %}
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Article Metadata Sidebar -->
+    <div class="col-lg-4">
+      <!-- Article Information Card -->
+      <div class="card shadow mb-4 kb-detail-card">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-info-circle me-1"></i> Article Details</h6>
+        </div>
+        <div class="card-body p-0">
+          <!-- Author Section -->
+          <div class="metadata-section p-3">
+            <h6 class="metadata-title">Author</h6>
+            <div class="d-flex align-items-center">
+              {% if article.author.avatar %}
+              <img
+                src="{{ article.author.avatar }}"
+                alt="{{ article.author.username }}"
+                class="rounded-circle me-2"
+                width="40"
+                height="40"
+              />
+              {% else %}
+              <div
+                class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2"
+                style="width: 40px; height: 40px"
+              >
+                <i class="fas fa-user"></i>
+              </div>
+              {% endif %}
+              <div>
+                <div class="fw-bold">{{ article.author.username }}</div>
+                <div class="text-muted small">Joined {{ article.author.join_date }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Topic Section -->
+          <div class="metadata-section p-3">
+            <h6 class="metadata-title">Topic</h6>
+            {% if article.topic %}
+            <div class="d-flex align-items-center">
+              <span class="badge bg-primary me-2 p-2">{{ article.topic.name }}</span>
+            </div>
+            {% else %}
+            <div class="text-muted">No topic assigned</div>
+            {% endif %}
+          </div>
+
+          <!-- Date Information -->
+          <div class="metadata-section p-3">
+            <h6 class="metadata-title">Dates</h6>
+            <div class="row">
+              <div class="col-6">
+                <div class="text-muted small">Created</div>
+                <div>{{ article.created_at }}</div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted small">Updated</div>
+                <div>{{ article.updated_at }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Statistics -->
+          <div class="metadata-section p-3">
+            <h6 class="metadata-title">Stats</h6>
+            <div class="row">
+              <div class="col-6">
+                <div class="text-muted small">Views</div>
+                <div>{{ article.view_count }}</div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted small">Read Time</div>
+                <div>{{ article.read_time }} minutes</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Share Links -->
+          <div class="metadata-section p-3">
+            <h6 class="metadata-title">Share Links</h6>
+            <div class="d-flex flex-wrap gap-2">
+              <a href="{{ article.share_links.twitter }}" target="_blank" class="btn btn-sm btn-outline-info">
+                <i class="fab fa-twitter me-1"></i> Twitter
+              </a>
+              <a href="{{ article.share_links.facebook }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                <i class="fab fa-facebook me-1"></i> Facebook
+              </a>
+              <a href="{{ article.share_links.linkedin }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                <i class="fab fa-linkedin me-1"></i> LinkedIn
+              </a>
+              <a href="{{ article.share_links.email }}" class="btn btn-sm btn-outline-success">
+                <i class="fas fa-envelope me-1"></i> Email
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions Card -->
+      <div class="card shadow mb-4 kb-detail-card">
+        <div class="card-header py-3">
+          <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-bolt me-1"></i> Quick Actions</h6>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <a href="{% url 'custom_admin_knowledge_base_edit' article.id %}" class="list-group-item list-group-item-action">
+              <i class="fas fa-edit me-2 text-warning"></i> Edit this article
+            </a>
+            <a href="{% url 'custom_admin_knowledge_base_delete' article.id %}" class="list-group-item list-group-item-action">
+              <i class="fas fa-trash me-2 text-danger"></i> Delete this article
+            </a>
+            <a href="{% url 'custom_admin_knowledge_base_create' %}" class="list-group-item list-group-item-action">
+              <i class="fas fa-plus me-2 text-success"></i> Create new article
+            </a>
+            {% if article.topic %}
+            <a
+              href="{% url 'custom_admin_knowledge_base_list' %}?topic_id={{ article.topic.id }}"
+              class="list-group-item list-group-item-action"
+            >
+              <i class="fas fa-folder-open me-2 text-primary"></i> View all in '{{ article.topic.name }}'
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

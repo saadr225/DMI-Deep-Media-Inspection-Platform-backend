@@ -1,0 +1,208 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}{% if is_edit %}Edit{% else %}Create{% endif %} Knowledge Base Article{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .kb-form-card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    .form-label {
+        font-weight: 500;
+    }
+    
+    .form-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .attachment-preview {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .attachment-card {
+        height: 100%;
+        transition: all 0.2s ease;
+    }
+    
+    .attachment-card:hover {
+        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    .attachment-card .card-img-top {
+        height: 150px;
+        object-fit: cover;
+        background-color: #e9ecef;
+    }
+    
+    .required-field::after {
+        content: "*";
+        color: var(--danger);
+        margin-left: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-{% if is_edit %}edit{% else %}plus{% endif %} me-2"></i> 
+            {% if is_edit %}Edit{% else %}Create{% endif %} Knowledge Base Article
+        </h1>
+        <div>
+            <a href="{% if is_edit %}{% url 'custom_admin_knowledge_base_detail' article.id %}{% else %}{% url 'custom_admin_knowledge_base_list' %}{% endif %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> {% if is_edit %}Back to Article{% else %}Back to Articles{% endif %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="card shadow mb-4 kb-form-card">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                {% if is_edit %}Edit Article{% else %}New Article{% endif %}
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="articleForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="title" class="form-label required-field">Title</label>
+                    <input type="text" class="form-control" id="title" name="title" required 
+                           value="{% if article %}{{ article.title }}{% endif %}" 
+                           placeholder="Enter article title">
+                    <div class="form-text">A clear, concise title that describes the article's content</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="topic_id" class="form-label">Topic</label>
+                    <select class="form-select" id="topic_id" name="topic_id">
+                        <option value="">-- Select Topic --</option>
+                        {% for topic in topics %}
+                        <option value="{{ topic.id }}" 
+                                {% if article.topic and article.topic.id == topic.id %}selected{% endif %}>
+                            {{ topic.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Categorize the article for better organization</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="tags" class="form-label">Tags</label>
+                    <input type="text" class="form-control" id="tags" name="tags" 
+                           value="{% if current_tags %}{{ current_tags }}{% endif %}" 
+                           placeholder="Enter tags separated by commas">
+                    <div class="form-text">Enter tags separated by commas (e.g., deepfake, detection, machine learning)</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="content" class="form-label required-field">Content</label>
+                    <textarea class="form-control" id="content" name="content" rows="15" required 
+                              placeholder="Enter article content">{% if article %}{{ article.content }}{% endif %}</textarea>
+                    <div class="form-text">Use markdown for formatting. HTML tags are also supported.</div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="attachments" class="form-label">Attachments</label>
+                    <input class="form-control" type="file" id="attachments" name="attachments" multiple>
+                    <div class="form-text">You can upload multiple files (images, PDFs, documents, etc.)</div>
+                </div>
+
+                {% if is_edit and article.attachments %}
+                <div class="mb-4">
+                    <label class="form-label">Current Attachments</label>
+                    <div class="row row-cols-1 row-cols-md-3 g-3">
+                        {% for attachment in article.attachments %}
+                        <div class="col">
+                            <div class="card attachment-card">
+                                {% if attachment.file_type == 'image' %}
+                                <img src="{{ attachment.file_url }}" class="card-img-top" alt="{{ attachment.filename }}">
+                                {% else %}
+                                <div class="card-img-top d-flex align-items-center justify-content-center">
+                                    <i class="fas 
+                                       {% if attachment.file_type == 'pdf' %}fa-file-pdf{% elif attachment.file_type == 'video' %}fa-file-video{% elif attachment.file_type == 'audio' %}fa-file-audio{% else %}fa-file{% endif %} 
+                                       fa-3x text-secondary my-4"></i>
+                                </div>
+                                {% endif %}
+                                <div class="card-body">
+                                    <h6 class="card-title text-truncate" title="{{ attachment.filename }}">
+                                        {{ attachment.filename }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <span class="badge {% if attachment.file_type == 'image' %}bg-info{% elif attachment.file_type == 'pdf' %}bg-danger{% elif attachment.file_type == 'video' %}bg-primary{% elif attachment.file_type == 'audio' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ attachment.file_type }}
+                                        </span>
+                                    </p>
+                                    <a href="{{ attachment.file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> View
+                                    </a>
+                                    <!-- Note: Add delete functionality if needed -->
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% if is_edit %}{% url 'custom_admin_knowledge_base_detail' article.id %}{% else %}{% url 'custom_admin_knowledge_base_list' %}{% endif %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> {% if is_edit %}Update{% else %}Create{% endif %} Article
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.getElementById('articleForm');
+    form.addEventListener('submit', function(event) {
+        const title = document.getElementById('title').value.trim();
+        const content = document.getElementById('content').value.trim();
+        
+        if (!title) {
+            event.preventDefault();
+            alert('Please enter a title for the article');
+            document.getElementById('title').focus();
+        }
+        else if (!content) {
+            event.preventDefault();
+            alert('Please enter content for the article');
+            document.getElementById('content').focus();
+        }
+    });
+    
+    // Optional: Add rich text editor if available
+    // If TinyMCE or other WYSIWYG editor is available in your project,
+    // initialize it here for the content field
+    /*
+    if (typeof tinymce !== 'undefined') {
+        tinymce.init({
+            selector: '#content',
+            height: 500,
+            plugins: 'link image code table lists',
+            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | link image | code',
+            toolbar_mode: 'floating',
+        });
+    }
+    */
+});
+</script>
+{% endblock %}
