@@ -46,7 +46,7 @@ def get_articles(request):
 
     except Exception as e:
         logger.error(f"Error in get_articles: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_GET_ARTICLES_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_FETCH_ERROR"}, status=500)
 
 
 @api_view(["GET"])
@@ -71,7 +71,7 @@ def get_article_detail(request, article_id):
 
     except Exception as e:
         logger.error(f"Error in get_article_detail: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_GET_ARTICLE_DETAIL_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_DETAIL_ERROR"}, status=500)
 
 
 @api_view(["POST"])
@@ -113,7 +113,7 @@ def create_article(request):
 
     except Exception as e:
         logger.error(f"Error in create_article: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_CREATE_ARTICLE_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_CREATE_ERROR"}, status=500)
 
 
 @api_view(["PUT", "PATCH"])
@@ -136,7 +136,7 @@ def update_article(request, article_id):
         try:
             user_data = UserData.objects.get(user=request.user)
         except UserData.DoesNotExist:
-            return JsonResponse({"success": False, "error": "User data not found", "code": "KB_USER_DATA_NOT_FOUND"}, status=404)
+            return JsonResponse({"success": False, "error": "User data not found", "code": "KNOWLEDGE_USER_DATA_NOT_FOUND"}, status=404)
 
         # For PUT/PATCH requests with multipart/form-data, the data is in request.POST
         data = json.loads(request.body) if request.content_type == "application/json" else request.POST
@@ -165,7 +165,7 @@ def update_article(request, article_id):
 
     except Exception as e:
         logger.error(f"Error in update_article: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_UPDATE_ARTICLE_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_UPDATE_ERROR"}, status=500)
 
 
 @api_view(["DELETE"])
@@ -182,7 +182,7 @@ def delete_article(request, article_id):
         try:
             user_data = UserData.objects.get(user=request.user)
         except UserData.DoesNotExist:
-            return JsonResponse({"success": False, "error": "User data not found", "code": "KB_USER_DATA_NOT_FOUND"}, status=404)
+            return JsonResponse({"success": False, "error": "User data not found", "code": "KNOWLEDGE_USER_DATA_NOT_FOUND"}, status=404)
 
         # Get article to verify if user is author or has admin/moderator privileges
         article = kb_controller.get_article_detail(article_id, track_view=False)
@@ -195,7 +195,7 @@ def delete_article(request, article_id):
         is_moderator = user_data.is_moderator()
 
         if not (is_author or is_admin or is_moderator):
-            return JsonResponse({"success": False, "error": "Permission denied", "code": "KB_PERMISSION_DENIED"}, status=403)
+            return JsonResponse({"success": False, "error": "Permission denied", "code": "KNOWLEDGE_PERMISSION_DENIED"}, status=403)
 
         result = kb_controller.delete_article(article_id)
 
@@ -203,7 +203,7 @@ def delete_article(request, article_id):
 
     except Exception as e:
         logger.error(f"Error in delete_article: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_DELETE_ARTICLE_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_DELETE_ERROR"}, status=500)
 
 
 @api_view(["GET"])
@@ -218,7 +218,7 @@ def get_topics(request):
 
     except Exception as e:
         logger.error(f"Error in get_topics: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_GET_TOPICS_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_TOPICS_ERROR"}, status=500)
 
 
 @api_view(["GET"])
@@ -243,7 +243,7 @@ def search_articles(request):
 
     except Exception as e:
         logger.error(f"Error in search_articles: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_SEARCH_ARTICLES_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_SEARCH_ERROR"}, status=500)
 
 
 @api_view(["GET"])
@@ -262,7 +262,7 @@ def get_share_links(request, article_id):
 
     except Exception as e:
         logger.error(f"Error in get_share_links: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_SHARE_LINKS_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_SHARE_ERROR"}, status=500)
 
 
 # Admin/Moderator endpoints for topic management
@@ -282,11 +282,11 @@ def create_topic(request):
         try:
             user_data = UserData.objects.get(user=request.user)
         except UserData.DoesNotExist:
-            return JsonResponse({"success": False, "error": "User data not found", "code": "KB_USER_DATA_NOT_FOUND"}, status=404)
+            return JsonResponse({"success": False, "error": "User data not found", "code": "KNOWLEDGE_USER_DATA_NOT_FOUND"}, status=404)
 
         # Check if user is admin
         if not user_data.is_admin():
-            return JsonResponse({"success": False, "error": "Admin privileges required", "code": "KB_ADMIN_REQUIRED"}, status=403)
+            return JsonResponse({"success": False, "error": "Admin privileges required", "code": "KNOWLEDGE_PERMISSION_DENIED"}, status=403)
 
         data = json.loads(request.body)
         name = data.get("name")
@@ -295,7 +295,7 @@ def create_topic(request):
 
         if not name:
             return JsonResponse(
-                {"success": False, "error": "Topic name is required", "code": "KB_TOPIC_NAME_REQUIRED"},
+                {"success": False, "error": "Topic name is required", "code": "KNOWLEDGE_TOPIC_NAME_REQUIRED"},
                 status=400,
             )
 
@@ -304,14 +304,14 @@ def create_topic(request):
         result = {
             "success": True,
             "topic": {"name": name, "description": description, "icon": icon},
-            "code": "KB_TOPIC_CREATED",
+            "code": "KNOWLEDGE_TOPIC_CREATED",
         }
 
         return JsonResponse(result, status=201)
 
     except Exception as e:
         logger.error(f"Error in create_topic: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_CREATE_TOPIC_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_TOPIC_CREATE_ERROR"}, status=500)
 
 
 @api_view(["PUT", "PATCH"])
@@ -334,11 +334,11 @@ def update_topic(request, topic_id):
         try:
             user_data = UserData.objects.get(user=request.user)
         except UserData.DoesNotExist:
-            return JsonResponse({"success": False, "error": "User data not found", "code": "KB_USER_DATA_NOT_FOUND"}, status=404)
+            return JsonResponse({"success": False, "error": "User data not found", "code": "KNOWLEDGE_USER_DATA_NOT_FOUND"}, status=404)
 
         # Check if user is admin
         if not user_data.is_admin():
-            return JsonResponse({"success": False, "error": "Admin privileges required", "code": "KB_ADMIN_REQUIRED"}, status=403)
+            return JsonResponse({"success": False, "error": "Admin privileges required", "code": "KNOWLEDGE_PERMISSION_DENIED"}, status=403)
 
         data = json.loads(request.body)
 
@@ -353,14 +353,14 @@ def update_topic(request, topic_id):
                 "icon": data.get("icon"),
                 "is_active": data.get("is_active", True),
             },
-            "code": "KB_TOPIC_UPDATED",
+            "code": "KNOWLEDGE_TOPIC_UPDATED",
         }
 
         return JsonResponse(result)
 
     except Exception as e:
         logger.error(f"Error in update_topic: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_UPDATE_TOPIC_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_TOPIC_UPDATE_ERROR"}, status=500)
 
 
 @api_view(["DELETE"])
@@ -377,21 +377,21 @@ def delete_topic(request, topic_id):
         try:
             user_data = UserData.objects.get(user=request.user)
         except UserData.DoesNotExist:
-            return JsonResponse({"success": False, "error": "User data not found", "code": "KB_USER_DATA_NOT_FOUND"}, status=404)
+            return JsonResponse({"success": False, "error": "User data not found", "code": "KNOWLEDGE_USER_DATA_NOT_FOUND"}, status=404)
 
         # Check if user is admin
         if not user_data.is_admin():
-            return JsonResponse({"success": False, "error": "Admin privileges required", "code": "KB_ADMIN_REQUIRED"}, status=403)
+            return JsonResponse({"success": False, "error": "Admin privileges required", "code": "KNOWLEDGE_PERMISSION_DENIED"}, status=403)
 
         # This would call a method like kb_controller.delete_topic()
         # For now, let's assume it's implemented:
-        result = {"success": True, "code": "KB_TOPIC_DELETED"}
+        result = {"success": True, "code": "KNOWLEDGE_TOPIC_DELETED"}
 
         return JsonResponse(result)
 
     except Exception as e:
         logger.error(f"Error in delete_topic: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_DELETE_TOPIC_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_TOPIC_DELETE_ERROR"}, status=500)
 
 
 # Image upload moved to custom_admin_views.py due to authentication issues with custom admin panel
@@ -463,4 +463,4 @@ def get_articles_by_topic(request, topic_id):
 
     except Exception as e:
         logger.error(f"Error in get_articles_by_topic: {str(e)}")
-        return JsonResponse({"success": False, "error": str(e), "code": "KB_GET_TOPIC_ARTICLES_ERROR"}, status=500)
+        return JsonResponse({"success": False, "error": str(e), "code": "KNOWLEDGE_FETCH_ERROR"}, status=500)

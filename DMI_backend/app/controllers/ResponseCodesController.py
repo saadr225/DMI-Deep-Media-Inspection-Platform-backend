@@ -19,6 +19,7 @@ IMG - Image analysis and face recognition codes (currently using FCE prefix)
 SYS - General system codes
 USE - User submission specific codes
 FRM - Forum and community-related codes
+KNB - Knowledge base related codes
 
 Notes:
 - For consistency, some prefixes should be updated (HIS→SUB, FCE→IMG, USE→IMG)
@@ -205,6 +206,42 @@ FORUM_ERROR_CODES = {
     "FORUM_REPLIES_ERROR": {"code": "FRM030", "message": "Error fetching thread replies."},
 }
 
+# Knowledge Base Success Codes
+KNOWLEDGE_BASE_SUCCESS_CODES = {
+    "KNOWLEDGE_ARTICLE_CREATED": {"code": "KNB101", "message": "Knowledge base article created successfully."},
+    "KNOWLEDGE_ARTICLE_UPDATED": {"code": "KNB102", "message": "Knowledge base article updated successfully."},
+    "KNOWLEDGE_ARTICLE_DELETED": {"code": "KNB103", "message": "Knowledge base article deleted successfully."},
+    "KNOWLEDGE_ARTICLES_FETCHED": {"code": "KNB104", "message": "Knowledge base articles fetched successfully."},
+    "KNOWLEDGE_ARTICLE_FETCHED": {"code": "KNB105", "message": "Knowledge base article fetched successfully."},
+    "KNOWLEDGE_TOPICS_FETCHED": {"code": "KNB106", "message": "Knowledge base topics fetched successfully."},
+    "KNOWLEDGE_SHARE_LINKS_GENERATED": {"code": "KNB107", "message": "Knowledge base share links generated successfully."},
+    "KNOWLEDGE_TOPIC_CREATED": {"code": "KNB108", "message": "Knowledge base topic created successfully."},
+    "KNOWLEDGE_TOPIC_UPDATED": {"code": "KNB109", "message": "Knowledge base topic updated successfully."},
+    "KNOWLEDGE_TOPIC_DELETED": {"code": "KNB110", "message": "Knowledge base topic deleted successfully."},
+}
+
+# Knowledge Base Error Codes
+KNOWLEDGE_BASE_ERROR_CODES = {
+    "KNOWLEDGE_VALIDATION_ERROR": {"code": "KNB001", "message": "Validation error in knowledge base operation."},
+    "KNOWLEDGE_ARTICLE_NOT_FOUND": {"code": "KNB002", "message": "Knowledge base article not found."},
+    "KNOWLEDGE_TOPIC_NOT_FOUND": {"code": "KNB003", "message": "Knowledge base topic not found."},
+    "KNOWLEDGE_AUTHOR_NOT_FOUND": {"code": "KNB004", "message": "Knowledge base author not found."},
+    "KNOWLEDGE_SEARCH_TOO_SHORT": {"code": "KNB005", "message": "Search query must be at least 3 characters."},
+    "KNOWLEDGE_FETCH_ERROR": {"code": "KNB006", "message": "Error fetching knowledge base articles."},
+    "KNOWLEDGE_DETAIL_ERROR": {"code": "KNB007", "message": "Error fetching knowledge base article details."},
+    "KNOWLEDGE_CREATE_ERROR": {"code": "KNB008", "message": "Error creating knowledge base article."},
+    "KNOWLEDGE_UPDATE_ERROR": {"code": "KNB009", "message": "Error updating knowledge base article."},
+    "KNOWLEDGE_DELETE_ERROR": {"code": "KNB010", "message": "Error deleting knowledge base article."},
+    "KNOWLEDGE_TOPICS_ERROR": {"code": "KNB011", "message": "Error fetching knowledge base topics."},
+    "KNOWLEDGE_SHARE_ERROR": {"code": "KNB012", "message": "Error generating knowledge base share links."},
+    "KNOWLEDGE_TOPIC_NAME_REQUIRED": {"code": "KNB013", "message": "Knowledge base topic name is required."},
+    "KNOWLEDGE_TOPIC_CREATE_ERROR": {"code": "KNB014", "message": "Error creating knowledge base topic."},
+    "KNOWLEDGE_TOPIC_UPDATE_ERROR": {"code": "KNB015", "message": "Error updating knowledge base topic."},
+    "KNOWLEDGE_TOPIC_DELETE_ERROR": {"code": "KNB016", "message": "Error deleting knowledge base topic."},
+    "KNOWLEDGE_PERMISSION_DENIED": {"code": "KNB017", "message": "Permission denied for knowledge base operation."},
+    "KNOWLEDGE_USER_DATA_NOT_FOUND": {"code": "KNB018", "message": "User data not found for knowledge base operation."},
+}
+
 # Combine all response codes into one dictionary for lookup
 RESPONSE_CODES = {
     **SUCCESS_CODES,
@@ -216,8 +253,10 @@ RESPONSE_CODES = {
     **AI_TEXT_ERROR_CODES,
     **GENERAL_ERROR_CODES,
     **FACE_WATCH_ERROR_CODES,
-    **FORUM_SUCCESS_CODES,  # Added forum success codes
-    **FORUM_ERROR_CODES,  # Added forum error codes
+    **FORUM_SUCCESS_CODES,
+    **FORUM_ERROR_CODES,
+    **KNOWLEDGE_BASE_SUCCESS_CODES,
+    **KNOWLEDGE_BASE_ERROR_CODES,
 }
 
 
