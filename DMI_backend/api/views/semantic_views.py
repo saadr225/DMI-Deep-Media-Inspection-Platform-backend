@@ -95,7 +95,7 @@ print("DeepfakeDetectionPipeline initialized")
 print("Initializing AIGeneratedMediaDetection...")
 ai_generated_media_detection_pipeline = AIGeneratedMediaDetectionPipeline(
     # model_path=f"{settings.ML_MODELS_DIR}/{MODEL_FILES['ai_gen_media_detection_model']}",
-    model_name="haywoodsloan/ai-image-detector-deploy",
+    model_name="spectrewolf8/AIGM_Swin_V2_acc0.97_V1.4",
     synthetic_media_dir=f"{settings.MEDIA_ROOT}/temp/temp_synthetic_media/",
     threshold=0.5,
     log_level=0,
@@ -159,9 +159,7 @@ def process_deepfake_media(request):
             )
 
             # Generate file identifier using media processor
-            file_identifier = deepfake_detection_pipeline.media_processor.generate_combined_hash(
-                file_path
-            )
+            file_identifier = deepfake_detection_pipeline.media_processor.generate_combined_hash(file_path)
 
             if results is not False:
                 deepfake_result = DeepfakeDetectionResult.objects.create(
@@ -424,9 +422,7 @@ def process_ai_generated_text(request):
         }
 
         # Return the analysis results
-        return JsonResponse(
-            {**get_response_code("SUCCESS"), "data": result_data}, status=status.HTTP_200_OK
-        )
+        return JsonResponse({**get_response_code("SUCCESS"), "data": result_data}, status=status.HTTP_200_OK)
 
     except Exception as e:
         return JsonResponse(
