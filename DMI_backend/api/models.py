@@ -1,3 +1,4 @@
+import secrets
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -481,3 +482,96 @@ class KnowledgeBaseStatistics(models.Model):
 
     def __str__(self):
         return f"Stats for {self.article.title}"
+
+
+class APIKey(models.Model):
+    """
+    API Key model for authenticating external API users
+    """
+
+    # Key management fields
+    key = models.CharField(max_length=64, unique=True, editable=False)
+    user = models.ForeignKey(UserData, on_delete=models.CASCADE, related_name="api_keys")
+    name = models.CharField(max_length=100, help_text="A name to help you identify this API key")
+
+    # Status fields
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    # Rate limiting and quota
+    daily_limit = models.IntegerField(default=1000, help_text="Maximum number of requests per day")
+    daily_usage = models.IntegerField(default=0, help_text="Current usage count for the day")
+    last_usage_date = models.DateField(default=timezone.now)
+
+    # Permission fields - What API services this key can access
+    can_use_deepfake_detection = models.BooleanField(default=True)
+    can_use_ai_text_detection = models.BooleanField(default=True)
+    can_use_ai_media_detection = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "API Key"
+        verbose_name_plural = "API Keys"
+
+    def __str__(self):
+        return f"{self.name} ({self.user.user.username})"
+
+    def save(self, *args, **kwargs):
+        # Generate a new API key if it doesn't exist
+        if not self.key:
+            self.key = self.generate_key()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_key():
+        """Generate a secure random API key"""
+        return secrets.token_hex(32)
+
+    def is_valid(self):
+        """Check if the API key is valid and not expired"""
+        if not self.is_active:
+            return False
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        return True
+
+    def update_usage(self):
+        """Update the usage counter for this API key"""
+        today = timezone.now().date()
+
+        # Reset counter if it's a new day
+        if self.last_usage_date != today:
+            self.daily_usage = 0
+            self.last_usage_date = today
+
+        # Increment usage counter
+        self.daily_usage += 1
+        self.last_used_at = timezone.now()
+        self.save(update_fields=["daily_usage", "last_used_at", "last_usage_date"])
+
+        # Check if limit has been exceeded
+        return self.daily_usage <= self.daily_limit
+
+
+class APIUsageLog(models.Model):
+    """
+    Log of API usage for analytics and monitoring
+    """
+
+    api_key = models.ForeignKey(APIKey, on_delete=models.CASCADE, related_name="usage_logs")
+    endpoint = models.CharField(max_length=255)
+    method = models.CharField(max_length=10)  # GET, POST, etc.
+    status_code = models.IntegerField()
+    response_time = models.FloatField(help_text="Response time in seconds")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "API Usage Log"
+        verbose_name_plural = "API Usage Logs"
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.api_key} - {self.endpoint} ({self.status_code})"

@@ -2,6 +2,9 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 
+# Import API key serializers
+from api.models import APIKey
+
 
 class FileUploadSerializer(serializers.Serializer):
     file = serializers.FileField()
@@ -77,3 +80,38 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, data):
         return data
+
+
+class APIKeySerializer(serializers.ModelSerializer):
+    """
+    Serializer for API keys
+    """
+
+    class Meta:
+        model = APIKey
+        fields = [
+            "id",
+            "name",
+            "key",
+            "is_active",
+            "created_at",
+            "expires_at",
+            "last_used_at",
+            "daily_limit",
+            "daily_usage",
+            "last_usage_date",
+            "can_use_deepfake_detection",
+            "can_use_ai_text_detection",
+            "can_use_ai_media_detection",
+        ]
+        read_only_fields = ["id", "key", "created_at", "last_used_at", "daily_usage", "last_usage_date"]
+
+
+class APIKeyCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating API keys
+    """
+
+    class Meta:
+        model = APIKey
+        fields = ["name", "daily_limit", "expires_at", "can_use_deepfake_detection", "can_use_ai_text_detection", "can_use_ai_media_detection"]

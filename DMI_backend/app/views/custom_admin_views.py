@@ -380,7 +380,7 @@ def custom_admin_pda_list_view(request):
 
     context = {
         "active_page": "pda_submissions",
-        "submissions": page_obj,
+        "pda_submissions": page_obj,  # Changed from 'submissions' to 'pda_submissions'
         "filter_type": filter_type,
         "search_query": search_query,
         "pending_count": PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=True).count(),
@@ -388,6 +388,8 @@ def custom_admin_pda_list_view(request):
         "rejected_count": PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=False).count(),
         "total_count": PublicDeepfakeArchive.objects.count(),
         "page_range": range(1, paginator.num_pages + 1),
+        "is_paginated": paginator.count > 0,  # Added this to control pagination display
+        "paginator": paginator,  # Make sure paginator is also in the context
     }
 
     return render(request, "custom_admin/pda_list.html", context)
@@ -1204,3 +1206,66 @@ def admin_upload_image(request):
     except Exception as e:
         logger.error(f"Error in admin_upload_image: {str(e)}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def custom_admin_user_delete_view(request, user_id):
+    """View to delete a user"""
+    user = get_object_or_404(User, id=user_id)
+
+    if request.method == "POST":
+        username = user.username
+
+        # Delete the user
+        user.delete()
+
+        # Log the action
+        moderator_action = ModeratorAction(
+            moderator=request.user,
+            action_type="delete",
+            content_type="user",
+            content_identifier=f"User: {username}",
+            notes=f"User {username} was deleted by {request.user.username}",
+        )
+        moderator_action.save()
+
+        messages.success(request, f"User '{username}' has been deleted successfully.")
+        return redirect("custom_admin_users")
+
+    context = {
+        "active_page": "users",
+        "user_obj": user,
+    }
+
+    return render(request, "custom_admin/user_delete_confirm.html", context)
+
+
+def custom_admin_forum_delete_view(request, thread_id):
+    """View to delete a forum thread"""
+    thread = get_object_or_404(ForumThread, id=thread_id)
+
+    if request.method == "POST":
+        thread_title = thread.title
+
+        # Soft delete the thread (set is_deleted flag)
+        thread.is_deleted = True
+        thread.save()
+
+        # Log the action
+        moderator_action = ModeratorAction(
+            moderator=request.user,
+            action_type="delete",
+            content_type="thread",
+            content_identifier=f"Thread: {thread_title}",
+            notes=f"Thread '{thread_title}' was deleted by {request.user.username}",
+        )
+        moderator_action.save()
+
+        messages.success(request, f"Forum thread '{thread_title}' has been deleted.")
+        return redirect("custom_admin_forum")
+
+    context = {
+        "active_page": "forum",
+        "thread": thread,
+    }
+
+    return render(request, "custom_admin/forum_delete_confirm.html", context)

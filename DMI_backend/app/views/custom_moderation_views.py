@@ -15,9 +15,9 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 
 from api.models import (
-    ForumThread, 
-    ForumReply, 
-    ForumTopic, 
+    ForumThread,
+    ForumReply,
+    ForumTopic,
     PublicDeepfakeArchive,
 )
 from app.models import UserData, ModeratorAction
@@ -29,56 +29,56 @@ logger = logging.getLogger(__name__)
 # Initialize forum controller
 forum_controller = CommunityForumController()
 
+
 # Helper functions
 def is_moderator(user):
     """Check if user is moderator or admin"""
     if user.is_superuser or user.is_staff:
         return True
-    
+
     try:
         user_data = UserData.objects.get(user=user)
         return user_data.is_moderator()
     except UserData.DoesNotExist:
         return False
 
+
 def moderator_required(view_func):
     """Decorator for views that require moderator privileges"""
+
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             messages.info(request, "Please log in to access the moderation panel.")
-            return redirect('moderation_login')
-        
+            return redirect("moderation_login")
+
         if not is_moderator(request.user):
             messages.error(request, "You do not have moderator privileges to access this page.")
-            return redirect('moderation_login')
-        
+            return redirect("moderation_login")
+
         return view_func(request, *args, **kwargs)
-    
+
     return wrapper
+
 
 def log_moderation_action(moderator, action_type, content_type, content_object=None, content_identifier="", notes=None):
     """Log a moderation action for auditing purposes"""
     try:
-        action = ModeratorAction(
-            moderator=moderator,
-            action_type=action_type,
-            content_type=content_type,
-            content_identifier=content_identifier,
-            notes=notes
-        )
-        
+        action = ModeratorAction(moderator=moderator, action_type=action_type, content_type=content_type, content_identifier=content_identifier, notes=notes)
+
         # If content_object is provided, link it using Generic Foreign Key
         if content_object:
             from django.contrib.contenttypes.models import ContentType
+
             content_type_obj = ContentType.objects.get_for_model(content_object.__class__)
             action.content_object_type = content_type_obj
             action.content_object_id = content_object.id
-        
+
         action.save()
         return action
     except Exception as e:
         logger.error(f"Error logging moderation action: {str(e)}")
         return None
+
 
 # Login / Logout Views
 def moderation_login_view(request):
@@ -86,251 +86,247 @@ def moderation_login_view(request):
     # If already logged in and is moderator, redirect to dashboard
     if request.user.is_authenticated:
         if is_moderator(request.user):
-            return redirect('moderation_dashboard')
+            return redirect("moderation_dashboard")
         else:
             error_message = "You do not have moderator privileges."
-            return render(request, 'custom_moderation/login.html', {'error_message': error_message})
-    
+            return render(request, "custom_moderation/login.html", {"error_message": error_message})
+
     error_message = None
-    
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        
+
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             if is_moderator(user):
                 login(request, user)
-                return redirect('moderation_dashboard')
+                return redirect("moderation_dashboard")
             else:
                 error_message = "You do not have moderator privileges."
         else:
             error_message = "Invalid username or password."
-    
-    return render(request, 'custom_moderation/login.html', {'error_message': error_message})
+
+    return render(request, "custom_moderation/login.html", {"error_message": error_message})
+
 
 @login_required
 def moderation_logout_view(request):
     """Logout view for moderation panel"""
     logout(request)
-    return redirect('moderation_login')
+    return redirect("moderation_login")
+
 
 # Dashboard View
 @moderator_required
 def moderation_dashboard_view(request):
     """Main dashboard view for moderation panel"""
     # Get counts for the dashboard
-    pda_pending_count = PublicDeepfakeArchive.objects.filter(
-        is_approved=False, 
-        review_date__isnull=True
-    ).count()
-    
-    forum_pending_count = ForumThread.objects.filter(
-        approval_status='pending'
-    ).count()
-    
+    pda_pending_count = PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=True).count()
+
+    forum_pending_count = ForumThread.objects.filter(approval_status="pending").count()
+
     # For now, there's no reported content system, so use 0
     # In the future, implement reported content functionality
     reported_count = 0
-    
+
     # Get moderator's recent actions
-    moderator_actions = ModeratorAction.objects.filter(
-        moderator=request.user
-    ).order_by('-timestamp')[:10]
-    
+    moderator_actions = ModeratorAction.objects.filter(moderator=request.user).order_by("-timestamp")[:10]
+
     # Count recent actions by type
-    approved_count = ModeratorAction.objects.filter(
-        moderator=request.user,
-        timestamp__gte=timezone.now() - timedelta(days=7),
-        action_type='approve'
-    ).count()
-    
-    rejected_count = ModeratorAction.objects.filter(
-        moderator=request.user,
-        timestamp__gte=timezone.now() - timedelta(days=7),
-        action_type='reject'
-    ).count()
-    
-    moderator_actions_count = ModeratorAction.objects.filter(
-        moderator=request.user,
-        timestamp__gte=timezone.now() - timedelta(days=7)
-    ).count()
-    
+    approved_count = ModeratorAction.objects.filter(moderator=request.user, timestamp__gte=timezone.now() - timedelta(days=7), action_type="approve").count()
+
+    rejected_count = ModeratorAction.objects.filter(moderator=request.user, timestamp__gte=timezone.now() - timedelta(days=7), action_type="reject").count()
+
+    moderator_actions_count = ModeratorAction.objects.filter(moderator=request.user, timestamp__gte=timezone.now() - timedelta(days=7)).count()
+
     # Get recent items that need moderation
     recent_moderation_items = []
-    
+
     # Get pending PDA submissions
-    pda_pending = PublicDeepfakeArchive.objects.filter(
-        is_approved=False, 
-        review_date__isnull=True
-    ).order_by('-submission_date')[:5]
-    
+    pda_pending = PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=True).order_by("-submission_date")[:5]
+
     for pda in pda_pending:
         item = {
-            'title': pda.title,
-            'submission_date': pda.submission_date,
-            'type': 'PDA Submission',
-            'author': pda.user.user.username,
-            'url': reverse('pda_detail', args=[pda.id]),
-            'approve_url': reverse('pda_approve', args=[pda.id]),
-            'reject_url': reverse('pda_reject', args=[pda.id])
+            "title": pda.title,
+            "submission_date": pda.submission_date,
+            "type": "PDA Submission",
+            "author": pda.user.user.username,
+            "url": reverse("pda_detail", args=[pda.id]),
+            "approve_url": reverse("pda_approve", args=[pda.id]),
+            "reject_url": reverse("pda_reject", args=[pda.id]),
         }
         recent_moderation_items.append(item)
-    
+
     # Get pending forum threads
-    forum_pending = ForumThread.objects.filter(
-        approval_status='pending'
-    ).order_by('-created_at')[:5]
-    
+    forum_pending = ForumThread.objects.filter(approval_status="pending").order_by("-created_at")[:5]
+
     for thread in forum_pending:
         item = {
-            'title': thread.title,
-            'submission_date': thread.created_at,
-            'type': 'Forum Thread',
-            'author': thread.author.user.username,
-            'url': reverse('thread_detail', args=[thread.id]),
-            'approve_url': reverse('thread_approve', args=[thread.id]),
-            'reject_url': reverse('thread_reject', args=[thread.id])
+            "title": thread.title,
+            "submission_date": thread.created_at,
+            "type": "Forum Thread",
+            "author": thread.author.user.username,
+            "url": reverse("thread_detail", args=[thread.id]),
+            "approve_url": reverse("thread_approve", args=[thread.id]),
+            "reject_url": reverse("thread_reject", args=[thread.id]),
         }
         recent_moderation_items.append(item)
-    
+
     # Sort moderation items by date
-    recent_moderation_items = sorted(recent_moderation_items, key=lambda x: x['submission_date'], reverse=True)[:5]
-    
+    recent_moderation_items = sorted(recent_moderation_items, key=lambda x: x["submission_date"], reverse=True)[:5]
+
     # Generate data for charts - Default 7 days
     days = 7
     days_labels = []
     pda_data = []
     threads_data = []
     approved_data = []
-    
+
     # Get current time
     current_time = timezone.now()
-    
+
     # Check if there's any data in the last 7 days
     has_recent_data = (
-        PublicDeepfakeArchive.objects.filter(submission_date__gte=current_time - timedelta(days=days)).exists() or
-        ForumThread.objects.filter(created_at__gte=current_time - timedelta(days=days)).exists()
+        PublicDeepfakeArchive.objects.filter(submission_date__gte=current_time - timedelta(days=days)).exists()
+        or ForumThread.objects.filter(created_at__gte=current_time - timedelta(days=days)).exists()
     )
-    
+
     # If no real data exists, generate sample data for demonstration
     if not has_recent_data:
         for i in range(days):
-            day = current_time - timedelta(days=days-i-1)
+            day = current_time - timedelta(days=days - i - 1)
             # Format date as string
-            days_labels.append(day.strftime('%b %d'))
-            
+            days_labels.append(day.strftime("%b %d"))
+
             # Generate some sample data
             # This will be more interesting than all zeros
             day_pda = max(0, int(3 * (1 + 0.5 * i) * (i % 2 + 0.5)))
             day_threads = max(0, int(5 * (1 + 0.3 * i) * (i % 3 + 0.7)))
             day_approved = max(0, int((day_pda + day_threads) * 0.7))
-            
+
             pda_data.append(day_pda)
             threads_data.append(day_threads)
             approved_data.append(day_approved)
     else:
         # Real data exists, use it as before
         for i in range(days):
-            day = current_time - timedelta(days=days-i-1)
+            day = current_time - timedelta(days=days - i - 1)
             day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
             day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-            
+
             # Format date as string
-            days_labels.append(day_start.strftime('%b %d'))
-            
+            days_labels.append(day_start.strftime("%b %d"))
+
             # Count items for each day
             day_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(day_start, day_end)).count()
             day_threads = ForumThread.objects.filter(created_at__range=(day_start, day_end)).count()
-            
+
             # Count approved items
             day_approved = (
-                PublicDeepfakeArchive.objects.filter(
-                    is_approved=True, 
-                    review_date__range=(day_start, day_end)
-                ).count() +
-                ForumThread.objects.filter(
-                    approval_status='approved',
-                    review_date__range=(day_start, day_end)
-                ).count()
+                PublicDeepfakeArchive.objects.filter(is_approved=True, review_date__range=(day_start, day_end)).count()
+                + ForumThread.objects.filter(approval_status="approved", review_date__range=(day_start, day_end)).count()
             )
-            
+
             pda_data.append(day_pda)
             threads_data.append(day_threads)
             approved_data.append(day_approved)
-    
+
     # Format context for the template
     context = {
-        'active_page': 'dashboard',
-        'pda_pending_count': pda_pending_count,
-        'forum_pending_count': forum_pending_count,
-        'reported_count': reported_count,
-        'pending_count': pda_pending_count + forum_pending_count + reported_count,
-        'moderator_actions': moderator_actions,
-        'moderator_actions_count': moderator_actions_count,
-        'approved_count': approved_count,
-        'rejected_count': rejected_count,
-        'recent_moderation_items': recent_moderation_items,
-        'days_labels': json.dumps(days_labels),
-        'pda_data': json.dumps(pda_data),
-        'threads_data': json.dumps(threads_data),
-        'approved_data': json.dumps(approved_data),
-        'has_chart_data': has_recent_data
+        "active_page": "dashboard",
+        "pda_pending_count": pda_pending_count,
+        "forum_pending_count": forum_pending_count,
+        "reported_count": reported_count,
+        "pending_count": pda_pending_count + forum_pending_count + reported_count,
+        "moderator_actions": moderator_actions,
+        "moderator_actions_count": moderator_actions_count,
+        "approved_count": approved_count,
+        "rejected_count": rejected_count,
+        "recent_moderation_items": recent_moderation_items,
+        "days_labels": json.dumps(days_labels),
+        "pda_data": json.dumps(pda_data),
+        "threads_data": json.dumps(threads_data),
+        "approved_data": json.dumps(approved_data),
+        "has_chart_data": has_recent_data,
     }
-    
-    return render(request, 'custom_moderation/dashboard.html', context)
+
+    return render(request, "custom_moderation/dashboard.html", context)
+
 
 # PDA Moderation Views
 @moderator_required
 def pda_moderation_view(request):
     """View for moderating PDA submissions"""
-    # Get all pending submissions
-    pending_submissions = PublicDeepfakeArchive.objects.filter(
-        review_date__isnull=True
-    ).order_by('-submission_date')
-    
+    # Get filter parameter
+    filter_type = request.GET.get("filter", "all")
+
+    # Apply filter
+    if filter_type == "pending":
+        pda_submissions = PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=True).order_by("-submission_date")
+    elif filter_type == "approved":
+        pda_submissions = PublicDeepfakeArchive.objects.filter(is_approved=True).order_by("-submission_date")
+    elif filter_type == "rejected":
+        pda_submissions = PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=False).order_by("-submission_date")
+    else:
+        pda_submissions = PublicDeepfakeArchive.objects.all().order_by("-submission_date")
+
+    # Search functionality
+    search_query = request.GET.get("search", "")
+    if search_query:
+        pda_submissions = pda_submissions.filter(
+            Q(title__icontains=search_query) | Q(description__icontains=search_query) | Q(user__user__username__icontains=search_query)
+        )
+
     # Pagination
-    paginator = Paginator(pending_submissions, 10)  # 10 submissions per page
-    page_number = request.GET.get('page', 1)
+    paginator = Paginator(pda_submissions, 10)  # 10 submissions per page
+    page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
-        'active_page': 'pda_moderation',
-        'pending_submissions': page_obj,
-        'pending_count': pending_submissions.count(),
+        "active_page": "pda_moderation",
+        "pending_submissions": page_obj,
+        "filter_type": filter_type,
+        "search_query": search_query,
+        "pending_count": PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=True).count(),
+        "approved_count": PublicDeepfakeArchive.objects.filter(is_approved=True).count(),
+        "rejected_count": PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=False).count(),
+        "total_count": PublicDeepfakeArchive.objects.count(),
     }
-    
-    return render(request, 'custom_moderation/pda_moderation.html', context)
+
+    return render(request, "custom_moderation/pda_moderation.html", context)
+
 
 @moderator_required
 def pda_detail_view(request, pda_id):
     """View to see PDA submission details and moderate it"""
     submission = get_object_or_404(PublicDeepfakeArchive, id=pda_id)
-    
+
     context = {
-        'active_page': 'pda_moderation',
-        'submission': submission,
+        "active_page": "pda_moderation",
+        "submission": submission,
     }
-    
-    return render(request, 'custom_moderation/pda_detail.html', context)
+
+    return render(request, "custom_moderation/pda_detail.html", context)
+
 
 @moderator_required
 def pda_approve_view(request, pda_id):
     """View to approve a PDA submission"""
     submission = get_object_or_404(PublicDeepfakeArchive, id=pda_id)
-    
+
     # Update submission
     submission.is_approved = True
     submission.review_date = timezone.now()
     submission.reviewed_by = request.user
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         # If additional notes were submitted
-        submission.review_notes = request.POST.get('review_notes', '')
-    
+        submission.review_notes = request.POST.get("review_notes", "")
+
     submission.save()
-    
+
     # Log the action
     log_moderation_action(
         moderator=request.user,
@@ -338,28 +334,29 @@ def pda_approve_view(request, pda_id):
         content_type="pda",
         content_object=submission,
         content_identifier=f"PDA: {submission.title}",
-        notes=submission.review_notes
+        notes=submission.review_notes,
     )
-    
+
     messages.success(request, f"PDA submission '{submission.title}' has been approved.")
-    return redirect('pda_moderation')
+    return redirect("pda_moderation")
+
 
 @moderator_required
 def pda_reject_view(request, pda_id):
     """View to reject a PDA submission"""
     submission = get_object_or_404(PublicDeepfakeArchive, id=pda_id)
-    
+
     # Update submission
     submission.is_approved = False
     submission.review_date = timezone.now()
     submission.reviewed_by = request.user
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         # If additional notes were submitted
-        submission.review_notes = request.POST.get('review_notes', '')
-    
+        submission.review_notes = request.POST.get("review_notes", "")
+
     submission.save()
-    
+
     # Log the action
     log_moderation_action(
         moderator=request.user,
@@ -367,11 +364,12 @@ def pda_reject_view(request, pda_id):
         content_type="pda",
         content_object=submission,
         content_identifier=f"PDA: {submission.title}",
-        notes=submission.review_notes
+        notes=submission.review_notes,
     )
-    
+
     messages.success(request, f"PDA submission '{submission.title}' has been rejected.")
-    return redirect('pda_moderation')
+    return redirect("pda_moderation")
+
 
 # Forum Moderation Views
 @moderator_required
@@ -379,7 +377,7 @@ def forum_moderation_view(request):
     """View for moderating forum threads"""
     # Get filter parameter
     filter_type = request.GET.get("filter", "pending")
-    
+
     # Apply filters based on selection
     if filter_type == "pending":
         threads = ForumThread.objects.filter(approval_status="pending").order_by("-created_at")
@@ -388,42 +386,37 @@ def forum_moderation_view(request):
         threads = ForumThread.objects.none()
     else:
         threads = ForumThread.objects.all().order_by("-created_at")
-    
+
     # Pagination
     paginator = Paginator(threads, 10)  # 10 threads per page
-    page_number = request.GET.get('page', 1)
+    page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
-        'active_page': 'forum_moderation',
-        'threads': page_obj,
-        'filter_type': filter_type,
-        'pending_count': ForumThread.objects.filter(approval_status="pending").count(),
+        "active_page": "forum_moderation",
+        "threads": page_obj,
+        "filter_type": filter_type,
+        "pending_count": ForumThread.objects.filter(approval_status="pending").count(),
     }
-    
-    return render(request, 'custom_moderation/forum_moderation.html', context)
+
+    return render(request, "custom_moderation/forum_moderation.html", context)
+
 
 @moderator_required
 def thread_detail_view(request, thread_id):
     """View to see thread details and moderate it"""
     thread = get_object_or_404(
-        ForumThread.objects.select_related("author__user", "topic").prefetch_related(
-            "tags", "replies"
-        ),
+        ForumThread.objects.select_related("author__user", "topic").prefetch_related("tags", "replies"),
         id=thread_id,
     )
-    
+
     # Get replies for the thread
-    replies = (
-        ForumReply.objects.filter(thread=thread)
-        .select_related("author__user")
-        .order_by("created_at")
-    )
-    
+    replies = ForumReply.objects.filter(thread=thread).select_related("author__user").order_by("created_at")
+
     # Handle form submissions (approve/reject/delete reply)
     if request.method == "POST":
         action = request.POST.get("action")
-        
+
         if action in ["approve", "reject"]:
             # Use the controller to moderate the thread
             result = forum_controller.moderate_thread(
@@ -431,24 +424,20 @@ def thread_detail_view(request, thread_id):
                 approval_status="approved" if action == "approve" else "rejected",
                 moderator=request.user,
             )
-            
+
             # Log the moderation action
             log_moderation_action(
-                moderator=request.user,
-                action_type=action,
-                content_type="thread",
-                content_object=thread,
-                content_identifier=f"Thread: {thread.title}"
+                moderator=request.user, action_type=action, content_type="thread", content_object=thread, content_identifier=f"Thread: {thread.title}"
             )
-            
+
             # Show success message
             if result["success"]:
                 messages.success(request, f"Thread '{thread.title}' has been {action}d successfully.")
             else:
                 messages.error(request, f"Error: {result['error']}")
-            
-            return redirect('forum_moderation')
-            
+
+            return redirect("forum_moderation")
+
         elif action == "delete_reply":
             reply_id = request.POST.get("reply_id")
             if reply_id:
@@ -456,177 +445,142 @@ def thread_detail_view(request, thread_id):
                     reply = ForumReply.objects.get(id=reply_id, thread=thread)
                     reply.is_deleted = True
                     reply.save()
-                    
+
                     # Log the action
                     log_moderation_action(
                         moderator=request.user,
                         action_type="delete",
                         content_type="reply",
                         content_object=reply,
-                        content_identifier=f"Reply from {reply.author.user.username} on thread: {thread.title}"
+                        content_identifier=f"Reply from {reply.author.user.username} on thread: {thread.title}",
                     )
-                    
+
                     messages.success(request, "Reply has been deleted successfully.")
                 except ForumReply.DoesNotExist:
                     messages.error(request, "Error: Reply not found.")
             else:
                 messages.error(request, "Error: No reply specified for deletion.")
-    
+
     context = {
-        'active_page': 'forum_moderation',
-        'thread': thread,
-        'replies': replies,
+        "active_page": "forum_moderation",
+        "thread": thread,
+        "replies": replies,
     }
-    
-    return render(request, 'custom_moderation/thread_detail.html', context)
+
+    return render(request, "custom_moderation/thread_detail.html", context)
+
 
 @moderator_required
 def thread_approve_view(request, thread_id):
     """View to approve a forum thread"""
     thread = get_object_or_404(ForumThread, id=thread_id)
-    
+
     # Use the controller to moderate the thread
     result = forum_controller.moderate_thread(
         thread_id=thread.id,
         approval_status="approved",
         moderator=request.user,
     )
-    
+
     # Log the moderation action
-    log_moderation_action(
-        moderator=request.user,
-        action_type="approve",
-        content_type="thread",
-        content_object=thread,
-        content_identifier=f"Thread: {thread.title}"
-    )
-    
+    log_moderation_action(moderator=request.user, action_type="approve", content_type="thread", content_object=thread, content_identifier=f"Thread: {thread.title}")
+
     if result["success"]:
         messages.success(request, f"Thread '{thread.title}' has been approved successfully.")
     else:
         messages.error(request, f"Error: {result['error']}")
-    
-    return redirect('forum_moderation')
+
+    return redirect("forum_moderation")
+
 
 @moderator_required
 def thread_reject_view(request, thread_id):
     """View to reject a forum thread"""
     thread = get_object_or_404(ForumThread, id=thread_id)
-    
+
     # Use the controller to moderate the thread
     result = forum_controller.moderate_thread(
         thread_id=thread.id,
         approval_status="rejected",
         moderator=request.user,
     )
-    
+
     # Log the moderation action
-    log_moderation_action(
-        moderator=request.user,
-        action_type="reject",
-        content_type="thread",
-        content_object=thread,
-        content_identifier=f"Thread: {thread.title}"
-    )
-    
+    log_moderation_action(moderator=request.user, action_type="reject", content_type="thread", content_object=thread, content_identifier=f"Thread: {thread.title}")
+
     if result["success"]:
         messages.success(request, f"Thread '{thread.title}' has been rejected successfully.")
     else:
         messages.error(request, f"Error: {result['error']}")
-    
-    return redirect('forum_moderation')
 
-# Additional views for the moderation panel can be added as needed 
+    return redirect("forum_moderation")
+
+
+# Additional views for the moderation panel can be added as needed
+
 
 @moderator_required
 def reported_content_view(request):
     """View for reported content that requires moderation"""
     # This is a placeholder for future implementation of reported content
     # Currently, there is no reported content system
-    
-    context = {
-        'active_page': 'reported_content',
-        'reported_items': [],
-        'reported_count': 0
-    }
-    
-    return render(request, 'custom_moderation/reported_content.html', context)
+
+    context = {"active_page": "reported_content", "reported_items": [], "reported_count": 0}
+
+    return render(request, "custom_moderation/reported_content.html", context)
+
 
 @moderator_required
 def analytics_dashboard_view(request):
     """View for analytics dashboard"""
     # Get date range
-    days = int(request.GET.get('days', 30))
-    
+    days = int(request.GET.get("days", 30))
+
     # Calculate date ranges
     end_date = timezone.now()
     start_date = end_date - timedelta(days=days)
-    
+
     # Get stats for the period
-    pda_submitted = PublicDeepfakeArchive.objects.filter(
-        submission_date__range=(start_date, end_date)
-    ).count()
-    
-    pda_approved = PublicDeepfakeArchive.objects.filter(
-        is_approved=True,
-        review_date__range=(start_date, end_date)
-    ).count()
-    
-    pda_rejected = PublicDeepfakeArchive.objects.filter(
-        is_approved=False,
-        review_date__range=(start_date, end_date)
-    ).count()
-    
-    threads_submitted = ForumThread.objects.filter(
-        created_at__range=(start_date, end_date)
-    ).count()
-    
-    threads_approved = ForumThread.objects.filter(
-        approval_status='approved',
-        review_date__range=(start_date, end_date)
-    ).count()
-    
-    threads_rejected = ForumThread.objects.filter(
-        approval_status='rejected',
-        review_date__range=(start_date, end_date)
-    ).count()
-    
+    pda_submitted = PublicDeepfakeArchive.objects.filter(submission_date__range=(start_date, end_date)).count()
+
+    pda_approved = PublicDeepfakeArchive.objects.filter(is_approved=True, review_date__range=(start_date, end_date)).count()
+
+    pda_rejected = PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__range=(start_date, end_date)).count()
+
+    threads_submitted = ForumThread.objects.filter(created_at__range=(start_date, end_date)).count()
+
+    threads_approved = ForumThread.objects.filter(approval_status="approved", review_date__range=(start_date, end_date)).count()
+
+    threads_rejected = ForumThread.objects.filter(approval_status="rejected", review_date__range=(start_date, end_date)).count()
+
     # Get moderator activity
-    moderator_actions = ModeratorAction.objects.filter(
-        timestamp__range=(start_date, end_date)
-    ).values('moderator__username').annotate(
-        count=Count('id')
-    ).order_by('-count')[:10]
-    
+    moderator_actions = (
+        ModeratorAction.objects.filter(timestamp__range=(start_date, end_date)).values("moderator__username").annotate(count=Count("id")).order_by("-count")[:10]
+    )
+
     # Generate time series data for charts
     time_period = []
     pda_series = []
     thread_series = []
     actions_series = []
-    
+
     # For daily data (up to 90 days)
     if days <= 90:
         for i in range(days):
             day = start_date + timedelta(days=i)
             day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
             day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-            
+
             # Format date for display
-            time_period.append(day_start.strftime('%Y-%m-%d'))
-            
+            time_period.append(day_start.strftime("%Y-%m-%d"))
+
             # Get counts for the day
-            day_pda = PublicDeepfakeArchive.objects.filter(
-                submission_date__range=(day_start, day_end)
-            ).count()
-            
-            day_threads = ForumThread.objects.filter(
-                created_at__range=(day_start, day_end)
-            ).count()
-            
-            day_actions = ModeratorAction.objects.filter(
-                timestamp__range=(day_start, day_end)
-            ).count()
-            
+            day_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(day_start, day_end)).count()
+
+            day_threads = ForumThread.objects.filter(created_at__range=(day_start, day_end)).count()
+
+            day_actions = ModeratorAction.objects.filter(timestamp__range=(day_start, day_end)).count()
+
             pda_series.append(day_pda)
             thread_series.append(day_threads)
             actions_series.append(day_actions)
@@ -635,122 +589,111 @@ def analytics_dashboard_view(request):
         # Calculate number of weeks
         num_weeks = days // 7
         for i in range(num_weeks):
-            week_start = start_date + timedelta(days=i*7)
+            week_start = start_date + timedelta(days=i * 7)
             week_end = week_start + timedelta(days=6)
-            
+
             # Format date range for display
             time_period.append(f"{week_start.strftime('%m/%d')} - {week_end.strftime('%m/%d')}")
-            
+
             # Get counts for the week
-            week_pda = PublicDeepfakeArchive.objects.filter(
-                submission_date__range=(week_start, week_end)
-            ).count()
-            
-            week_threads = ForumThread.objects.filter(
-                created_at__range=(week_start, week_end)
-            ).count()
-            
-            week_actions = ModeratorAction.objects.filter(
-                timestamp__range=(week_start, week_end)
-            ).count()
-            
+            week_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(week_start, week_end)).count()
+
+            week_threads = ForumThread.objects.filter(created_at__range=(week_start, week_end)).count()
+
+            week_actions = ModeratorAction.objects.filter(timestamp__range=(week_start, week_end)).count()
+
             pda_series.append(week_pda)
             thread_series.append(week_threads)
             actions_series.append(week_actions)
-    
+
     context = {
-        'active_page': 'analytics',
-        'days': days,
-        'pda_submitted': pda_submitted,
-        'pda_approved': pda_approved,
-        'pda_rejected': pda_rejected,
-        'threads_submitted': threads_submitted,
-        'threads_approved': threads_approved,
-        'threads_rejected': threads_rejected,
-        'total_moderated': pda_approved + pda_rejected + threads_approved + threads_rejected,
-        'total_content': pda_submitted + threads_submitted,
-        'approval_rate': round((pda_approved + threads_approved) / 
-                             (pda_submitted + threads_submitted) * 100 
-                             if (pda_submitted + threads_submitted) > 0 else 0, 1),
-        'moderator_actions': moderator_actions,
-        'time_period': json.dumps(time_period),
-        'pda_series': json.dumps(pda_series),
-        'thread_series': json.dumps(thread_series),
-        'actions_series': json.dumps(actions_series)
+        "active_page": "analytics",
+        "days": days,
+        "pda_submitted": pda_submitted,
+        "pda_approved": pda_approved,
+        "pda_rejected": pda_rejected,
+        "threads_submitted": threads_submitted,
+        "threads_approved": threads_approved,
+        "threads_rejected": threads_rejected,
+        "total_moderated": pda_approved + pda_rejected + threads_approved + threads_rejected,
+        "total_content": pda_submitted + threads_submitted,
+        "approval_rate": round((pda_approved + threads_approved) / (pda_submitted + threads_submitted) * 100 if (pda_submitted + threads_submitted) > 0 else 0, 1),
+        "moderator_actions": moderator_actions,
+        "time_period": json.dumps(time_period),
+        "pda_series": json.dumps(pda_series),
+        "thread_series": json.dumps(thread_series),
+        "actions_series": json.dumps(actions_series),
     }
-    
-    return render(request, 'custom_moderation/analytics_dashboard.html', context)
+
+    return render(request, "custom_moderation/analytics_dashboard.html", context)
+
 
 @moderator_required
 def moderation_settings_view(request):
     """View for moderation settings"""
     success_message = None
     error_message = None
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         try:
             # Update notification settings
             notification_settings = {
-                'email_notifications': 'email_notifications' in request.POST,
-                'browser_notifications': 'browser_notifications' in request.POST,
-                'notify_on_new_pda': 'notify_on_new_pda' in request.POST,
-                'notify_on_new_thread': 'notify_on_new_thread' in request.POST,
-                'notify_on_reports': 'notify_on_reports' in request.POST,
+                "email_notifications": "email_notifications" in request.POST,
+                "browser_notifications": "browser_notifications" in request.POST,
+                "notify_on_new_pda": "notify_on_new_pda" in request.POST,
+                "notify_on_new_thread": "notify_on_new_thread" in request.POST,
+                "notify_on_reports": "notify_on_reports" in request.POST,
             }
-            
+
             # Save to user's UserData
             user_data, created = UserData.objects.get_or_create(user=request.user)
-            
+
             # Store notification settings in the metadata field
             if not user_data.metadata:
                 user_data.metadata = {}
-            
-            user_data.metadata['notification_settings'] = notification_settings
+
+            user_data.metadata["notification_settings"] = notification_settings
             user_data.save()
-            
+
             success_message = "Settings updated successfully."
         except Exception as e:
             error_message = f"Error updating settings: {str(e)}"
-    
+
     # Get current settings
     try:
         user_data = UserData.objects.get(user=request.user)
-        notification_settings = user_data.metadata.get('notification_settings', {}) if user_data.metadata else {}
+        notification_settings = user_data.metadata.get("notification_settings", {}) if user_data.metadata else {}
     except UserData.DoesNotExist:
         notification_settings = {}
-    
-    context = {
-        'active_page': 'settings',
-        'success_message': success_message,
-        'error_message': error_message,
-        'notification_settings': notification_settings
-    }
-    
-    return render(request, 'custom_moderation/settings.html', context)
+
+    context = {"active_page": "settings", "success_message": success_message, "error_message": error_message, "notification_settings": notification_settings}
+
+    return render(request, "custom_moderation/settings.html", context)
+
 
 @moderator_required
 def moderation_profile_view(request):
     """View for moderator profile"""
     success_message = None
     error_message = None
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         try:
             # Update profile information
-            first_name = request.POST.get('first_name')
-            last_name = request.POST.get('last_name')
-            email = request.POST.get('email')
-            
+            first_name = request.POST.get("first_name")
+            last_name = request.POST.get("last_name")
+            email = request.POST.get("email")
+
             # Update password if provided
-            current_password = request.POST.get('current_password')
-            new_password = request.POST.get('new_password')
-            confirm_password = request.POST.get('confirm_password')
-            
+            current_password = request.POST.get("current_password")
+            new_password = request.POST.get("new_password")
+            confirm_password = request.POST.get("confirm_password")
+
             # Update basic info
             request.user.first_name = first_name
             request.user.last_name = last_name
             request.user.email = email
-            
+
             # Handle password update if provided
             if current_password and new_password and confirm_password:
                 if not request.user.check_password(current_password):
@@ -762,68 +705,49 @@ def moderation_profile_view(request):
                     success_message = "Profile and password updated successfully. Please log in again."
             else:
                 success_message = "Profile updated successfully."
-            
+
             request.user.save()
-            
+
             # Redirect to login if password was changed
             if current_password and new_password and confirm_password and not error_message:
                 logout(request)
-                return redirect('moderation_login')
-            
+                return redirect("moderation_login")
+
         except Exception as e:
             error_message = f"Error updating profile: {str(e)}"
-    
+
     # Get moderation activity stats
     activity_stats = {
-        'total_actions': ModeratorAction.objects.filter(moderator=request.user).count(),
-        'pda_approved': ModeratorAction.objects.filter(
-            moderator=request.user, 
-            action_type='approve', 
-            content_type='pda'
-        ).count(),
-        'pda_rejected': ModeratorAction.objects.filter(
-            moderator=request.user, 
-            action_type='reject', 
-            content_type='pda'
-        ).count(),
-        'threads_approved': ModeratorAction.objects.filter(
-            moderator=request.user, 
-            action_type='approve', 
-            content_type='forum_thread'
-        ).count(),
-        'threads_rejected': ModeratorAction.objects.filter(
-            moderator=request.user, 
-            action_type='reject', 
-            content_type='forum_thread'
-        ).count(),
+        "total_actions": ModeratorAction.objects.filter(moderator=request.user).count(),
+        "pda_approved": ModeratorAction.objects.filter(moderator=request.user, action_type="approve", content_type="pda").count(),
+        "pda_rejected": ModeratorAction.objects.filter(moderator=request.user, action_type="reject", content_type="pda").count(),
+        "threads_approved": ModeratorAction.objects.filter(moderator=request.user, action_type="approve", content_type="forum_thread").count(),
+        "threads_rejected": ModeratorAction.objects.filter(moderator=request.user, action_type="reject", content_type="forum_thread").count(),
     }
-    
+
     # Get recent actions
-    recent_actions = ModeratorAction.objects.filter(
-        moderator=request.user
-    ).order_by('-timestamp')[:10]
-    
+    recent_actions = ModeratorAction.objects.filter(moderator=request.user).order_by("-timestamp")[:10]
+
     # Get all user actions sorted by date
-    all_actions = ModeratorAction.objects.filter(
-        moderator=request.user
-    ).order_by('-timestamp')
-    
+    all_actions = ModeratorAction.objects.filter(moderator=request.user).order_by("-timestamp")
+
     # Pagination for all actions
     paginator = Paginator(all_actions, 15)  # 15 actions per page
-    page_number = request.GET.get('page', 1)
+    page_number = request.GET.get("page", 1)
     paginated_actions = paginator.get_page(page_number)
-    
+
     context = {
-        'active_page': 'profile',
-        'success_message': success_message,
-        'error_message': error_message,
-        'activity_stats': activity_stats,
-        'recent_actions': recent_actions,
-        'all_actions': paginated_actions,
-        'join_date': request.user.date_joined
+        "active_page": "profile",
+        "success_message": success_message,
+        "error_message": error_message,
+        "activity_stats": activity_stats,
+        "recent_actions": recent_actions,
+        "all_actions": paginated_actions,
+        "join_date": request.user.date_joined,
     }
-    
-    return render(request, 'custom_moderation/profile.html', context)
+
+    return render(request, "custom_moderation/profile.html", context)
+
 
 # API endpoint for moderation chart data
 @moderator_required
@@ -831,26 +755,25 @@ def moderation_chart_data_api(request):
     """API endpoint for moderation chart data with time-based filtering"""
     try:
         # Get date range parameter
-        days = int(request.GET.get('days', 7))
+        days = int(request.GET.get("days", 7))
         if days <= 0:
             days = 7
-        
+
         # Calculate date ranges
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days)
-        
+
         # Generate time series data for charts
         time_period = []
         pda_series = []
         thread_series = []
         approved_series = []
-        
+
         # Check if there's any data in the requested period
         has_real_data = (
-            PublicDeepfakeArchive.objects.filter(submission_date__gte=start_date).exists() or
-            ForumThread.objects.filter(created_at__gte=start_date).exists()
+            PublicDeepfakeArchive.objects.filter(submission_date__gte=start_date).exists() or ForumThread.objects.filter(created_at__gte=start_date).exists()
         )
-        
+
         # If no real data exists, generate sample data for demonstration
         if not has_real_data:
             # For daily data
@@ -858,14 +781,14 @@ def moderation_chart_data_api(request):
                 for i in range(days):
                     day = start_date + timedelta(days=i)
                     # Format date for display
-                    time_period.append(day.strftime('%b %d'))
-                    
+                    time_period.append(day.strftime("%b %d"))
+
                     # Generate sample data
                     # This creates a more interesting chart pattern
                     day_pda = max(0, int(3 * (1 + 0.5 * (i % 7)) * (i % 2 + 0.5)))
                     day_threads = max(0, int(5 * (1 + 0.3 * (i % 5)) * (i % 3 + 0.7)))
                     day_approved = max(0, int((day_pda + day_threads) * 0.7))
-                    
+
                     pda_series.append(day_pda)
                     thread_series.append(day_threads)
                     approved_series.append(day_approved)
@@ -873,17 +796,17 @@ def moderation_chart_data_api(request):
             else:
                 num_weeks = days // 7
                 for i in range(num_weeks):
-                    week_start = start_date + timedelta(days=i*7)
+                    week_start = start_date + timedelta(days=i * 7)
                     week_end = week_start + timedelta(days=6)
-                    
+
                     # Format date range for display
                     time_period.append(f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}")
-                    
+
                     # Generate sample weekly data
                     week_pda = max(0, int(10 * (1 + 0.4 * i) * (i % 3 + 0.7)))
                     week_threads = max(0, int(15 * (1 + 0.2 * i) * (i % 4 + 0.5)))
                     week_approved = max(0, int((week_pda + week_threads) * 0.8))
-                    
+
                     pda_series.append(week_pda)
                     thread_series.append(week_threads)
                     approved_series.append(week_approved)
@@ -894,30 +817,20 @@ def moderation_chart_data_api(request):
                     day = start_date + timedelta(days=i)
                     day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
                     day_end = day.replace(hour=23, minute=59, second=59, microsecond=999999)
-                    
+
                     # Format date for display
-                    time_period.append(day_start.strftime('%b %d'))  # Changed format to be more readable
-                    
+                    time_period.append(day_start.strftime("%b %d"))  # Changed format to be more readable
+
                     # Get counts for the day
-                    day_pda = PublicDeepfakeArchive.objects.filter(
-                        submission_date__range=(day_start, day_end)
-                    ).count()
-                    
-                    day_threads = ForumThread.objects.filter(
-                        created_at__range=(day_start, day_end)
-                    ).count()
-                    
+                    day_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(day_start, day_end)).count()
+
+                    day_threads = ForumThread.objects.filter(created_at__range=(day_start, day_end)).count()
+
                     day_approved = (
-                        PublicDeepfakeArchive.objects.filter(
-                            is_approved=True, 
-                            review_date__range=(day_start, day_end)
-                        ).count() +
-                        ForumThread.objects.filter(
-                            approval_status='approved',
-                            review_date__range=(day_start, day_end)
-                        ).count()
+                        PublicDeepfakeArchive.objects.filter(is_approved=True, review_date__range=(day_start, day_end)).count()
+                        + ForumThread.objects.filter(approval_status="approved", review_date__range=(day_start, day_end)).count()
                     )
-                    
+
                     pda_series.append(day_pda)
                     thread_series.append(day_threads)
                     approved_series.append(day_approved)
@@ -926,140 +839,121 @@ def moderation_chart_data_api(request):
                 # Calculate number of weeks
                 num_weeks = days // 7
                 for i in range(num_weeks):
-                    week_start = start_date + timedelta(days=i*7)
+                    week_start = start_date + timedelta(days=i * 7)
                     week_end = week_start + timedelta(days=6)
-                    
+
                     # Format date range for display
                     time_period.append(f"{week_start.strftime('%b %d')} - {week_end.strftime('%b %d')}")
-                    
+
                     # Get counts for the week
-                    week_pda = PublicDeepfakeArchive.objects.filter(
-                        submission_date__range=(week_start, week_end)
-                    ).count()
-                    
-                    week_threads = ForumThread.objects.filter(
-                        created_at__range=(week_start, week_end)
-                    ).count()
-                    
+                    week_pda = PublicDeepfakeArchive.objects.filter(submission_date__range=(week_start, week_end)).count()
+
+                    week_threads = ForumThread.objects.filter(created_at__range=(week_start, week_end)).count()
+
                     week_approved = (
-                        PublicDeepfakeArchive.objects.filter(
-                            is_approved=True, 
-                            review_date__range=(week_start, week_end)
-                        ).count() +
-                        ForumThread.objects.filter(
-                            approval_status='approved',
-                            review_date__range=(week_start, week_end)
-                        ).count()
+                        PublicDeepfakeArchive.objects.filter(is_approved=True, review_date__range=(week_start, week_end)).count()
+                        + ForumThread.objects.filter(approval_status="approved", review_date__range=(week_start, week_end)).count()
                     )
-                    
+
                     pda_series.append(week_pda)
                     thread_series.append(week_threads)
                     approved_series.append(week_approved)
-        
+
         # Check if we have any data to display
         has_data = any(pda_series) or any(thread_series) or any(approved_series)
-        
+
         # Return JSON response with data
-        return JsonResponse({
-            'labels': time_period,
-            'pda_data': pda_series,
-            'threads_data': thread_series,
-            'approved_data': approved_series,
-            'timespan': days,
-            'has_data': has_data,
-            'has_real_data': has_real_data,
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d')
-        })
+        return JsonResponse(
+            {
+                "labels": time_period,
+                "pda_data": pda_series,
+                "threads_data": thread_series,
+                "approved_data": approved_series,
+                "timespan": days,
+                "has_data": has_data,
+                "has_real_data": has_real_data,
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": end_date.strftime("%Y-%m-%d"),
+            }
+        )
     except ValueError as e:
         logger.error(f"Invalid input for chart data: {str(e)}")
-        return JsonResponse({
-            'error': 'Invalid input parameter',
-            'message': str(e)
-        }, status=400)
+        return JsonResponse({"error": "Invalid input parameter", "message": str(e)}, status=400)
     except Exception as e:
         logger.error(f"Error generating chart data: {str(e)}")
-        return JsonResponse({
-            'error': 'Failed to generate chart data',
-            'message': str(e)
-        }, status=500)
+        return JsonResponse({"error": "Failed to generate chart data", "message": str(e)}, status=500)
+
 
 @moderator_required
 def moderation_search_view(request):
     """View for search functionality in the moderation panel"""
-    query = request.GET.get('q', '')
+    query = request.GET.get("q", "")
     results = {
-        'pda': [],
-        'threads': [],
-        'users': [],
+        "pda": [],
+        "threads": [],
+        "users": [],
     }
-    
+
     if query:
         # Search PDA submissions
         pda_results = PublicDeepfakeArchive.objects.filter(
-            Q(title__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(user__user__username__icontains=query)
-        ).order_by('-submission_date')[:10]
-        
+            Q(title__icontains=query) | Q(description__icontains=query) | Q(user__user__username__icontains=query)
+        ).order_by("-submission_date")[:10]
+
         # Search forum threads
-        thread_results = ForumThread.objects.filter(
-            Q(title__icontains=query) | 
-            Q(content__icontains=query) |
-            Q(author__user__username__icontains=query)
-        ).order_by('-created_at')[:10]
-        
+        thread_results = ForumThread.objects.filter(Q(title__icontains=query) | Q(content__icontains=query) | Q(author__user__username__icontains=query)).order_by(
+            "-created_at"
+        )[:10]
+
         # Search users
-        user_results = User.objects.filter(
-            Q(username__icontains=query) |
-            Q(first_name__icontains=query) |
-            Q(last_name__icontains=query) |
-            Q(email__icontains=query)
-        ).filter(
-            Q(is_staff=True) | Q(userdata__role='moderator')
-        ).distinct()[:10]
-        
+        moderator_group = Group.objects.get(name="PDA_Moderator")
+        user_results = (
+            User.objects.filter(Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(email__icontains=query))
+            .filter(Q(is_staff=True) | Q(groups=moderator_group))
+            .distinct()[:10]
+        )
+
         # Format results
         for pda in pda_results:
-            results['pda'].append({
-                'id': pda.id,
-                'title': pda.title,
-                'status': 'Approved' if pda.is_approved else 'Pending' if pda.review_date is None else 'Rejected',
-                'author': pda.user.user.username,
-                'date': pda.submission_date,
-                'url': reverse('pda_detail', args=[pda.id])
-            })
-        
+            results["pda"].append(
+                {
+                    "id": pda.id,
+                    "title": pda.title,
+                    "status": "Approved" if pda.is_approved else "Pending" if pda.review_date is None else "Rejected",
+                    "author": pda.user.user.username,
+                    "date": pda.submission_date,
+                    "url": reverse("pda_detail", args=[pda.id]),
+                }
+            )
+
         for thread in thread_results:
-            results['threads'].append({
-                'id': thread.id,
-                'title': thread.title,
-                'status': thread.approval_status.capitalize(),
-                'author': thread.author.user.username,
-                'date': thread.created_at,
-                'url': reverse('thread_detail', args=[thread.id])
-            })
-        
+            results["threads"].append(
+                {
+                    "id": thread.id,
+                    "title": thread.title,
+                    "status": thread.approval_status.capitalize(),
+                    "author": thread.author.user.username,
+                    "date": thread.created_at,
+                    "url": reverse("thread_detail", args=[thread.id]),
+                }
+            )
+
         for user in user_results:
             try:
                 user_data = UserData.objects.get(user=user)
-                role = user_data.role.capitalize() if user_data.role else 'Staff' if user.is_staff else 'User'
+                role = user_data.get_role().capitalize()
             except UserData.DoesNotExist:
-                role = 'Staff' if user.is_staff else 'User'
-            
-            results['users'].append({
-                'id': user.id,
-                'username': user.username,
-                'full_name': f"{user.first_name} {user.last_name}".strip(),
-                'email': user.email,
-                'role': role
-            })
-    
+                role = "Staff" if user.is_staff else "User"
+
+            results["users"].append(
+                {"id": user.id, "username": user.username, "full_name": f"{user.first_name} {user.last_name}".strip(), "email": user.email, "role": role}
+            )
+
     context = {
-        'active_page': 'search',
-        'query': query,
-        'results': results,
-        'total_results': len(results['pda']) + len(results['threads']) + len(results['users']),
+        "active_page": "search",
+        "query": query,
+        "results": results,
+        "total_results": len(results["pda"]) + len(results["threads"]) + len(results["users"]),
     }
-    
-    return render(request, 'custom_moderation/search_results.html', context) 
+
+    return render(request, "custom_moderation/search_results.html", context)

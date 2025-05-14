@@ -8,6 +8,7 @@ from .views import (
     facial_watch_views,
     community_forum_views,
     knowledge_base_views,
+    public_api_views,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -78,5 +79,11 @@ urlpatterns = [
     path("knowledge-base/topics/<int:topic_id>/update/", knowledge_base_views.update_topic, name="knowledge_base_update_topic"),
     path("knowledge-base/topics/<int:topic_id>/delete/", knowledge_base_views.delete_topic, name="knowledge_base_delete_topic"),
     # Commented out endpoint
-    # path('knowledge_base/upload_image/', knowledge_base_views.upload_image, name='kb_upload_image'),
+    # path('knowledge_base/upload_image/', knowledge_base_views.upload_image, name='kb_upload_image'),    # Public API endpoints
+    path("public-api/deepfake-detection/", public_api_views.deepfake_detection_api, name="deepfake_detection_api"),
+    path("public-api/ai-text-detection/", public_api_views.ai_text_detection_api, name="ai_text_detection_api"),
+    path("public-api/ai-media-detection/", public_api_views.ai_media_detection_api, name="ai_media_detection_api"),
+    # API key management
+    path("api-keys/", public_api_views.api_key_management, name="api_key_management"),
+    path("api-keys/<int:key_id>/", public_api_views.api_key_detail, name="api_key_detail"),
 ]

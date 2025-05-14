@@ -1,0 +1,66 @@
+{% extends "custom_admin/base.html" %} {% block title %}Confirm User Deletion{% endblock %} {% block content %}
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <h1 class="h3 mb-0 text-gray-800">Confirm User Deletion</h1>
+  <a href="{% url 'custom_admin_user_detail' user_obj.id %}" class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-arrow-left me-1"></i> Back to User
+  </a>
+</div>
+
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex justify-content-between align-items-center">
+    <h6 class="m-0 font-weight-bold text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Warning</h6>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-danger" role="alert">
+      <h4 class="alert-heading">Are you sure you want to delete this user?</h4>
+      <p>You are about to delete the user <strong>{{ user_obj.username }}</strong>. This action cannot be undone.</p>
+      <hr />
+      <p class="mb-0">All data associated with this user will be permanently deleted from the system, including:</p>
+      <ul>
+        <li>User profile information</li>
+        <li>Forum posts and comments</li>
+        <li>PDA submissions</li>
+        <li>Activity logs</li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-3">
+          <div class="card-header">
+            <h6 class="m-0 font-weight-bold">User Information</h6>
+          </div>
+          <div class="card-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Username:</dt>
+              <dd class="col-sm-8">{{ user_obj.username }}</dd>
+
+              <dt class="col-sm-4">Email:</dt>
+              <dd class="col-sm-8">{{ user_obj.email }}</dd>
+
+              <dt class="col-sm-4">Full Name:</dt>
+              <dd class="col-sm-8">{{ user_obj.get_full_name|default:"Not specified" }}</dd>
+
+              <dt class="col-sm-4">Joined:</dt>
+              <dd class="col-sm-8">{{ user_obj.date_joined|date:"M d, Y" }}</dd>
+
+              <dt class="col-sm-4">Last Login:</dt>
+              <dd class="col-sm-8">{{ user_obj.last_login|date:"M d, Y H:i"|default:"Never" }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form method="POST" action="{% url 'custom_admin_user_delete' user_obj.id %}">
+      {% csrf_token %}
+      <div class="row mt-4">
+        <div class="col-12 text-end">
+          <a href="{% url 'custom_admin_user_detail' user_obj.id %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i> Delete User</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
