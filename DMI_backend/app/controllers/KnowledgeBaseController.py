@@ -3,6 +3,7 @@ import logging
 import os
 import time
 import uuid
+import urllib.parse
 from datetime import datetime
 
 from django.conf import settings
@@ -202,6 +203,10 @@ class KnowledgeBaseController:
                     abs_path = os.path.join(settings.MEDIA_ROOT, article.banner_image) if not article.banner_image.startswith("http") else article.banner_image
                     banner_image = URLHelper.convert_to_public_url(abs_path) if not article.banner_image.startswith("http") else article.banner_image
 
+            # Get share links for the article
+            share_links_result = self.get_share_links(article.id)
+            share_links = share_links_result.get("share_links", {}) if share_links_result.get("success", False) else {}
+
             article_data = {
                 "id": article.id,
                 "title": article.title,
@@ -227,6 +232,7 @@ class KnowledgeBaseController:
                 "view_count": view_count,
                 "attachments": attachments,
                 "related_articles": self._get_related_articles(article),
+                "share_links": share_links,
             }
 
             return {
@@ -551,26 +557,34 @@ class KnowledgeBaseController:
         try:
             article = KnowledgeBaseArticle.objects.get(id=article_id, is_published=True, is_deleted=False)
 
-            # Generate base URL for article - use a fallback if SITE_URL is not available
-            base_url = ""
-            try:
-                base_url = f"{settings.SITE_URL}/knowledge/article/{article.id}"
-            except AttributeError:
-                # Fallback to a relative URL or construct from available settings
-                if hasattr(settings, "ALLOWED_HOSTS") and settings.ALLOWED_HOSTS:
-                    # Use the first allowed host with https
+            # Generate base URL for article using HOST_URL from settings
+            base_url = f"{settings.HOST_URL}/knowledge/article/{article.id}"
+
+            # If HOST_URL is not available or empty, use fallback strategies
+            if not hasattr(settings, "HOST_URL") or not settings.HOST_URL:
+                # Try with FRONTEND_HOST_URL if available
+                if hasattr(settings, "FRONTEND_HOST_URL") and settings.FRONTEND_HOST_URL:
+                    base_url = f"{settings.FRONTEND_HOST_URL}/knowledge/article/{article.id}"
+                # Fallback to allowed hosts if available
+                elif hasattr(settings, "ALLOWED_HOSTS") and settings.ALLOWED_HOSTS:
                     domain = settings.ALLOWED_HOSTS[0]
                     base_url = f"https://{domain}/knowledge/article/{article.id}"
                 else:
                     # Use a placeholder that frontend can replace
                     base_url = f"/knowledge/article/{article.id}"
 
+            # Get the article title for share text
+            article_title = article.title.strip() if article.title else "Knowledge Base Article"
+
+            # URL encode the article title for sharing
+            encoded_title = urllib.parse.quote(article_title)
+
             # Generate sharing links
             share_links = {
-                "twitter": f"https://twitter.com/intent/tweet?url={base_url}&text={article.title}",
+                "twitter": f"https://twitter.com/intent/tweet?url={base_url}&text={encoded_title}",
                 "facebook": f"https://www.facebook.com/sharer/sharer.php?u={base_url}",
-                "linkedin": f"https://www.linkedin.com/shareArticle?mini=true&url={base_url}&title={article.title}",
-                "email": f"mailto:?subject={article.title}&body=Check out this article: {base_url}",
+                "linkedin": f"https://www.linkedin.com/shareArticle?mini=true&url={base_url}&title={encoded_title}",
+                "email": f"mailto:?subject={article_title}&body=Check out this article: {base_url}",
                 "copy": base_url,  # Add direct URL for copy-to-clipboard functionality
             }
 
@@ -588,15 +602,26 @@ class KnowledgeBaseController:
             }
         except Exception as e:
             logger.error(f"Error generating share links: {str(e)}")
-            # Return dummy share links instead of an error
-            dummy_url = f"/knowledge/article/{article_id}"
-            dummy_share_links = {
-                "twitter": f"https://twitter.com/intent/tweet?url={dummy_url}&text=Knowledge Base Article",
-                "facebook": f"https://www.facebook.com/sharer/sharer.php?u={dummy_url}",
-                "linkedin": f"https://www.linkedin.com/shareArticle?mini=true&url={dummy_url}&title=Knowledge Base Article",
-                "email": f"mailto:?subject=Knowledge Base Article&body=Check out this article: {dummy_url}",
-                "copy": dummy_url,
-            }
+            # Return dummy share links instead of an error using HOST_URL if available
+            dummy_base = settings.HOST_URL if hasattr(settings, "HOST_URL") and settings.HOST_URL else ""
+            dummy_url = f"{dummy_base}/knowledge/article/{article_id}"
+            article_title = "Knowledge Base Article"
+
+            # Try to fetch the actual article title if possible
+            try:
+                article_obj = KnowledgeBaseArticle.objects.get(id=article_id)
+                if article_obj and article_obj.title:
+                    article_title = article_obj.title.strip()
+            except Exception:
+                pass  # URL encode the article title for sharing
+                encoded_title = urllib.parse.quote(article_title)
+                dummy_share_links = {
+                    "twitter": f"https://twitter.com/intent/tweet?url={dummy_url}&text={encoded_title}",
+                    "facebook": f"https://www.facebook.com/sharer/sharer.php?u={dummy_url}",
+                    "linkedin": f"https://www.linkedin.com/shareArticle?mini=true&url={dummy_url}&title={encoded_title}",
+                    "email": f"mailto:?subject={article_title}&body=Check out this article: {dummy_url}",
+                    "copy": dummy_url,
+                }
 
             return {
                 "success": True,
