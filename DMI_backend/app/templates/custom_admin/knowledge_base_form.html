@@ -414,6 +414,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (fileInput.files && fileInput.files[0]) {
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
+        formData.append('purpose', 'banner');  // Specify this is a banner image
         
         try {
           // Upload the banner image
@@ -591,6 +592,9 @@ document.addEventListener('DOMContentLoaded', function() {
             selection.removeAllRanges();
             selection.addRange(range);
           }
+          
+          // Add purpose parameter to indicate this is an inline image
+          formData.append('purpose', 'inline');
           
           // Use the correct URL with no leading slash to ensure proper resolution
           const response = await fetch('{% url "admin_upload_image" %}', {

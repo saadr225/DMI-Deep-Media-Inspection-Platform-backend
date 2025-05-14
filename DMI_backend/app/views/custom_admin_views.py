@@ -26,6 +26,7 @@ from api.models import (
 )
 from app.models import UserData, ModeratorAction
 from app.controllers.KnowledgeBaseController import KnowledgeBaseController
+from app.controllers.HelpersController import URLHelper
 from api.models import KnowledgeBaseArticle, KnowledgeBaseTopic, UserData
 
 logger = logging.getLogger(__name__)
@@ -1160,27 +1161,46 @@ def admin_upload_image(request):
         if not image_file:
             return JsonResponse({"success": False, "error": "No image file provided"}, status=400)
 
-        # Generate unique identifier
-        attachment_identifier = f"kb-img-{uuid.uuid4().hex[:8]}-{int(time.time())}"
+        # Determine where to store the image based on purpose
+        # Default to inline images (embedded within content)
+        image_purpose = request.POST.get("purpose", "inline")
+
+        if image_purpose == "banner":
+            subdir = "banners"
+            prefix = "kb-banner"
+        elif image_purpose == "inline":
+            subdir = "inline"
+            prefix = "kb-inline"
+        else:
+            subdir = "images"
+            prefix = "kb-img"
+
+        # Generate unique identifier with proper prefix
+        unique_id = uuid.uuid4().hex[:8]
+        timestamp = int(time.time())
+        attachment_identifier = f"{prefix}-{unique_id}-{timestamp}"
         original_filename = image_file.name
 
         # Ensure directory exists
-        upload_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base", "images")
+        upload_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base", subdir)
         os.makedirs(upload_dir, exist_ok=True)
 
         # Save file
         file_extension = os.path.splitext(original_filename)[1].lower()
-        filename = f"{attachment_identifier}{file_extension}"
+        filename = f"{attachment_identifier}-{original_filename}"
         file_path = os.path.join(upload_dir, filename)
 
         with open(file_path, "wb+") as destination:
             for chunk in image_file.chunks():
                 destination.write(chunk)
 
-        # Generate URL
-        file_url = f"{settings.MEDIA_URL}knowledge_base/images/{filename}"
+        # Store path relative to MEDIA_ROOT
+        rel_path = f"knowledge_base/{subdir}/{filename}"
 
-        return JsonResponse({"success": True, "location": file_url})
+        # Convert to public URL using URLHelper
+        public_url = URLHelper.convert_to_public_url(file_path)
+
+        return JsonResponse({"success": True, "location": public_url})
     except Exception as e:
         logger.error(f"Error in admin_upload_image: {str(e)}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)

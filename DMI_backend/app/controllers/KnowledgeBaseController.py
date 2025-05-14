@@ -192,10 +192,20 @@ class KnowledgeBaseController:
                 view_count = 0
 
             # Format article data for response
+            # Ensure banner image is a full public URL
+            banner_image = None
+            if article.banner_image:
+                if os.path.isabs(article.banner_image):
+                    banner_image = URLHelper.convert_to_public_url(article.banner_image)
+                else:
+                    # Handle relative paths - may need to convert to absolute
+                    abs_path = os.path.join(settings.MEDIA_ROOT, article.banner_image) if not article.banner_image.startswith("http") else article.banner_image
+                    banner_image = URLHelper.convert_to_public_url(abs_path) if not article.banner_image.startswith("http") else article.banner_image
+
             article_data = {
                 "id": article.id,
                 "title": article.title,
-                "banner_image": article.banner_image,
+                "banner_image": banner_image,
                 "author": {
                     "username": article.author.user.username,
                     "avatar": article.author.profile_image_url,
@@ -613,49 +623,69 @@ class KnowledgeBaseController:
         attachment_data = []
 
         try:
-            # Create attachments directory if it doesn't exist
-            attachments_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base")
-            if not os.path.exists(attachments_dir):
-                os.makedirs(attachments_dir, exist_ok=True)
+            # Create base knowledge base directory
+            kb_base_dir = os.path.join(settings.MEDIA_ROOT, "knowledge_base")
+            if not os.path.exists(kb_base_dir):
+                os.makedirs(kb_base_dir, exist_ok=True)
+
+            # Create subdirectories for different types of content
+            kb_attachments_dir = os.path.join(kb_base_dir, "attachments")  # For documents, PDFs
+            kb_images_dir = os.path.join(kb_base_dir, "images")  # For image attachments
+            kb_media_dir = os.path.join(kb_base_dir, "media")  # For video and audio
+
+            # Create each subdirectory if it doesn't exist
+            for directory in [kb_attachments_dir, kb_images_dir, kb_media_dir]:
+                if not os.path.exists(directory):
+                    os.makedirs(directory, exist_ok=True)
 
             # Process each attachment
             for attachment_file in attachments:
-                # Generate unique identifier
-                attachment_identifier = f"kb-{uuid.uuid4().hex[:8]}-{int(time.time())}"
-                original_filename = attachment_file.name
-
-                # Use FileSystemStorage to save the file
-                fs = FileSystemStorage(location=attachments_dir)
-                filename = fs.save(f"{attachment_identifier}-{original_filename}", attachment_file)
-
-                # Store path relative to MEDIA_ROOT, but don't include MEDIA_URL prefix
-                # This path will be joined with MEDIA_URL in _get_full_attachment_url
-                file_url = f"knowledge_base/{filename}"
-
-                # Determine file type
+                # Determine file type first to decide where to store it
                 file_extension = os.path.splitext(attachment_file.name)[1].lower()
                 if file_extension in [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"]:
                     file_type = "image"
+                    target_dir = kb_images_dir
+                    type_prefix = "img"
                 elif file_extension in [".mp4", ".webm", ".avi", ".mov", ".wmv"]:
                     file_type = "video"
+                    target_dir = kb_media_dir
+                    type_prefix = "vid"
                 elif file_extension in [".mp3", ".wav", ".ogg"]:
                     file_type = "audio"
+                    target_dir = kb_media_dir
+                    type_prefix = "aud"
                 elif file_extension in [".pdf"]:
                     file_type = "pdf"
+                    target_dir = kb_attachments_dir
+                    type_prefix = "pdf"
                 else:
                     file_type = "document"
+                    target_dir = kb_attachments_dir
+                    type_prefix = "doc"
+
+                # Generate unique identifier using type prefix
+                timestamp = int(time.time())
+                unique_id = uuid.uuid4().hex[:8]
+                attachment_identifier = f"kb-{type_prefix}-{unique_id}-{timestamp}"
+                original_filename = attachment_file.name
+
+                # Use FileSystemStorage to save the file in appropriate directory
+                fs = FileSystemStorage(location=target_dir)
+                filename = fs.save(f"{attachment_identifier}-{original_filename}", attachment_file)
+
+                # Store path relative to MEDIA_ROOT for database
+                rel_path_segments = os.path.relpath(target_dir, settings.MEDIA_ROOT).split(os.sep)
+                rel_path = "/".join(rel_path_segments) + "/" + filename
 
                 # Create attachment record - store relative path without media prefix
-                attachment = KnowledgeBaseAttachment.objects.create(
-                    article=article, filename=original_filename, file_url=file_url, file_type=file_type  # Store without media prefix
-                )
+                attachment = KnowledgeBaseAttachment.objects.create(article=article, filename=original_filename, file_url=rel_path, file_type=file_type)
 
                 # Add to response data with full URL including media prefix
                 attachment_data.append(
                     {
                         "id": attachment.id,
                         "filename": original_filename,
-                        "file_url": self._get_full_attachment_url(file_url),  # This will add media prefix
+                        "file_url": self._get_full_attachment_url(rel_path),  # This will add media prefix and use URLHelper
                         "file_type": file_type,
                     }
                 )
@@ -670,17 +700,20 @@ class KnowledgeBaseController:
         if not relative_url:
             return None
 
+        # If it's already a full URL, return it
         if relative_url.startswith("http"):
             return relative_url
 
-        # Ensure the path starts with media URL prefix
-        if not relative_url.startswith(settings.MEDIA_URL.rstrip("/")):
-            # If media URL doesn't have trailing slash, add it for consistency
-            media_url = settings.MEDIA_URL if settings.MEDIA_URL.endswith("/") else f"{settings.MEDIA_URL}/"
-            relative_url = f"{media_url}{relative_url}"
+        # If the relative_url is a relative path, convert it to absolute path
+        import os
 
-        # Now convert to public URL
-        return URLHelper.convert_to_public_url(relative_url)
+        if not os.path.isabs(relative_url):
+            absolute_path = os.path.join(settings.MEDIA_ROOT, relative_url)
+        else:
+            absolute_path = relative_url
+
+        # Now convert to public URL using URLHelper
+        return URLHelper.convert_to_public_url(file_path=absolute_path)
 
     def _get_related_articles(self, article, max_results=3):
         """Get related articles based on topic only (tags removed)"""
@@ -703,7 +736,12 @@ class KnowledgeBaseController:
             # Ensure banner image is a public URL
             banner_image = None
             if related.banner_image:
-                banner_image = URLHelper.convert_to_public_url(related.banner_image)
+                if os.path.isabs(related.banner_image):
+                    banner_image = URLHelper.convert_to_public_url(related.banner_image)
+                else:
+                    # Handle relative paths - may need to convert to absolute
+                    abs_path = os.path.join(settings.MEDIA_ROOT, related.banner_image) if not related.banner_image.startswith("http") else related.banner_image
+                    banner_image = URLHelper.convert_to_public_url(abs_path) if not related.banner_image.startswith("http") else related.banner_image
 
             # Use clean preview
             preview = self._generate_clean_preview(related.content, 120)
