@@ -26,7 +26,16 @@ class URLHelper:
         Returns:
             str: The public URL.
         """
-        relative_path = os.path.relpath(file_path, settings.MEDIA_ROOT)
+        # If it's already a URL, return it as-is
+        if file_path.startswith("http"):
+            return file_path
+
+        # Handle path normalization to avoid issues with relative paths
+        # Make sure the path is absolute
+        if not os.path.isabs(file_path):
+            file_path = os.path.join(settings.MEDIA_ROOT, file_path)
+
+        relative_path = os.path.normpath(os.path.relpath(file_path, settings.MEDIA_ROOT))
         return f"{settings.HOST_URL}{settings.MEDIA_URL}{relative_path.replace(os.sep, '/')}"
 
 
@@ -57,9 +66,7 @@ class HuggingFaceHelper:
         self.metadata = self._load_metadata()
 
         # Auto-detect offline mode if not explicitly set
-        self.offline_mode = (
-            offline_mode if offline_mode is not None else not self._check_internet_connection()
-        )
+        self.offline_mode = offline_mode if offline_mode is not None else not self._check_internet_connection()
 
         if self.offline_mode:
             print("Operating in offline mode")
@@ -154,11 +161,7 @@ class HuggingFaceHelper:
             raise ValueError("Repository name must be provided")
 
         # First check if file exists locally in ML_MODELS_DIR
-        local_path = (
-            os.path.join(settings.ML_MODELS_DIR, filename)
-            if hasattr(settings, "ML_MODELS_DIR")
-            else None
-        )
+        local_path = os.path.join(settings.ML_MODELS_DIR, filename) if hasattr(settings, "ML_MODELS_DIR") else None
         if local_path and os.path.exists(local_path):
             print(f"Using existing local file: {local_path}")
             return local_path
@@ -171,11 +174,7 @@ class HuggingFaceHelper:
         # Check if we're in offline mode
         if self.offline_mode:
             # In offline mode, look for the file in cache
-            cached_path = (
-                os.path.join(cache_dir, "models--" + repo_name.replace("/", "--"), "snapshots")
-                if cache_dir
-                else None
-            )
+            cached_path = os.path.join(cache_dir, "models--" + repo_name.replace("/", "--"), "snapshots") if cache_dir else None
 
             # Try to find it in cache
             if cached_path and os.path.exists(cached_path):
@@ -210,10 +209,7 @@ class HuggingFaceHelper:
                     self.file_info = file_info  # Store for later use
 
                     # If we have metadata and the last modified time matches, skip download
-                    if (
-                        file_key in self.metadata
-                        and self.metadata[file_key].get("last_modified") == file_info.last_modified
-                    ):
+                    if file_key in self.metadata and self.metadata[file_key].get("last_modified") == file_info.last_modified:
                         print(f"File {filename} is up to date")
 
                         # Update the last check time
@@ -228,9 +224,7 @@ class HuggingFaceHelper:
                 except Exception as e:
                     print(f"Error checking file info: {str(e)}")
                     # If we can't check file info but have a local copy, use that
-                    if file_key in self.metadata and os.path.exists(
-                        self.metadata[file_key]["local_path"]
-                    ):
+                    if file_key in self.metadata and os.path.exists(self.metadata[file_key]["local_path"]):
                         print(f"Using existing local file: {self.metadata[file_key]['local_path']}")
                         return self.metadata[file_key]["local_path"]
                     # Otherwise we'll attempt to download anyway
@@ -271,18 +265,12 @@ class HuggingFaceHelper:
                 return self.metadata[file_key]["local_path"]
 
             # Look in ML_MODELS_DIR
-            local_path = (
-                os.path.join(settings.ML_MODELS_DIR, filename)
-                if hasattr(settings, "ML_MODELS_DIR")
-                else None
-            )
+            local_path = os.path.join(settings.ML_MODELS_DIR, filename) if hasattr(settings, "ML_MODELS_DIR") else None
             if local_path and os.path.exists(local_path):
                 print(f"Using local file: {local_path}")
                 return local_path
 
-            raise ValueError(
-                f"File {filename} cannot be downloaded due to network issues and no local copy exists"
-            )
+            raise ValueError(f"File {filename} cannot be downloaded due to network issues and no local copy exists")
 
         except (RepositoryNotFoundError, RevisionNotFoundError) as e:
             print(f"Repository or file not found: {str(e)}")

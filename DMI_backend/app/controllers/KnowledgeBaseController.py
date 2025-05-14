@@ -100,6 +100,7 @@ class KnowledgeBaseController:
                 # Ensure banner image is a full public URL
                 banner_image = None
                 if article.banner_image:
+                    # The URLHelper.convert_to_public_url now handles all cases properly
                     banner_image = URLHelper.convert_to_public_url(article.banner_image)
 
                 # Calculate read time
@@ -196,12 +197,8 @@ class KnowledgeBaseController:
             # Ensure banner image is a full public URL
             banner_image = None
             if article.banner_image:
-                if os.path.isabs(article.banner_image):
-                    banner_image = URLHelper.convert_to_public_url(article.banner_image)
-                else:
-                    # Handle relative paths - may need to convert to absolute
-                    abs_path = os.path.join(settings.MEDIA_ROOT, article.banner_image) if not article.banner_image.startswith("http") else article.banner_image
-                    banner_image = URLHelper.convert_to_public_url(abs_path) if not article.banner_image.startswith("http") else article.banner_image
+                # The URLHelper.convert_to_public_url now handles all cases properly
+                banner_image = URLHelper.convert_to_public_url(article.banner_image)
 
             # Get share links for the article
             share_links_result = self.get_share_links(article.id)
