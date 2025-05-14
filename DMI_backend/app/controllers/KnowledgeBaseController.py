@@ -1,3 +1,4 @@
+import re
 import logging
 import os
 import time
@@ -29,6 +30,23 @@ class KnowledgeBaseController:
     Controller for managing knowledge base articles, topics, and related operations.
     Handles article creation, retrieval, search, and statistics tracking.
     """
+
+    def _generate_clean_preview(self, html_content, max_length=256):
+        """Generate a clean text preview from HTML content."""
+        if not html_content:
+            return ""
+
+        # Remove all HTML tags
+        text = re.sub(r"<.*?>", "", html_content)
+
+        # Normalize whitespace
+        text = re.sub(r"\s+", " ", text).strip()
+
+        # Truncate if necessary
+        if len(text) > max_length:
+            return text[:max_length] + "..."
+
+        return text
 
     def get_articles(self, topic_id=None, page=1, items_per_page=10, search_query=None):
         """
@@ -75,7 +93,15 @@ class KnowledgeBaseController:
             # Format articles for response
             result_articles = []
             for article in paginated_articles:
-                # Calculate read time (average reading speed: 200 words per minute)
+                # Generate clean text preview without HTML
+                preview = self._generate_clean_preview(article.content)
+
+                # Ensure banner image is a full public URL
+                banner_image = None
+                if article.banner_image:
+                    banner_image = URLHelper.convert_to_public_url(article.banner_image)
+
+                # Calculate read time
                 word_count = len(article.content.split())
                 read_time = max(1, round(word_count / 200))
 
@@ -84,6 +110,7 @@ class KnowledgeBaseController:
                     {
                         "id": article.id,
                         "title": article.title,
+                        "banner_image": banner_image,
                         "author": {
                             "username": article.author.user.username,
                             "avatar": article.author.profile_image_url,
@@ -98,9 +125,10 @@ class KnowledgeBaseController:
                             if article.topic
                             else None
                         ),
-                        "preview": (article.content[:200] + "..." if len(article.content) > 200 else article.content),
+                        "preview": preview,
                         "view_count": getattr(article, "view_count", 0),
                         "has_attachments": article.attachments.exists(),
+                        "read_time": read_time,
                     }
                 )
 
@@ -600,7 +628,8 @@ class KnowledgeBaseController:
                 fs = FileSystemStorage(location=attachments_dir)
                 filename = fs.save(f"{attachment_identifier}-{original_filename}", attachment_file)
 
-                # Store relative path from MEDIA_ROOT
+                # Store path relative to MEDIA_ROOT, but don't include MEDIA_URL prefix
+                # This path will be joined with MEDIA_URL in _get_full_attachment_url
                 file_url = f"knowledge_base/{filename}"
 
                 # Determine file type
@@ -616,15 +645,17 @@ class KnowledgeBaseController:
                 else:
                     file_type = "document"
 
-                # Create attachment record
-                attachment = KnowledgeBaseAttachment.objects.create(article=article, filename=original_filename, file_url=file_url, file_type=file_type)
+                # Create attachment record - store relative path without media prefix
+                attachment = KnowledgeBaseAttachment.objects.create(
+                    article=article, filename=original_filename, file_url=file_url, file_type=file_type  # Store without media prefix
+                )
 
-                # Add to response data
+                # Add to response data with full URL including media prefix
                 attachment_data.append(
                     {
                         "id": attachment.id,
                         "filename": original_filename,
-                        "file_url": self._get_full_attachment_url(file_url),
+                        "file_url": self._get_full_attachment_url(file_url),  # This will add media prefix
                         "file_type": file_type,
                     }
                 )
@@ -642,6 +673,13 @@ class KnowledgeBaseController:
         if relative_url.startswith("http"):
             return relative_url
 
+        # Ensure the path starts with media URL prefix
+        if not relative_url.startswith(settings.MEDIA_URL.rstrip("/")):
+            # If media URL doesn't have trailing slash, add it for consistency
+            media_url = settings.MEDIA_URL if settings.MEDIA_URL.endswith("/") else f"{settings.MEDIA_URL}/"
+            relative_url = f"{media_url}{relative_url}"
+
+        # Now convert to public URL
         return URLHelper.convert_to_public_url(relative_url)
 
     def _get_related_articles(self, article, max_results=3):
@@ -662,6 +700,14 @@ class KnowledgeBaseController:
         # Format for response
         result = []
         for related in related_articles:
+            # Ensure banner image is a public URL
+            banner_image = None
+            if related.banner_image:
+                banner_image = URLHelper.convert_to_public_url(related.banner_image)
+
+            # Use clean preview
+            preview = self._generate_clean_preview(related.content, 120)
+
             result.append(
                 {
                     "id": related.id,
@@ -669,6 +715,8 @@ class KnowledgeBaseController:
                     "author": related.author.user.username,
                     "created_at": related.created_at.strftime("%Y-%m-%d"),
                     "topic": ({"id": related.topic.id, "name": related.topic.name} if related.topic else None),
+                    "banner_image": banner_image,
+                    "preview": preview,
                 }
             )
 
