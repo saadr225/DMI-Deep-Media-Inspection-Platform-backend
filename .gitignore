@@ -96,6 +96,7 @@ DMI_backend/media/pda_submissions/*
 DMI_backend/media/forum/*
 DMI_backend/media/knowledge_base/*
 DMI_backend/media/api_uploads/*
+DMI_backend/media/public_api/*
 DMI_backend/media/facial_landmarks_frames/*
 DMI_backend/media/temp/temp_crops/*
 DMI_backend/media/temp/temp_frames/*

@@ -132,7 +132,7 @@ def api_key_detail(request, key_id):
                 "api_key": {
                     "id": api_key.id,
                     "name": api_key.name,
-                    "key": api_key.key[:8] + "...",  # Show only first 8 chars for security
+                    "key": api_key.key,
                     "created_at": api_key.created_at,
                     "expires_at": api_key.expires_at,
                     "daily_limit": api_key.daily_limit,
@@ -157,6 +157,7 @@ def api_key_detail(request, key_id):
 
 
 @api_view(["POST"])
+@permission_classes([])  # Empty list means no permission required
 @parser_classes([MultiPartParser, FormParser])
 def deepfake_detection_api(request):
     """
@@ -205,27 +206,45 @@ def deepfake_detection_api(request):
 
         # Create a MediaUpload object
         media_upload = MediaUpload.objects.create(
+            user=api_key.user,
             file=file_path,
             file_type="Video" if is_video else "Image",
-            file_name=file.name,
-            file_size=file.size,
-            content_type=content_type,
+            original_filename=file.name,  # Changed from file_name
             submission_identifier=submission_identifier,
+            file_identifier=submission_identifier,  # Added this required field
             purpose="Deepfake-Analysis",
         )
 
         # Process the file for deepfake detection
-        result = deepfake_detection_pipeline.analyze(file_path, is_video=is_video)
-
-        # Create DeepfakeDetectionResult object
-        detection_result = DeepfakeDetectionResult.objects.create(
-            media_upload=media_upload,
-            is_deepfake=result["is_deepfake"],
-            confidence_score=result["confidence_score"],
-            frames_analyzed=result.get("frames_analyzed", 1),
-            fake_frames=result.get("fake_frames", 1 if result["is_deepfake"] else 0),
-            fake_frames_percentage=result.get("fake_frames_percentage", 100 if result["is_deepfake"] else 0),
+        result = deepfake_detection_pipeline.process_media(
+            media_path=file_path,
+            frame_rate=2,
         )
+
+        # Handle different return types from the pipeline
+        if result is not False and isinstance(result, dict):
+            # Regular result with statistics
+            detection_result = DeepfakeDetectionResult.objects.create(
+                media_upload=media_upload,
+                is_deepfake=result["statistics"]["is_deepfake"],
+                confidence_score=result["statistics"]["confidence"],
+                frames_analyzed=result["statistics"]["total_frames"],
+                fake_frames=result["statistics"]["fake_frames"],
+                analysis_report=result,  # Store the entire result object instead of calculating percentage
+            )
+        else:
+            # No faces detected or other issue
+            detection_result = DeepfakeDetectionResult.objects.create(
+                media_upload=media_upload,
+                is_deepfake=False,
+                confidence_score=0.0,
+                frames_analyzed=0,
+                fake_frames=0,
+                analysis_report={
+                    "final_verdict": "MEDIA_CONTAINS_NO_FACES",
+                    "file_identifier": submission_identifier,
+                },
+            )
 
         # Format the response data
         response_data = {"is_deepfake": detection_result.is_deepfake, "confidence_score": detection_result.confidence_score, "file_type": media_upload.file_type}
@@ -271,7 +290,8 @@ def deepfake_detection_api(request):
 
 
 @api_view(["POST"])
-@parser_classes([JSONParser])
+@permission_classes([])  # Empty list means no permission required
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def ai_text_detection_api(request):
     """
     API endpoint for AI-generated text detection
@@ -313,34 +333,40 @@ def ai_text_detection_api(request):
         # Generate a unique identifier for this submission
         submission_identifier = str(uuid.uuid4())
 
-        # Create a TextSubmission object
-        text_submission = TextSubmission.objects.create(text=text, submission_identifier=submission_identifier)
+        # Create a TextSubmission object - use the owner of the API key as the user
+        text_submission = TextSubmission.objects.create(
+            user=api_key.user, text_content=text, submission_identifier=submission_identifier  # Make sure we're using text_content, not text
+        )
 
         # Analyze the text
-        result = text_detection_pipeline.analyze_text(text)
+        result = text_detection_pipeline.process_text(text, highlight=highlight)
+
+        # Normalize result structure - support both "scores" and "confidence" keys
+        scores = result.get("scores", {})
+        if "confidence" in result and not scores:
+            scores = result["confidence"]
 
         # Create AIGeneratedTextResult object
         text_result = AIGeneratedTextResult.objects.create(
             text_submission=text_submission,
-            is_ai_generated=result["is_ai_generated"],
-            human_probability=result["scores"].get("Human", 0),
-            ai_probability=max([result["scores"].get("GPT-3", 0), result["scores"].get("Claude", 0)]),
-            source_prediction=result["source"],
-            confidence_scores=json.dumps(result["scores"]),
+            is_ai_generated=result["prediction"] != "Human",
+            source_prediction=result["prediction"],
+            confidence_scores=json.dumps(scores),
+            highlighted_text=result.get("highlighted_text", ""),
+            html_text=result.get("html_text", ""),
         )
 
         # Format the response data
         response_data = {
             "is_ai_generated": text_result.is_ai_generated,
             "source_prediction": text_result.source_prediction,
-            "confidence_scores": {"Human": text_result.human_probability, "AI": text_result.ai_probability},
+            "confidence_scores": scores,
         }
 
         # Add highlighted text if requested
         if highlight:
-            # This is a placeholder - in a real implementation you would
-            # have a method to highlight text passages that appear AI-generated
-            highlighted_text = text  # Replace with actual highlighting logic
+            # Get highlighted text from result if available
+            highlighted_text = result.get("highlighted_text", text)
             response_data["highlighted_text"] = highlighted_text
 
         # Log successful API usage
@@ -359,6 +385,7 @@ def ai_text_detection_api(request):
 
 
 @api_view(["POST"])
+@permission_classes([])  # Empty list means no permission required
 @parser_classes([MultiPartParser, FormParser])
 def ai_media_detection_api(request):
     """
@@ -402,31 +429,45 @@ def ai_media_detection_api(request):
 
         # Create a MediaUpload object
         media_upload = MediaUpload.objects.create(
+            user=api_key.user,
             file=file_path,
             file_type="Image",
-            file_name=file.name,
-            file_size=file.size,
-            content_type=file.content_type,
+            original_filename=file.name,  # Changed from file_name
             submission_identifier=submission_identifier,
+            file_identifier=submission_identifier,  # Added this required field
             purpose="AI-Media-Analysis",
         )
 
         # Process the file for AI media detection
-        result = ai_generated_media_detection_pipeline.analyze_image(file_path)
+        result = ai_generated_media_detection_pipeline.process_image(file_path)
+
+        # Handle different return types from the pipeline
+        if isinstance(result, dict):
+            # Dictionary return format
+            is_ai_generated = result.get("is_ai_generated", False)
+            scores = result.get("scores", {})
+        else:
+            # Boolean return format
+            is_ai_generated = bool(result)
+            scores = {"fake": 1.0 if is_ai_generated else 0.0, "real": 0.0 if is_ai_generated else 1.0}
 
         # Create AIGeneratedMediaResult object
         ai_media_result = AIGeneratedMediaResult.objects.create(
             media_upload=media_upload,
-            is_ai_generated=result["is_ai_generated"],
-            real_probability=result["scores"].get("real", 0),
-            ai_probability=result["scores"].get("fake", 0),
+            is_generated=is_ai_generated,  # Changed from is_ai_generated
+            confidence_score=scores.get("fake", 0),  # Use the "fake" score as confidence
+            analysis_report={  # Add a proper analysis report
+                "file_identifier": submission_identifier,
+                "prediction": "fake" if is_ai_generated else "real",
+                "scores": scores,
+            },
         )
 
         # Format the response data
         response_data = {
-            "is_ai_generated": ai_media_result.is_ai_generated,
-            "prediction": "fake" if ai_media_result.is_ai_generated else "real",
-            "confidence_scores": {"ai_generated": ai_media_result.ai_probability, "real": ai_media_result.real_probability},
+            "is_ai_generated": ai_media_result.is_generated,  # Changed to access is_generated
+            "prediction": "fake" if ai_media_result.is_generated else "real",
+            "confidence_scores": {"ai_generated": scores.get("fake", 0), "real": scores.get("real", 0)},
         }
 
         # Get metadata

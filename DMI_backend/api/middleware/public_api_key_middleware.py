@@ -14,7 +14,7 @@ class APIKeyAuthMiddleware:
 
     def __call__(self, request):
         # Only apply to public API endpoints
-        if request.path.startswith("/public-api/"):
+        if request.path.startswith("/api/public-api/"):
             api_key_header = request.META.get("HTTP_X_API_KEY")
 
             # If no API key is provided, return 403
