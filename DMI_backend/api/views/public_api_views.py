@@ -324,10 +324,20 @@ def api_key_management(request):
             if serializer.is_valid():
                 # Use controller to create the key
                 validated_data = serializer.validated_data
+
+                # Fix the expires_days calculation
+                expires_days = None
+                expires_at = validated_data.get("expires_at")
+                if expires_at:
+                    # Make sure expires_at is a datetime object before using date()
+                    if hasattr(expires_at, "date"):
+                        delta = expires_at.date() - timezone.now().date()
+                        expires_days = delta.days
+
                 api_key = APIKeyController.create_key(
                     user_data=user_data,
                     name=validated_data.get("name"),
-                    expires_days=None if not validated_data.get("expires_at") else (validated_data.get("expires_at").date() - timezone.now().date()).days,
+                    expires_days=expires_days,
                     daily_limit=validated_data.get("daily_limit", 1000),
                     can_use_deepfake_detection=validated_data.get("can_use_deepfake_detection", True),
                     can_use_ai_text_detection=validated_data.get("can_use_ai_text_detection", True),
@@ -342,6 +352,11 @@ def api_key_management(request):
     except UserData.DoesNotExist:
         return JsonResponse(get_response_code("USER_DATA_NOT_FOUND"), status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        # Add more detailed error info for debugging
+        import traceback
+
+        error_info = traceback.format_exc()
+        print(f"API key creation error: {error_info}")
         return JsonResponse({**get_response_code("GENERAL_ERROR"), "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
