@@ -19,7 +19,7 @@ from api.serializers import DonationSerializer, DonationCreateSerializer
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])  # Changed from AllowAny to IsAuthenticated
 def create_donation_checkout(request):
     """
     Create a dummy checkout session for a donation (demo version without Stripe)
@@ -37,14 +37,32 @@ def create_donation_checkout(request):
         donor_name = serializer.validated_data.get("donor_name", "")
         donor_email = serializer.validated_data.get("donor_email", "")
 
+        # Get new fields
+        donation_type = serializer.validated_data.get("donation_type", Donation.DonationType.ONE_TIME)
+        project_allocation = serializer.validated_data.get("project_allocation", "")
+        is_gift = serializer.validated_data.get("is_gift", False)
+        gift_recipient_name = serializer.validated_data.get("gift_recipient_name", "")
+        gift_recipient_email = serializer.validated_data.get("gift_recipient_email", "")
+        gift_message = serializer.validated_data.get("gift_message", "")
+        donor_address = serializer.validated_data.get("donor_address", "")
+        donor_phone = serializer.validated_data.get("donor_phone", "")
+        donor_country = serializer.validated_data.get("donor_country", "")
+        payment_method_type = serializer.validated_data.get("payment_method_type", "credit_card")
+
+        # Get credit card fields
+        card_number_last4 = serializer.validated_data.get("card_number_last4", "")
+        card_expiry_month = serializer.validated_data.get("card_expiry_month", "")
+        card_expiry_year = serializer.validated_data.get("card_expiry_year", "")
+        card_type = serializer.validated_data.get("card_type", "")
+        billing_city = serializer.validated_data.get("billing_city", "")
+        billing_postal_code = serializer.validated_data.get("billing_postal_code", "")
+
         # Extract user if authenticated
-        user_data = None
-        if request.user.is_authenticated:
-            user_data = UserData.objects.get(user=request.user)
-            if not donor_email:
-                donor_email = request.user.email
-            if not donor_name and not is_anonymous:
-                donor_name = request.user.username
+        user_data = UserData.objects.get(user=request.user)
+        if not donor_email:
+            donor_email = request.user.email
+        if not donor_name and not is_anonymous:
+            donor_name = request.user.username
 
         # Generate a unique session ID for the demo checkout
         session_id = f"demo_{uuid.uuid4().hex}"
@@ -59,7 +77,23 @@ def create_donation_checkout(request):
             donor_email=donor_email,
             is_anonymous=is_anonymous,
             message=message,
-            stripe_checkout_id=session_id,  # Using the session_id as checkout_id
+            session_id=session_id,  # Using the session_id field instead of stripe_checkout_id
+            donation_type=donation_type,
+            project_allocation=project_allocation,
+            is_gift=is_gift,
+            gift_recipient_name=gift_recipient_name,
+            gift_recipient_email=gift_recipient_email,
+            gift_message=gift_message,
+            donor_address=donor_address,
+            donor_phone=donor_phone,
+            donor_country=donor_country,
+            payment_method_type=payment_method_type,
+            card_number_last4=card_number_last4,
+            card_expiry_month=card_expiry_month,
+            card_expiry_year=card_expiry_year,
+            card_type=card_type,
+            billing_city=billing_city,
+            billing_postal_code=billing_postal_code,
         )
 
         # For demo, create a simulated checkout URL
@@ -80,29 +114,22 @@ def create_donation_checkout(request):
         return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# The webhook endpoint is removed since we're using redirect-based verification instead
-# Existing functionality has been moved to the verify_donation endpoint
-
-
-# The handle_completed_checkout function has been removed
-# Its functionality has been moved directly into the verify_donation endpoint
-
-
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])  # Added IsAuthenticated requirement
 def verify_donation(request, session_id):
     """
     Verify a donation session status (demo version)
     """
     try:
-        # Check if there's already a donation with this checkout ID
+        # Check if there's already a donation with this session ID
         try:
-            donation = Donation.objects.get(stripe_checkout_id=session_id)
+            donation = Donation.objects.get(session_id=session_id)
 
             # In demo mode, just mark it as complete for testing
             if donation.status == Donation.DonationStatus.PENDING:
                 donation.status = Donation.DonationStatus.COMPLETED
                 # Generate a fake payment ID for reference
-                donation.stripe_payment_id = f"demo_payment_{uuid.uuid4().hex}"
+                donation.payment_id = f"demo_payment_{uuid.uuid4().hex}"
                 donation.save()
 
             serializer = DonationSerializer(donation)
@@ -211,10 +238,15 @@ def refund_donation(request, donation_id):
         if donation.status != Donation.DonationStatus.COMPLETED:
             return Response({"success": False, "error": f"Cannot refund donation with status {donation.status}"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Get the refund reason if provided
+        refund_reason = request.data.get("refund_reason", "Administrative refund")
+
         # Update the donation status (no actual payment processing in demo)
         donation.status = Donation.DonationStatus.REFUNDED
         donation.refund_id = f"demo_refund_{uuid.uuid4().hex}"
         donation.refunded_at = datetime.now()
+        donation.refund_reason = refund_reason
+        donation.refunded_amount = donation.amount
         donation.save()
 
         # Log the action
@@ -223,7 +255,7 @@ def refund_donation(request, donation_id):
             action_type="other",
             content_type="donation",
             content_identifier=f"Donation #{donation.id}",
-            notes=f"Refunded donation of {donation.amount} {donation.currency}",
+            notes=f"Refunded donation of {donation.amount} {donation.currency}. Reason: {refund_reason}",
         )
 
         serializer = DonationSerializer(donation)
@@ -241,6 +273,7 @@ def refund_donation(request, donation_id):
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])  # Added IsAuthenticated requirement
 def get_donation_stats(request):
     """
     Get donation statistics (public endpoint)

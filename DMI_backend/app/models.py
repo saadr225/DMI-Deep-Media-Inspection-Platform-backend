@@ -109,6 +109,11 @@ class Donation(models.Model):
         FAILED = "failed", _("Failed")
         REFUNDED = "refunded", _("Refunded")
 
+    class DonationType(models.TextChoices):
+        ONE_TIME = "one_time", _("One Time")
+        MONTHLY = "monthly", _("Monthly")
+        ANNUALLY = "annually", _("Annually")
+
     user = models.ForeignKey(UserData, on_delete=models.SET_NULL, null=True, blank=True, related_name="donations")
     amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount in USD")
     currency = models.CharField(max_length=3, default="USD")
@@ -121,6 +126,34 @@ class Donation(models.Model):
     donor_email = models.EmailField(blank=True, null=True)
     is_anonymous = models.BooleanField(default=False)
     message = models.TextField(blank=True, null=True)
+
+    # Additional fields for more complete donation data
+    donation_type = models.CharField(max_length=20, choices=DonationType.choices, default=DonationType.ONE_TIME)
+    project_allocation = models.CharField(max_length=100, blank=True, null=True, help_text="Specific project the donation is for")
+    is_gift = models.BooleanField(default=False)
+    gift_recipient_name = models.CharField(max_length=255, blank=True, null=True)
+    gift_recipient_email = models.EmailField(blank=True, null=True)
+    gift_message = models.TextField(blank=True, null=True)
+    donor_address = models.TextField(blank=True, null=True)
+    donor_phone = models.CharField(max_length=20, blank=True, null=True)
+    donor_country = models.CharField(max_length=100, blank=True, null=True)
+    payment_method_type = models.CharField(max_length=50, blank=True, null=True, help_text="Type of payment method used")
+
+    # Credit card related fields (for demo purposes, following PCI compliance guidelines)
+    card_number_last4 = models.CharField(max_length=4, blank=True, null=True, help_text="Last 4 digits of card number")
+    card_expiry_month = models.CharField(max_length=2, blank=True, null=True, help_text="Card expiry month (MM)")
+    card_expiry_year = models.CharField(max_length=4, blank=True, null=True, help_text="Card expiry year (YYYY)")
+    card_type = models.CharField(max_length=50, blank=True, null=True, help_text="Type of card (Visa, Mastercard, etc.)")
+    billing_city = models.CharField(max_length=100, blank=True, null=True, help_text="Billing address city")
+    billing_postal_code = models.CharField(max_length=20, blank=True, null=True, help_text="Billing address postal/zip code")
+
+    notes = models.TextField(blank=True, null=True, help_text="Administrative notes about this donation")
+
+    # Fields for refunds
+    refund_id = models.CharField(max_length=100, blank=True, null=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    refund_reason = models.TextField(blank=True, null=True)
+    refunded_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

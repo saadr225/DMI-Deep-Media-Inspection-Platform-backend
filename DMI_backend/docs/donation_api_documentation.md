@@ -12,7 +12,7 @@ Creates a dummy checkout session for processing a donation (no actual payment is
 
 **URL**: `/api/donations/checkout/`  
 **Method**: `POST`  
-**Auth Required**: No (optional authentication for logged-in users)
+**Auth Required**: Yes (Authentication required)
 
 **Request Body**:
 
@@ -23,7 +23,23 @@ Creates a dummy checkout session for processing a donation (no actual payment is
   "is_anonymous": false,
   "donor_name": "John Doe",
   "donor_email": "john@example.com",
-  "message": "Keep up the great work!"
+  "message": "Keep up the great work!",
+  "donation_type": "one_time",
+  "project_allocation": "Research Fund",
+  "is_gift": false,
+  "gift_recipient_name": "",
+  "gift_recipient_email": "",
+  "gift_message": "",
+  "donor_address": "123 Main St, City, Country",
+  "donor_phone": "+1234567890",
+  "donor_country": "United States",
+  "payment_method_type": "credit_card",
+  "card_number": "4111111111111111",
+  "card_expiry_month": "12",
+  "card_expiry_year": "2025",
+  "card_cvc": "123",
+  "billing_city": "San Francisco",
+  "billing_postal_code": "94105"
 }
 ```
 
@@ -32,9 +48,26 @@ Creates a dummy checkout session for processing a donation (no actual payment is
 - `amount`: Required. Donation amount (minimum 1.00)
 - `currency`: Optional. Default is "USD"
 - `is_anonymous`: Optional. Default is false
-- `donor_name`: Optional. Required if anonymous and not authenticated
-- `donor_email`: Optional. Required if anonymous and not authenticated
+- `donor_name`: Optional. Will use authenticated user's username if not provided and not anonymous
+- `donor_email`: Optional. Will use authenticated user's email if not provided
 - `message`: Optional. A message from the donor
+- `donation_type`: Optional. Options: "one_time", "monthly", "annually". Default is "one_time"
+- `project_allocation`: Optional. Specific project the donation is allocated to
+- `is_gift`: Optional. Whether this donation is a gift for someone. Default is false
+- `gift_recipient_name`: Required if is_gift=true. Name of the gift recipient
+- `gift_recipient_email`: Required if is_gift=true. Email of the gift recipient
+- `gift_message`: Optional. Message for the gift recipient
+- `donor_address`: Optional. Physical address of the donor
+- `donor_phone`: Optional. Phone number of the donor
+- `donor_country`: Optional. Country of the donor
+- `payment_method_type`: Optional. Default is "credit_card"
+- `card_number`: Optional. Full card number (only last 4 digits stored)
+- `card_expiry_month`: Optional. Card expiry month
+- `card_expiry_year`: Optional. Card expiry year
+- `card_cvc`: Optional. Card security code (not stored)
+- `card_type`: Optional. Type of card (e.g., "Visa")
+- `billing_city`: Optional. City for billing address
+- `billing_postal_code`: Optional. Postal/ZIP code for billing address
 
 **Success Response**:
 
@@ -53,7 +86,7 @@ Verifies the status of a donation and marks it as completed (demo version).
 
 **URL**: `/api/donations/verify/{session_id}/`  
 **Method**: `GET`  
-**Auth Required**: No
+**Auth Required**: Yes
 
 **Success Response**:
 
@@ -72,7 +105,23 @@ Verifies the status of a donation and marks it as completed (demo version).
     "donor_email": "john@example.com",
     "is_anonymous": false,
     "message": "Keep up the great work!",
-    "donor_username": "johndoe"
+    "donor_username": "johndoe",
+    "donation_type": "one_time",
+    "project_allocation": "Research Fund",
+    "is_gift": false,
+    "gift_recipient_name": null,
+    "gift_recipient_email": null,
+    "gift_message": null,
+    "donor_address": "123 Main St, City, Country",
+    "donor_phone": "+1234567890",
+    "donor_country": "United States",
+    "payment_method_type": "credit_card",
+    "card_number_last4": "1111",
+    "card_expiry_month": "12",
+    "card_expiry_year": "2025",
+    "card_type": "Visa",
+    "billing_city": "San Francisco",
+    "billing_postal_code": "94105"
   },
   "payment_status": "paid",
   "demo_message": "DEMO MODE: Payment automatically marked as successful."
@@ -122,7 +171,28 @@ Retrieves a paginated list of donations.
       "donor_email": "john@example.com",
       "is_anonymous": false,
       "message": "Keep up the great work!",
-      "donor_username": "johndoe"
+      "donor_username": "johndoe",
+      "donation_type": "one_time",
+      "project_allocation": "Research Fund",
+      "is_gift": false,
+      "gift_recipient_name": null,
+      "gift_recipient_email": null,
+      "gift_message": null,
+      "donor_address": "123 Main St, City, Country",
+      "donor_phone": "+1234567890",
+      "donor_country": "United States",
+      "payment_method_type": "credit_card",
+      "card_number_last4": "1111",
+      "card_expiry_month": "12",
+      "card_expiry_year": "2025",
+      "card_type": "Visa",
+      "billing_city": "San Francisco",
+      "billing_postal_code": "94105",
+      "notes": null,
+      "refund_id": null,
+      "refunded_at": null,
+      "refund_reason": null,
+      "refunded_amount": null
     }
     // More donations...
   ],
@@ -132,7 +202,7 @@ Retrieves a paginated list of donations.
 }
 ```
 
-### 4. Get Donation Details
+### 4. Get Donation Detail
 
 Retrieves details for a specific donation.
 
@@ -157,19 +227,48 @@ Retrieves details for a specific donation.
     "donor_email": "john@example.com",
     "is_anonymous": false,
     "message": "Keep up the great work!",
-    "donor_username": "johndoe"
+    "donor_username": "johndoe",
+    "donation_type": "one_time",
+    "project_allocation": "Research Fund",
+    "is_gift": false,
+    "gift_recipient_name": null,
+    "gift_recipient_email": null,
+    "gift_message": null,
+    "donor_address": "123 Main St, City, Country",
+    "donor_phone": "+1234567890",
+    "donor_country": "United States",
+    "payment_method_type": "credit_card",
+    "card_number_last4": "1111",
+    "card_expiry_month": "12",
+    "card_expiry_year": "2025",
+    "card_type": "Visa",
+    "billing_city": "San Francisco",
+    "billing_postal_code": "94105",
+    "notes": null,
+    "refund_id": null,
+    "refunded_at": null,
+    "refund_reason": null,
+    "refunded_amount": null
   }
 }
 ```
 
 ### 5. Refund Donation
 
-Simulates a refund for a donation (demo version, no actual refund is processed).
+Simulates a refund for a donation (admin only) - demo version.
 
 **URL**: `/api/donations/{donation_id}/refund/`  
 **Method**: `DELETE`  
 **Auth Required**: Yes  
 **Permissions**: Admin/moderator only
+
+**Request Body**:
+
+```json
+{
+  "refund_reason": "Customer requested refund" // Optional
+}
+```
 
 **Success Response**:
 
@@ -187,7 +286,13 @@ Simulates a refund for a donation (demo version, no actual refund is processed).
     "donor_email": "john@example.com",
     "is_anonymous": false,
     "message": "Keep up the great work!",
-    "donor_username": "johndoe"
+    "donor_username": "johndoe",
+    "donation_type": "one_time",
+    "project_allocation": "Research Fund",
+    "refund_id": "demo_refund_abc123...",
+    "refunded_at": "2025-05-15T12:45:56Z",
+    "refund_reason": "Customer requested refund",
+    "refunded_amount": "25.00"
   },
   "refund_id": "demo_refund_abc123...",
   "demo_message": "DEMO MODE: Refund processed without actual payment processing."
@@ -196,11 +301,11 @@ Simulates a refund for a donation (demo version, no actual refund is processed).
 
 ### 6. Get Donation Statistics
 
-Retrieves donation statistics.
+Get donation statistics (public endpoint).
 
 **URL**: `/api/donations/stats/`  
 **Method**: `GET`  
-**Auth Required**: No
+**Auth Required**: Yes
 
 **Success Response**:
 
@@ -222,7 +327,28 @@ Retrieves donation statistics.
         "donor_email": "john@example.com",
         "is_anonymous": false,
         "message": "Keep up the great work!",
-        "donor_username": "johndoe"
+        "donor_username": "johndoe",
+        "donation_type": "one_time",
+        "project_allocation": "Research Fund",
+        "is_gift": false,
+        "gift_recipient_name": null,
+        "gift_recipient_email": null,
+        "gift_message": null,
+        "donor_address": "123 Main St, City, Country",
+        "donor_phone": "+1234567890",
+        "donor_country": "United States",
+        "payment_method_type": "credit_card",
+        "card_number_last4": "1111",
+        "card_expiry_month": "12",
+        "card_expiry_year": "2025",
+        "card_type": "Visa",
+        "billing_city": "San Francisco",
+        "billing_postal_code": "94105",
+        "notes": null,
+        "refund_id": null,
+        "refunded_at": null,
+        "refund_reason": null,
+        "refunded_amount": null
       }
       // More donations (up to 5)...
     ]
@@ -238,5 +364,3 @@ This implementation uses a simplified demo flow:
 2. Upon completing the demo payment, users are redirected back to the success page
 3. The success page calls the verification endpoint (`/api/donations/verify/{session_id}/`)
 4. In demo mode, the verification endpoint automatically marks the payment as successful
-
-This is a demonstration-only implementation with no actual payment processing.
