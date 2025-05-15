@@ -594,6 +594,21 @@
 
         <hr />
 
+        <div class="sidebar-heading">Finance</div>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a
+              class="nav-link {% if 'admin_donation' in request.resolver_match.url_name %}active{% endif %}"
+              href="{% url 'admin_donations_list' %}"
+            >
+              <i class="fas fa-fw fa-donate"></i>
+              <span>Donations</span>
+            </a>
+          </li>
+        </ul>
+
+        <hr />
+
         <div class="sidebar-heading">Content</div>
         <ul class="nav flex-column">
           <li class="nav-item">
@@ -854,8 +869,6 @@
         sidebar.style.visibility = "visible";
       });
     </script>
-
-
 
     {% block extrascripts %}{% endblock %}
   </body>

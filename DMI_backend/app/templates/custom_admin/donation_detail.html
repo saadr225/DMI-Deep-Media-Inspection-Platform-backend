@@ -1,0 +1,401 @@
+{% extends "custom_admin/base.html" %} {% block title %}Donation Details{% endblock %} {% block extrastyle %}
+<style>
+  .donation-detail-card {
+    border-radius: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+  }
+
+  .donation-detail-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+
+  .donation-header {
+    background-color: #f8f9fc;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .donation-status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .status-completed {
+    background-color: rgba(28, 200, 138, 0.15);
+    color: #1cc88a;
+  }
+
+  .status-pending {
+    background-color: rgba(246, 194, 62, 0.15);
+    color: #f6c23e;
+  }
+
+  .status-failed {
+    background-color: rgba(231, 74, 59, 0.15);
+    color: #e74a3b;
+  }
+
+  .status-refunded {
+    background-color: rgba(133, 135, 150, 0.15);
+    color: #858796;
+  }
+
+  .detail-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .detail-item:last-child {
+    border-bottom: none;
+  }
+
+  .detail-label {
+    color: #858796;
+    font-weight: 600;
+  }
+
+  .detail-value {
+    font-weight: 500;
+  }
+
+  .donation-amount {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .donation-currency {
+    font-size: 1rem;
+    font-weight: 500;
+    opacity: 0.7;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+  }
+
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 9px;
+    top: 5px;
+    height: calc(100% - 10px);
+    width: 2px;
+    background-color: #e9ecef;
+    z-index: 0;
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+  }
+
+  .timeline-item:last-child {
+    padding-bottom: 0;
+  }
+
+  .timeline-marker {
+    position: absolute;
+    left: -2rem;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: white;
+    border: 2px solid #4e73df;
+    z-index: 1;
+  }
+
+  .timeline-marker.success {
+    border-color: #1cc88a;
+  }
+
+  .timeline-marker.warning {
+    border-color: #f6c23e;
+  }
+
+  .timeline-marker.danger {
+    border-color: #e74a3b;
+  }
+
+  .timeline-time {
+    font-size: 0.75rem;
+    color: #858796;
+    margin-bottom: 0.25rem;
+  }
+
+  .timeline-content {
+    background-color: #f8f9fc;
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+  <div>
+    <a href="{% url 'admin_donations_list' %}" class="btn btn-sm btn-outline-primary mb-2">
+      <i class="fas fa-arrow-left me-1"></i> Back to Donations
+    </a>
+    <h1 class="h3 mb-0 text-gray-800">Donation #{{ donation.id }}</h1>
+  </div>
+
+  {% if donation.status == 'completed' and not donation.refunded %}
+  <div>
+    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#refundModal">
+      <i class="fas fa-undo me-1"></i> Refund Donation
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Donation Detail Card -->
+<div class="card shadow donation-detail-card">
+  <div class="donation-header d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+      <span class="donation-amount">{{ donation.amount }} <span class="donation-currency">{{ donation.currency }}</span></span>
+      <div class="text-muted">{{ donation.created_at|date:"F j, Y, g:i a" }}</div>
+    </div>
+    <div>
+      <span class="donation-status-badge status-{{ donation.status }}">
+        {% if donation.status == 'completed' %}
+        <i class="fas fa-check-circle me-1"></i>
+        {% elif donation.status == 'pending' %}
+        <i class="fas fa-clock me-1"></i>
+        {% elif donation.status == 'failed' %}
+        <i class="fas fa-times-circle me-1"></i>
+        {% elif donation.status == 'refunded' %}
+        <i class="fas fa-undo me-1"></i>
+        {% endif %} {{ donation.get_status_display }}
+      </span>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <div class="row">
+      <!-- Donation Details Column -->
+      <div class="col-md-6">
+        <h5 class="card-title mb-3">Donation Information</h5>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Donation ID</div>
+          <div class="col-lg-8 detail-value">{{ donation.id }}</div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Payment ID</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.payment_id %} {{ donation.payment_id }} {% else %}
+            <span class="text-muted">Not available</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Status</div>
+          <div class="col-lg-8 detail-value">
+            {{ donation.get_status_display }} {% if donation.refunded %}
+            <span class="badge bg-secondary ms-2">Refunded</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Amount</div>
+          <div class="col-lg-8 detail-value">{{ donation.amount }} {{ donation.currency }}</div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Date</div>
+          <div class="col-lg-8 detail-value">{{ donation.created_at|date:"F j, Y, g:i a" }}</div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Payment Method</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.payment_method %} {{ donation.payment_method }} {% else %}
+            <span class="text-muted">Not available</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if donation.refunded %}
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Refund Date</div>
+          <div class="col-lg-8 detail-value">{{ donation.refunded_at|date:"F j, Y, g:i a" }}</div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Refund ID</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.refund_id %} {{ donation.refund_id }} {% else %}
+            <span class="text-muted">Not available</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Donor Information Column -->
+      <div class="col-md-6">
+        <h5 class="card-title mb-3">Donor Information</h5>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Anonymous</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.is_anonymous %}
+            <span class="text-warning"><i class="fas fa-user-secret me-1"></i> Yes</span>
+            {% else %}
+            <span class="text-success"><i class="fas fa-user me-1"></i> No</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Name</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.donor_name %} {{ donation.donor_name }} {% else %}
+            <span class="text-muted">Not provided</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Email</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.donor_email %}
+            <a href="mailto:{{ donation.donor_email }}">{{ donation.donor_email }}</a>
+            {% else %}
+            <span class="text-muted">Not provided</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">User Account</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.user %}
+            <a href="{% url 'admin_user_detail' donation.user.user.id %}"> {{ donation.user.user.username }} </a>
+            {% else %}
+            <span class="text-muted">No linked account</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="detail-item row">
+          <div class="col-lg-4 detail-label">Message</div>
+          <div class="col-lg-8 detail-value">
+            {% if donation.message %}
+            <div class="p-3 bg-light rounded">{{ donation.message|linebreaksbr }}</div>
+            {% else %}
+            <span class="text-muted">No message</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Donation Timeline -->
+    <div class="mt-4">
+      <h5 class="card-title mb-3">Timeline</h5>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-marker"></div>
+          <div class="timeline-time">{{ donation.created_at|date:"F j, Y, g:i a" }}</div>
+          <div class="timeline-content">
+            <strong>Donation created</strong>
+            <div class="text-muted">Donation was initiated</div>
+          </div>
+        </div>
+
+        {% if donation.updated_at and donation.updated_at != donation.created_at %}
+        <div class="timeline-item">
+          <div
+            class="timeline-marker {% if donation.status == 'completed' %}success{% elif donation.status == 'pending' %}warning{% elif donation.status == 'failed' %}danger{% endif %}"
+          ></div>
+          <div class="timeline-time">{{ donation.updated_at|date:"F j, Y, g:i a" }}</div>
+          <div class="timeline-content">
+            <strong>Status updated</strong>
+            <div class="text-muted">Status changed to {{ donation.get_status_display }}</div>
+          </div>
+        </div>
+        {% endif %} {% if donation.payment_verified_at %}
+        <div class="timeline-item">
+          <div class="timeline-marker success"></div>
+          <div class="timeline-time">{{ donation.payment_verified_at|date:"F j, Y, g:i a" }}</div>
+          <div class="timeline-content">
+            <strong>Payment verified</strong>
+            <div class="text-muted">Payment was successfully verified</div>
+          </div>
+        </div>
+        {% endif %} {% if donation.refunded_at %}
+        <div class="timeline-item">
+          <div class="timeline-marker warning"></div>
+          <div class="timeline-time">{{ donation.refunded_at|date:"F j, Y, g:i a" }}</div>
+          <div class="timeline-content">
+            <strong>Donation refunded</strong>
+            <div class="text-muted">
+              Amount of {{ donation.amount }} {{ donation.currency }} was refunded {% if donation.refund_reason %}
+              <div class="mt-2 p-2 bg-light rounded">Reason: {{ donation.refund_reason }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if donation.status == 'completed' and not donation.refunded %}
+<!-- Refund Modal -->
+<div class="modal fade" id="refundModal" tabindex="-1" aria-labelledby="refundModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="refundModalLabel">Refund Donation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'admin_donation_refund' donation.id %}" method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Warning:</strong> This action cannot be undone. The full amount of
+            <strong>{{ donation.amount }} {{ donation.currency }}</strong> will be refunded to the donor.
+          </div>
+
+          <div class="mb-3">
+            <label for="refundReason" class="form-label">Refund Reason (optional)</label>
+            <textarea
+              class="form-control"
+              id="refundReason"
+              name="refund_reason"
+              rows="3"
+              placeholder="Provide a reason for this refund..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning"><i class="fas fa-undo me-1"></i> Process Refund</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %} {% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>
+{% endblock %}

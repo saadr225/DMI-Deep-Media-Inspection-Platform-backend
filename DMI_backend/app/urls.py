@@ -2,6 +2,7 @@ from django.urls import path, include
 from .views.base_views import home
 from app.views import custom_admin_views
 from app.views import custom_moderation_views
+from app.views import donation_admin_views
 
 urlpatterns = [
     path("", home, name="home"),
@@ -32,6 +33,10 @@ urlpatterns = [
                 path("profile/", custom_admin_views.custom_admin_profile_view, name="custom_admin_profile"),
                 path("moderators/", custom_admin_views.custom_admin_moderators_view, name="custom_admin_moderators"),
                 path("pending/", custom_admin_views.custom_admin_pending_view, name="custom_admin_pending"),
+                # Donation Management URLs
+                path("donations/", donation_admin_views.admin_donations_list, name="admin_donations_list"),
+                path("donations/<int:donation_id>/", donation_admin_views.admin_donation_detail, name="admin_donation_detail"),
+                path("donations/<int:donation_id>/refund/", donation_admin_views.admin_donation_refund, name="admin_donation_refund"),
                 # Knowledge Base Management URLs
                 path("knowledge-base/", custom_admin_views.custom_admin_knowledge_base_list_view, name="custom_admin_knowledge_base_list"),
                 path("knowledge-base/create/", custom_admin_views.custom_admin_knowledge_base_create_view, name="custom_admin_knowledge_base_create"),

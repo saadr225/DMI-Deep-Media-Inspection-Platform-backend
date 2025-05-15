@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 
 # Import API key serializers
 from api.models import APIKey
+from app.models import Donation, UserData
 
 
 class FileUploadSerializer(serializers.Serializer):
@@ -79,4 +80,38 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password_repeat = serializers.CharField(write_only=True, required=True)
 
     def validate(self, data):
+        return data
+
+
+class DonationSerializer(serializers.ModelSerializer):
+    donor_username = serializers.SerializerMethodField()
+    donor_email = serializers.EmailField(required=False)
+
+    class Meta:
+        model = Donation
+        fields = ["id", "amount", "currency", "status", "created_at", "updated_at", "donor_name", "donor_email", "is_anonymous", "message", "donor_username"]
+        read_only_fields = ["id", "stripe_payment_id", "stripe_checkout_id", "status", "created_at", "updated_at"]
+
+    def get_donor_username(self, obj):
+        if obj.user and not obj.is_anonymous:
+            return obj.user.user.username
+        return None
+
+
+class DonationCreateSerializer(serializers.ModelSerializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=1)
+    message = serializers.CharField(required=False, allow_blank=True)
+    donor_name = serializers.CharField(required=False, allow_blank=True)
+    donor_email = serializers.EmailField(required=False, allow_blank=True)
+    is_anonymous = serializers.BooleanField(default=False)
+
+    class Meta:
+        model = Donation
+        fields = ["amount", "currency", "donor_name", "donor_email", "is_anonymous", "message"]
+
+    def validate(self, data):
+        # If anonymous but no donor information, raise an error
+        if data.get("is_anonymous") and not self.context.get("request").user.is_authenticated:
+            if not data.get("donor_name") and not data.get("donor_email"):
+                raise serializers.ValidationError("Anonymous donations must provide either a name or email.")
         return data

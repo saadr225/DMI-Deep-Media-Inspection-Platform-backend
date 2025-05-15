@@ -1,0 +1,355 @@
+{% extends "custom_admin/base.html" %}
+{% block title %}Donations{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .donation-list-card {
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .donation-list-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .donation-status {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    
+    .status-completed {
+        background-color: #1cc88a;
+    }
+    
+    .status-pending {
+        background-color: #f6c23e;
+    }
+    
+    .status-failed {
+        background-color: #e74a3b;
+    }
+    
+    .status-refunded {
+        background-color: #858796;
+    }
+    
+    .donation-amount {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .donation-item {
+        transition: all 0.2s;
+        border-left: 4px solid transparent;
+    }
+    
+    .donation-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .donation-completed {
+        border-left-color: #1cc88a;
+    }
+    
+    .donation-pending {
+        border-left-color: #f6c23e;
+    }
+    
+    .donation-failed {
+        border-left-color: #e74a3b;
+    }
+    
+    .donation-refunded {
+        border-left-color: #858796;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        background-color: white;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    
+    .stat-completed {
+        border-left: 4px solid #1cc88a;
+    }
+    
+    .stat-pending {
+        border-left: 4px solid #f6c23e;
+    }
+    
+    .stat-failed {
+        border-left: 4px solid #e74a3b;
+    }
+    
+    .stat-refunded {
+        border-left: 4px solid #858796;
+    }
+    
+    .stat-total {
+        border-left: 4px solid #4e73df;
+    }
+    
+    .stat-amount {
+        border-left: 4px solid #36b9cc;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Donations Management</h1>
+    <a href="?export=csv{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn btn-sm btn-primary">
+        <i class="fas fa-file-csv me-1"></i> Export as CSV
+    </a>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row">
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="stat-card stat-total">
+            <div class="stat-label">Total Donations</div>
+            <div class="stat-value">{{ total_donations }}</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="stat-card stat-amount">
+            <div class="stat-label">Total Amount</div>
+            <div class="stat-value">{{ total_amount|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="stat-card stat-completed">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value">{{ completed_count }}</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="stat-card stat-pending">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value">{{ pending_count }}</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="stat-card stat-failed">
+            <div class="stat-label">Failed</div>
+            <div class="stat-value">{{ failed_count }}</div>
+        </div>
+    </div>
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="stat-card stat-refunded">
+            <div class="stat-label">Refunded</div>
+            <div class="stat-value">{{ refunded_count }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-container">
+    <form method="get" id="filterForm" class="row g-3 align-items-end">
+        <div class="col-lg-3 col-md-6">
+            <label for="statusFilter" class="form-label">Filter by Status</label>
+            <select class="form-select" id="statusFilter" name="status">
+                <option value="">All Statuses</option>
+                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                <option value="refunded" {% if status_filter == 'refunded' %}selected{% endif %}>Refunded</option>
+            </select>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <label for="dateFilter" class="form-label">Filter by Date</label>
+            <select class="form-select" id="dateFilter" name="date">
+                <option value="">All Time</option>
+                <option value="today" {% if date_filter == 'today' %}selected{% endif %}>Today</option>
+                <option value="week" {% if date_filter == 'week' %}selected{% endif %}>Last 7 Days</option>
+                <option value="month" {% if date_filter == 'month' %}selected{% endif %}>Last 30 Days</option>
+            </select>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <label for="searchInput" class="form-label">Search</label>
+            <input type="text" class="form-control" id="searchInput" name="search" placeholder="Search by name, email or message" value="{{ search_query }}">
+        </div>
+        <div class="col-lg-2 col-md-6 d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">
+                <i class="fas fa-filter me-1"></i> Filter
+            </button>
+            <a href="{% url 'admin_donations_list' %}" class="btn btn-secondary">
+                <i class="fas fa-sync-alt me-1"></i> Reset
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Donations List -->
+<div class="card shadow donation-list-card mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-donate me-1"></i> Donations
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if donations %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Donor</th>
+                        <th>Email</th>
+                        <th>Message</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for donation in donations %}
+                    <tr class="donation-item donation-{{ donation.status }}">
+                        <td>{{ donation.id }}</td>
+                        <td>{{ donation.created_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <span class="donation-amount">{{ donation.amount }} {{ donation.currency }}</span>
+                        </td>
+                        <td>
+                            <span class="donation-status status-{{ donation.status }}"></span>
+                            {{ donation.get_status_display }}
+                        </td>
+                        <td>
+                            {% if donation.is_anonymous %}
+                                <span class="text-muted">
+                                    <i class="fas fa-user-secret me-1"></i>
+                                    Anonymous
+                                </span>
+                            {% else %}
+                                {{ donation.donor_name|default:"N/A" }}
+                                {% if donation.user %}
+                                    <small class="text-muted">({{ donation.user.user.username }})</small>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>{{ donation.donor_email|default:"N/A" }}</td>
+                        <td>
+                            {% if donation.message %}
+                                <span data-bs-toggle="tooltip" title="{{ donation.message }}">
+                                    {{ donation.message|truncatechars:30 }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No message</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'admin_donation_detail' donation.id %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="d-flex justify-content-center pt-3 pb-3 px-3">
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if current_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ current_page|add:'-1' }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><span aria-hidden="true">&laquo;</span></span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for i in total_pages|ljust:"0" %}
+                        {% with page_num=forloop.counter %}
+                        <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                            <a class="page-link" href="?page={{ page_num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% endwith %}
+                    {% endfor %}
+                    
+                    {% if current_page < total_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ current_page|add:'1' }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><span aria-hidden="true">&raquo;</span></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <i class="fas fa-donate fa-3x text-muted"></i>
+            </div>
+            <h5 class="mb-3">No donations found</h5>
+            <p class="text-muted">
+                {% if search_query or status_filter or date_filter %}
+                    Try changing your search or filter criteria.
+                {% else %}
+                    There are no donations recorded in the system yet.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}
