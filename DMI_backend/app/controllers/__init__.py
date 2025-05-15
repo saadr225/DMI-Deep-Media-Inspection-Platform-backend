@@ -14,6 +14,12 @@ required_directories = [
     os.path.join(settings.MEDIA_ROOT, "knowledge_base/banners"),
     os.path.join(settings.MEDIA_ROOT, "knowledge_base/inline"),
     os.path.join(settings.MEDIA_ROOT, "knowledge_base/media"),
+    # Public API directories (using same structure as internal modules)
+    os.path.join(settings.MEDIA_ROOT, "public_api"),
+    os.path.join(settings.MEDIA_ROOT, "public_api/submissions"),
+    os.path.join(settings.MEDIA_ROOT, "public_api/temp_frames"),
+    os.path.join(settings.MEDIA_ROOT, "public_api/temp_crops"),
+    os.path.join(settings.MEDIA_ROOT, "public_api/temp_synthetic_media"),
 ]
 
 # Create directories if they don't exist

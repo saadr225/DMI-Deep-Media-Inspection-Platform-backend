@@ -194,14 +194,14 @@ def deepfake_detection_api(request):
         # Generate a unique identifier for this submission
         submission_identifier = str(uuid.uuid4())
 
-        # Save the file to a temporary location
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "temp"))
-        filename = fs.save(submission_identifier, file)
-        file_path = fs.path(filename)
-
         # Determine file type (image or video)
         content_type = file.content_type
         is_video = content_type.startswith("video/")
+
+        # Save the file to the public_api submissions directory, matching internal module structure
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "public_api/submissions"))
+        filename = fs.save(submission_identifier, file)
+        file_path = fs.path(filename)
 
         # Create a MediaUpload object
         media_upload = MediaUpload.objects.create(
@@ -395,8 +395,8 @@ def ai_media_detection_api(request):
         # Generate a unique identifier for this submission
         submission_identifier = str(uuid.uuid4())
 
-        # Save the file to a temporary location
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "temp"))
+        # Save the file to the public_api submissions directory
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "public_api/submissions"))
         filename = fs.save(submission_identifier, file)
         file_path = fs.path(filename)
 
