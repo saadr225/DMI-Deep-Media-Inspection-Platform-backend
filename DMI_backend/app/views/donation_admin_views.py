@@ -7,11 +7,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 
 from app.models import Donation, ModeratorAction
 from app.views.custom_admin_views import custom_admin_required
-import stripe
 from django.conf import settings
 
 # No Stripe initialization needed for demo version
