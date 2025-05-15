@@ -116,6 +116,12 @@
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">Forum Moderation</h1>
     <div>
+        <a href="{% url 'custom_admin_forum_topics' %}" class="btn btn-info btn-sm me-2">
+            <i class="fas fa-folder me-1"></i> Manage Topics
+        </a>
+        <a href="{% url 'custom_admin_forum_tags' %}" class="btn btn-success btn-sm me-2">
+            <i class="fas fa-tags me-1"></i> Manage Tags
+        </a>
         <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-primary btn-sm">
             <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
         </a>

@@ -22,6 +22,7 @@ from api.models import (
     ForumThread,
     ForumReply,
     ForumTopic,
+    ForumTag,
     PublicDeepfakeArchive,
 )
 from app.models import UserData, ModeratorAction
@@ -1162,6 +1163,149 @@ def custom_admin_knowledge_base_topics_view(request):
         logger.error(f"Error in knowledge base admin topics view: {str(e)}")
         messages.error(request, f"Error managing topics: {str(e)}")
         return redirect("custom_admin_knowledge_base_list")
+
+
+@login_required
+def custom_admin_forum_topics_view(request):
+    """View for managing forum topics"""
+    # Check if user is admin (superuser or staff)
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "Admin privileges required to access this page.")
+        return redirect("custom_admin_login")
+
+    try:
+        # Handle topic creation
+        if request.method == "POST":
+            if "create" in request.POST:
+                name = request.POST.get("name")
+                description = request.POST.get("description", "")
+                icon = request.POST.get("icon", "")
+
+                if name:
+                    # Create topic
+                    topic = ForumTopic.objects.create(name=name, description=description, icon=icon)
+                    messages.success(request, f"Forum topic '{name}' created successfully")
+                else:
+                    messages.error(request, "Topic name is required")
+
+            # Handle topic update
+            elif "update" in request.POST:
+                topic_id = request.POST.get("topic_id")
+                name = request.POST.get("name")
+                description = request.POST.get("description", "")
+                icon = request.POST.get("icon", "")
+                is_active = request.POST.get("is_active") == "on"
+
+                if topic_id and name:
+                    topic = ForumTopic.objects.get(id=topic_id)
+                    topic.name = name
+                    topic.description = description
+                    topic.icon = icon
+                    topic.is_active = is_active
+                    topic.save()
+                    messages.success(request, f"Forum topic '{name}' updated successfully")
+                else:
+                    messages.error(request, "Topic ID and name are required")
+
+            # Handle topic deletion
+            elif "delete" in request.POST:
+                topic_id = request.POST.get("topic_id")
+
+                if topic_id:
+                    topic = ForumTopic.objects.get(id=topic_id)
+                    # Check if topic has threads
+                    if ForumThread.objects.filter(topic=topic).exists():
+                        topic.is_active = False
+                        topic.save()
+                        messages.warning(request, f"Topic '{topic.name}' has threads. Marked as inactive instead of deleting.")
+                    else:
+                        topic_name = topic.name
+                        topic.delete()
+                        messages.success(request, f"Forum topic '{topic_name}' deleted successfully")
+                else:
+                    messages.error(request, "Topic ID is required for deletion")
+
+        # Get all topics with thread counts
+        topics = ForumTopic.objects.all()
+        topics = topics.annotate(thread_count=Count("threads", filter=Q(threads__is_deleted=False)))
+
+        context = {"active_page": "forum", "topics": topics, "title": "Manage Forum Topics", "section": "forum"}
+
+        return render(request, "custom_admin/forum_topics.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in forum topics admin view: {str(e)}")
+        messages.error(request, f"Error managing forum topics: {str(e)}")
+        return redirect("custom_admin_forum")
+
+
+@login_required
+def custom_admin_forum_tags_view(request):
+    """View for managing forum tags"""
+    # Check if user is admin (superuser or staff)
+    if not (request.user.is_superuser or request.user.is_staff):
+        messages.error(request, "Admin privileges required to access this page.")
+        return redirect("custom_admin_login")
+
+    try:
+        # Handle tag creation
+        if request.method == "POST":
+            if "create" in request.POST:
+                name = request.POST.get("name")
+                color = request.POST.get("color", "")
+
+                if name:
+                    # Create tag
+                    tag = ForumTag.objects.create(name=name, color=color)
+                    messages.success(request, f"Forum tag '{name}' created successfully")
+                else:
+                    messages.error(request, "Tag name is required")
+
+            # Handle tag update
+            elif "update" in request.POST:
+                tag_id = request.POST.get("tag_id")
+                name = request.POST.get("name")
+                color = request.POST.get("color", "")
+
+                if tag_id and name:
+                    tag = ForumTag.objects.get(id=tag_id)
+                    tag.name = name
+                    tag.color = color
+                    tag.save()
+                    messages.success(request, f"Forum tag '{name}' updated successfully")
+                else:
+                    messages.error(request, "Tag ID and name are required")
+
+            # Handle tag deletion
+            elif "delete" in request.POST:
+                tag_id = request.POST.get("tag_id")
+
+                if tag_id:
+                    tag = ForumTag.objects.get(id=tag_id)
+                    # Check if tag is used in threads
+                    if tag.threads.exists():
+                        messages.warning(request, f"Tag '{tag.name}' is used in threads. Removing tag from all threads before deletion.")
+                        # Remove the tag from all threads (M2M relationship)
+                        tag.threads.clear()
+
+                    tag_name = tag.name
+                    tag.delete()
+                    messages.success(request, f"Forum tag '{tag_name}' deleted successfully")
+                else:
+                    messages.error(request, "Tag ID is required for deletion")
+
+        # Get all tags with thread counts
+        tags = ForumTag.objects.all()
+        tags = tags.annotate(thread_count=Count("threads", filter=Q(threads__is_deleted=False)))
+
+        context = {"active_page": "forum", "tags": tags, "title": "Manage Forum Tags", "section": "forum"}
+
+        return render(request, "custom_admin/forum_tags.html", context)
+
+    except Exception as e:
+        logger.error(f"Error in forum tags admin view: {str(e)}")
+        messages.error(request, f"Error managing forum tags: {str(e)}")
+        return redirect("custom_admin_forum")
 
 
 def admin_upload_image(request):
