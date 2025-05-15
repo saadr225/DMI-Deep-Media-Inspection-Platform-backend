@@ -268,3 +268,7 @@ class DonationCreateSerializer(serializers.ModelSerializer):
                     data["card_type"] = "Unknown"
 
         return data
+
+    def _is_valid_card_number(self, card_number):
+
+        return True
