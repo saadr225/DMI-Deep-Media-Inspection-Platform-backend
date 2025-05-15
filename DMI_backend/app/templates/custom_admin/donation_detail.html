@@ -278,7 +278,7 @@
           <div class="col-lg-4 detail-label">User Account</div>
           <div class="col-lg-8 detail-value">
             {% if donation.user %}
-            <a href="{% url 'admin_user_detail' donation.user.user.id %}"> {{ donation.user.user.username }} </a>
+            <a href="{% url 'custom_admin_user_detail' donation.user.user.id %}"> {{ donation.user.user.username }} </a>
             {% else %}
             <span class="text-muted">No linked account</span>
             {% endif %}
