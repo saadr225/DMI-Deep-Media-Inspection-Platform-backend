@@ -606,6 +606,111 @@ def analytics_dashboard_view(request):
             thread_series.append(week_threads)
             actions_series.append(week_actions)
 
+    # Calculate additional metrics for the stats dictionary
+    total_moderated = pda_approved + pda_rejected + threads_approved + threads_rejected
+    total_content = pda_submitted + threads_submitted
+
+    # Get reply count
+    reply_count = ForumReply.objects.filter(created_at__range=(start_date, end_date)).count()
+
+    # Get reported content count (assuming this is implemented elsewhere)
+    reported_count = 0  # Replace with actual query if available
+
+    # Calculate totals for the stats
+    total_submissions = pda_submitted + threads_submitted
+    total_actions = total_moderated
+    pending_count = total_submissions - total_moderated if total_submissions > total_moderated else 0
+    approved_count = pda_approved + threads_approved
+    rejected_count = pda_rejected + threads_rejected
+
+    # Calculate efficiency rate and approval rate
+    approval_rate = round((approved_count / total_actions) * 100 if total_actions > 0 else 0, 1)
+    efficiency_rate = round((total_actions / total_submissions) * 100 if total_submissions > 0 else 100, 1)
+
+    # Calculate percentages for progress bars
+    total_items = pda_submitted + threads_submitted + reply_count + reported_count
+    pda_percentage = round((pda_submitted / total_items) * 100 if total_items > 0 else 0, 1)
+    thread_percentage = round((threads_submitted / total_items) * 100 if total_items > 0 else 0, 1)
+    reply_percentage = round((reply_count / total_items) * 100 if total_items > 0 else 0, 1)
+    reported_percentage = round((reported_count / total_items) * 100 if total_items > 0 else 0, 1)
+
+    # Create stats dictionary
+    stats = {
+        "total_submissions": total_submissions,
+        "total_actions": total_actions,
+        "approval_rate": approval_rate,
+        "reported_content": reported_count,
+        "efficiency_rate": efficiency_rate,
+        "pda_count": pda_submitted,
+        "thread_count": threads_submitted,
+        "reply_count": reply_count,
+        "reported_count": reported_count,
+        "pda_percentage": pda_percentage,
+        "thread_percentage": thread_percentage,
+        "reply_percentage": reply_percentage,
+        "reported_percentage": reported_percentage,
+        "approved_count": approved_count,
+        "rejected_count": rejected_count,
+        "pending_count": pending_count,
+    }
+
+    # Get forum topics and counts for the pie chart
+    forum_categories = ForumTopic.objects.annotate(thread_count=Count("threads", filter=Q(threads__is_deleted=False))).order_by("-thread_count")[:7]
+    category_names = [topic.name for topic in forum_categories]
+    category_counts = [topic.thread_count for topic in forum_categories]
+
+    # Create chart data dictionary
+    chart_data = {
+        "dates": json.dumps(time_period),
+        "submissions": json.dumps(pda_series),
+        "actions": json.dumps(actions_series),
+        "categories": json.dumps(category_names),
+        "category_counts": json.dumps(category_counts),
+    }
+
+    # Get recent moderation activity
+    recent_activity = []
+    recent_actions = ModeratorAction.objects.all().order_by("-timestamp")[:10]
+    for action in recent_actions:
+        recent_activity.append(
+            {
+                "id": action.id,
+                "moderator": action.moderator.username,
+                "action_type": action.action_type,
+                "content_type": action.content_type,
+                "content_identifier": action.content_identifier,
+                "timestamp": action.timestamp,
+                "notes": action.notes,
+            }
+        )
+
+    # Get moderator performance stats
+    moderator_stats = []
+    active_moderators = User.objects.filter(
+        Q(groups__name="PDA_Moderator") | Q(is_staff=True), moderator_actions__timestamp__range=(start_date, end_date)
+    ).distinct()
+
+    for mod in active_moderators:
+        mod_actions = ModeratorAction.objects.filter(moderator=mod, timestamp__range=(start_date, end_date))
+
+        mod_approvals = mod_actions.filter(action_type="approve").count()
+        mod_rejections = mod_actions.filter(action_type="reject").count()
+        mod_total = mod_actions.count()
+
+        if mod_total > 0:
+            moderator_stats.append(
+                {
+                    "username": mod.username,
+                    "total_actions": mod_total,
+                    "approvals": mod_approvals,
+                    "rejections": mod_rejections,
+                    "approval_rate": round((mod_approvals / mod_total) * 100 if mod_total > 0 else 0, 1),
+                }
+            )
+
+    # Sort by total actions
+    moderator_stats = sorted(moderator_stats, key=lambda x: x["total_actions"], reverse=True)[:5]
+
     context = {
         "active_page": "analytics",
         "days": days,
@@ -615,14 +720,18 @@ def analytics_dashboard_view(request):
         "threads_submitted": threads_submitted,
         "threads_approved": threads_approved,
         "threads_rejected": threads_rejected,
-        "total_moderated": pda_approved + pda_rejected + threads_approved + threads_rejected,
-        "total_content": pda_submitted + threads_submitted,
-        "approval_rate": round((pda_approved + threads_approved) / (pda_submitted + threads_submitted) * 100 if (pda_submitted + threads_submitted) > 0 else 0, 1),
+        "total_moderated": total_moderated,
+        "total_content": total_content,
+        "approval_rate": approval_rate,
         "moderator_actions": moderator_actions,
         "time_period": json.dumps(time_period),
         "pda_series": json.dumps(pda_series),
         "thread_series": json.dumps(thread_series),
         "actions_series": json.dumps(actions_series),
+        "stats": stats,
+        "chart_data": chart_data,
+        "recent_activity": recent_activity,
+        "moderator_stats": moderator_stats,
     }
 
     return render(request, "custom_moderation/analytics_dashboard.html", context)

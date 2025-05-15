@@ -300,11 +300,6 @@ def ai_media_detection_api(request):
         return JsonResponse({"success": False, "error": file_upload_serializer.errors, "code": "FILE_UPLOAD_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-###########################################
-# API Key Management Views
-###########################################
-
-
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def api_key_management(request):

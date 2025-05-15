@@ -600,6 +600,12 @@ def custom_admin_analytics_view(request):
     new_pda = PublicDeepfakeArchive.objects.filter(submission_date__gte=start_date).count()
     approved_pda = PublicDeepfakeArchive.objects.filter(is_approved=True).count()
     rejected_pda = PublicDeepfakeArchive.objects.filter(is_approved=False, review_date__isnull=False).count()
+    pending_pda = total_pda - approved_pda - rejected_pda
+
+    # Calculate percentages
+    approved_pda_percent = (approved_pda / total_pda * 100) if total_pda > 0 else 0
+    rejected_pda_percent = (rejected_pda / total_pda * 100) if total_pda > 0 else 0
+    pending_pda_percent = (pending_pda / total_pda * 100) if total_pda > 0 else 0
 
     # Forum statistics
     total_threads = ForumThread.objects.filter(is_deleted=False).count()
@@ -639,6 +645,10 @@ def custom_admin_analytics_view(request):
 
         timeline_data.append({"date": day_start.strftime("%Y-%m-%d"), "users": day_users, "pda": day_pda, "threads": day_threads, "replies": day_replies})
 
+    # Prepare data for the topics bar chart
+    topic_names = [topic.name for topic in popular_topics[:6]]
+    topic_counts = [topic.thread_count for topic in popular_topics[:6]]
+
     context = {
         "active_page": "analytics",
         "days": days,
@@ -648,6 +658,10 @@ def custom_admin_analytics_view(request):
         "new_pda": new_pda,
         "approved_pda": approved_pda,
         "rejected_pda": rejected_pda,
+        "pending_pda": pending_pda,
+        "approved_pda_percent": round(approved_pda_percent, 1),
+        "rejected_pda_percent": round(rejected_pda_percent, 1),
+        "pending_pda_percent": round(pending_pda_percent, 1),
         "total_threads": total_threads,
         "new_threads": new_threads,
         "total_replies": total_replies,
@@ -659,6 +673,8 @@ def custom_admin_analytics_view(request):
         "pda_data": json.dumps(pda_submissions_data),
         "threads_data": json.dumps(forum_threads_data),
         "replies_data": json.dumps(forum_replies_data),
+        "topic_names": json.dumps(topic_names),
+        "topic_counts": json.dumps(topic_counts),
     }
 
     return render(request, "custom_admin/analytics.html", context)
