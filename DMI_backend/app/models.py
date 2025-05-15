@@ -100,7 +100,7 @@ class ModeratorAction(models.Model):
 
 class Donation(models.Model):
     """
-    Model to track donations made through Stripe
+    Model to track donations (demo implementation)
     """
 
     class DonationStatus(models.TextChoices):
@@ -112,8 +112,8 @@ class Donation(models.Model):
     user = models.ForeignKey(UserData, on_delete=models.SET_NULL, null=True, blank=True, related_name="donations")
     amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount in USD")
     currency = models.CharField(max_length=3, default="USD")
-    stripe_payment_id = models.CharField(max_length=100, unique=True)
-    stripe_checkout_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    payment_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    session_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
     status = models.CharField(max_length=20, choices=DonationStatus.choices, default=DonationStatus.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,8 +1,6 @@
-# filepath: /home/b450-plus/DMI_FYP_dj_primary-backend/DMI_FYP_dj_primary-backend/DMI_backend/api/views/donations_views.py
-
-import stripe
 import json
 import os
+import uuid
 from datetime import datetime
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
@@ -17,16 +15,14 @@ from app.models import Donation, UserData, ModeratorAction
 from app.controllers.ResponseCodesController import get_response_code
 from api.serializers import DonationSerializer, DonationCreateSerializer
 
-# Initialize Stripe with the secret key from settings
-stripe.api_key = settings.STRIPE_SECRET_KEY
-webhook_secret = settings.STRIPE_WEBHOOK_SECRET
+# No Stripe integration for demo version
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def create_donation_checkout(request):
     """
-    Create a Stripe checkout session for a donation
+    Create a dummy checkout session for a donation (demo version without Stripe)
     """
     try:
         serializer = DonationCreateSerializer(data=request.data, context={"request": request})
@@ -50,140 +46,78 @@ def create_donation_checkout(request):
             if not donor_name and not is_anonymous:
                 donor_name = request.user.username
 
-        # Create metadata for the session
-        metadata = {
-            "is_anonymous": "true" if is_anonymous else "false",
-            "message": message,
-            "donor_name": donor_name,
-            "donor_email": donor_email,
-        }
+        # Generate a unique session ID for the demo checkout
+        session_id = f"demo_{uuid.uuid4().hex}"
 
-        if user_data:
-            metadata["user_id"] = str(user_data.id)
-
-        # Convert amount to cents for Stripe
-        amount_in_cents = int(amount * 100)
-
-        # Create a Stripe checkout session
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[
-                {
-                    "price_data": {
-                        "currency": currency,
-                        "product_data": {
-                            "name": "Donation to DMI Project",
-                            "description": "Thank you for supporting our project!",
-                        },
-                        "unit_amount": amount_in_cents,
-                    },
-                    "quantity": 1,
-                },
-            ],
-            mode="payment",
-            success_url=f"{settings.FRONTEND_HOST_URL}/donation/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{settings.FRONTEND_HOST_URL}/donation/cancel",
-            metadata=metadata,
+        # Create pending donation in database
+        donation = Donation.objects.create(
+            user=user_data,
+            amount=amount,
+            currency=currency,
+            status=Donation.DonationStatus.PENDING,
+            donor_name=donor_name,
+            donor_email=donor_email,
+            is_anonymous=is_anonymous,
+            message=message,
+            stripe_checkout_id=session_id,  # Using the session_id as checkout_id
         )
 
-        # Return the checkout URL and session ID
-        return Response({"success": True, "checkout_url": checkout_session.url, "session_id": checkout_session.id})
+        # For demo, create a simulated checkout URL
+        checkout_url = f"{settings.FRONTEND_HOST_URL}/donation/demo-payment?session_id={session_id}"
 
-    except stripe.error.StripeError as e:
-        return Response({"success": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # Return the checkout URL and session ID
+        return Response(
+            {
+                "success": True,
+                "checkout_url": checkout_url,
+                "session_id": session_id,
+                "demo_message": "DEMO MODE: This is a demo payment flow. No real payment will be processed.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
     except Exception as e:
         return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@csrf_exempt
-@require_POST
-def stripe_webhook(request):
-    """
-    Handle webhook events from Stripe
-    """
-    payload = request.body
-    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
-    event = None
-
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-    except ValueError as e:
-        # Invalid payload
-        return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError as e:
-        # Invalid signature
-        return HttpResponse(status=400)
-
-    # Handle the checkout.session.completed event
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        handle_completed_checkout(session)
-
-    # Return a 200 response to acknowledge receipt of the event
-    return HttpResponse(status=200)
+# The webhook endpoint is removed since we're using redirect-based verification instead
+# Existing functionality has been moved to the verify_donation endpoint
 
 
-def handle_completed_checkout(session):
-    """
-    Process a completed checkout session
-    """
-    # Extract metadata
-    metadata = session.get("metadata", {})
-    is_anonymous = metadata.get("is_anonymous", "false") == "true"
-    message = metadata.get("message", "")
-    donor_name = metadata.get("donor_name", "")
-    donor_email = metadata.get("donor_email", "")
-    user_id = metadata.get("user_id")
-
-    # Find user if available
-    user_data = None
-    if user_id:
-        try:
-            user_data = UserData.objects.get(id=user_id)
-        except UserData.DoesNotExist:
-            pass
-
-    # Create the donation record
-    Donation.objects.create(
-        user=user_data,
-        amount=session["amount_total"] / 100,  # Convert cents to dollars
-        currency=session["currency"].upper(),
-        stripe_payment_id=session["payment_intent"],
-        stripe_checkout_id=session["id"],
-        status=Donation.DonationStatus.COMPLETED,
-        donor_name=donor_name,
-        donor_email=donor_email,
-        is_anonymous=is_anonymous,
-        message=message,
-    )
+# The handle_completed_checkout function has been removed
+# Its functionality has been moved directly into the verify_donation endpoint
 
 
 @api_view(["GET"])
 def verify_donation(request, session_id):
     """
-    Verify a donation session status
+    Verify a donation session status (demo version)
     """
     try:
-        # Retrieve the session from Stripe
-        session = stripe.checkout.Session.retrieve(session_id)
-
         # Check if there's already a donation with this checkout ID
         try:
             donation = Donation.objects.get(stripe_checkout_id=session_id)
-            serializer = DonationSerializer(donation)
-            return Response({"success": True, "verified": True, "donation": serializer.data, "payment_status": session["payment_status"]})
-        except Donation.DoesNotExist:
-            # Process the session if it's completed but not recorded yet
-            if session["payment_status"] == "paid":
-                handle_completed_checkout(session)
-                donation = Donation.objects.get(stripe_checkout_id=session_id)
-                serializer = DonationSerializer(donation)
-                return Response({"success": True, "verified": True, "donation": serializer.data, "payment_status": session["payment_status"]})
-            else:
-                return Response({"success": True, "verified": False, "payment_status": session["payment_status"]})
 
-    except stripe.error.StripeError as e:
-        return Response({"success": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # In demo mode, just mark it as complete for testing
+            if donation.status == Donation.DonationStatus.PENDING:
+                donation.status = Donation.DonationStatus.COMPLETED
+                # Generate a fake payment ID for reference
+                donation.stripe_payment_id = f"demo_payment_{uuid.uuid4().hex}"
+                donation.save()
+
+            serializer = DonationSerializer(donation)
+            return Response(
+                {
+                    "success": True,
+                    "verified": True,
+                    "donation": serializer.data,
+                    "payment_status": "paid",
+                    "demo_message": "DEMO MODE: Payment automatically marked as successful.",
+                }
+            )
+        except Donation.DoesNotExist:
+            return Response({"success": False, "verified": False, "error": "Donation not found"}, status=status.HTTP_404_NOT_FOUND)
+
     except Exception as e:
         return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -258,7 +192,7 @@ def get_donation_detail(request, donation_id):
 @permission_classes([IsAuthenticated])
 def refund_donation(request, donation_id):
     """
-    Refund a donation (admin only)
+    Refund a donation (admin only) - demo version
     """
     user = request.user
     is_admin = user.is_staff or user.is_superuser or user.groups.filter(name="Moderators").exists()
@@ -273,28 +207,34 @@ def refund_donation(request, donation_id):
         if donation.status == Donation.DonationStatus.REFUNDED:
             return Response({"success": False, "error": "This donation has already been refunded."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Process refund through Stripe
-        try:
-            refund = stripe.Refund.create(payment_intent=donation.stripe_payment_id)
+        # Only completed donations can be refunded
+        if donation.status != Donation.DonationStatus.COMPLETED:
+            return Response({"success": False, "error": f"Cannot refund donation with status {donation.status}"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Update the donation status
-            donation.status = Donation.DonationStatus.REFUNDED
-            donation.save()
+        # Update the donation status (no actual payment processing in demo)
+        donation.status = Donation.DonationStatus.REFUNDED
+        donation.refund_id = f"demo_refund_{uuid.uuid4().hex}"
+        donation.refunded_at = datetime.now()
+        donation.save()
 
-            # Log the action
-            ModeratorAction.objects.create(
-                moderator=user,
-                action_type="other",
-                content_type="donation",
-                content_identifier=f"Donation #{donation.id}",
-                notes=f"Refunded donation of {donation.amount} {donation.currency}",
-            )
+        # Log the action
+        ModeratorAction.objects.create(
+            moderator=user,
+            action_type="other",
+            content_type="donation",
+            content_identifier=f"Donation #{donation.id}",
+            notes=f"Refunded donation of {donation.amount} {donation.currency}",
+        )
 
-            serializer = DonationSerializer(donation)
-            return Response({"success": True, "data": serializer.data, "refund_id": refund.id})
-
-        except stripe.error.StripeError as e:
-            return Response({"success": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = DonationSerializer(donation)
+        return Response(
+            {
+                "success": True,
+                "data": serializer.data,
+                "refund_id": donation.refund_id,
+                "demo_message": "DEMO MODE: Refund processed without actual payment processing.",
+            }
+        )
 
     except Donation.DoesNotExist:
         return Response({"success": False, "error": "Donation not found."}, status=status.HTTP_404_NOT_FOUND)

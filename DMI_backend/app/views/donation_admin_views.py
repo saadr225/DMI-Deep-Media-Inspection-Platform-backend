@@ -1,4 +1,5 @@
 import csv
+import uuid
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -6,15 +7,14 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from app.models import Donation, ModeratorAction
 from app.views.custom_admin_views import custom_admin_required
 import stripe
 from django.conf import settings
 
-# Initialize Stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
+# No Stripe initialization needed for demo version
 
 
 @custom_admin_required
@@ -120,18 +120,10 @@ def admin_donation_detail(request, donation_id):
     """Admin view for donation details"""
     donation = get_object_or_404(Donation, id=donation_id)
 
-    # Get Stripe payment details if available
-    payment_details = None
-    if donation.stripe_payment_id:
-        try:
-            payment_details = stripe.PaymentIntent.retrieve(donation.stripe_payment_id)
-        except stripe.error.StripeError:
-            payment_details = None
-
+    # No Stripe payment details in demo version
     context = {
         "active_page": "donations",
         "donation": donation,
-        "payment_details": payment_details,
     }
 
     return render(request, "custom_admin/donation_detail.html", context)
@@ -140,7 +132,7 @@ def admin_donation_detail(request, donation_id):
 @custom_admin_required
 @require_POST
 def admin_donation_refund(request, donation_id):
-    """Admin view to refund a donation"""
+    """Admin view to refund a donation (demo version)"""
     donation = get_object_or_404(Donation, id=donation_id)
 
     # Check if donation can be refunded
@@ -148,25 +140,20 @@ def admin_donation_refund(request, donation_id):
         messages.error(request, f"Cannot refund donation #{donation.id} because its status is {donation.get_status_display()}.")
         return redirect("admin_donation_detail", donation_id=donation_id)
 
-    # Process refund through Stripe
-    try:
-        refund = stripe.Refund.create(payment_intent=donation.stripe_payment_id)
+    # Just update the donation status (no actual refund in demo version)
+    donation.status = Donation.DonationStatus.REFUNDED
+    donation.refund_id = f"demo_refund_{uuid.uuid4().hex}"
+    donation.refunded_at = datetime.now()
+    donation.save()
 
-        # Update the donation status
-        donation.status = Donation.DonationStatus.REFUNDED
-        donation.save()
+    # Log the action
+    ModeratorAction.objects.create(
+        moderator=request.user,
+        action_type="other",
+        content_type="donation",
+        content_identifier=f"Donation #{donation.id}",
+        notes=f"Refunded donation of {donation.amount} {donation.currency} (demo)",
+    )
 
-        # Log the action
-        ModeratorAction.objects.create(
-            moderator=request.user,
-            action_type="other",
-            content_type="donation",
-            content_identifier=f"Donation #{donation.id}",
-            notes=f"Refunded donation of {donation.amount} {donation.currency}",
-        )
-
-        messages.success(request, f"Donation #{donation.id} has been refunded successfully.")
-    except stripe.error.StripeError as e:
-        messages.error(request, f"Error refunding donation: {str(e)}")
-
+    messages.success(request, f"Donation #{donation.id} has been refunded successfully. (Demo Mode)")
     return redirect("admin_donation_detail", donation_id=donation_id)

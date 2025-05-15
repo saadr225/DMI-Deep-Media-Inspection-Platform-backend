@@ -86,10 +86,8 @@ urlpatterns = [
     path("api-keys/<int:key_id>/", public_api_views.api_key_detail, name="api_key_detail"),
     # Public API endpoints    path("public-api/deepfake-detection/", public_api_views.deepfake_detection_api, name="deepfake_detection_api"),
     path("public-api/ai-text-detection/", public_api_views.ai_text_detection_api, name="ai_text_detection_api"),
-    path("public-api/ai-media-detection/", public_api_views.ai_media_detection_api, name="ai_media_detection_api"),
-    # Donation endpoints
+    path("public-api/ai-media-detection/", public_api_views.ai_media_detection_api, name="ai_media_detection_api"),  # Donation endpoints
     path("donations/checkout/", donations_views.create_donation_checkout, name="create_donation_checkout"),
-    path("donations/webhook/", donations_views.stripe_webhook, name="stripe_webhook"),
     path("donations/verify/<str:session_id>/", donations_views.verify_donation, name="verify_donation"),
     path("donations/", donations_views.get_donations, name="get_donations"),
     path("donations/<int:donation_id>/", donations_views.get_donation_detail, name="get_donation_detail"),

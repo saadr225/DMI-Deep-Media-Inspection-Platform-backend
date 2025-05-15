@@ -2,13 +2,13 @@
 
 ## Overview
 
-The Donation API allows users to make financial contributions to the DMI Project through Stripe integration. It provides endpoints for creating donation checkouts, verifying payments, and viewing donation statistics.
+The Donation API allows users to make financial contributions to the DMI Project through a simplified demo payment system. This implementation uses a dummy payment process without actual payment processing for demonstration purposes only.
 
 ## Endpoints
 
 ### 1. Create Donation Checkout
 
-Creates a Stripe checkout session for processing a donation payment.
+Creates a dummy checkout session for processing a donation (no actual payment is processed).
 
 **URL**: `/api/donations/checkout/`  
 **Method**: `POST`  
@@ -41,20 +41,21 @@ Creates a Stripe checkout session for processing a donation payment.
 ```json
 {
   "success": true,
-  "checkout_url": "https://checkout.stripe.com/...",
-  "session_id": "cs_test_..."
+  "checkout_url": "http://localhost:3000/donation/demo-payment?session_id=demo_123abc...",
+  "session_id": "demo_123abc...",
+  "demo_message": "DEMO MODE: This is a demo payment flow. No real payment will be processed."
 }
 ```
 
 ### 2. Verify Donation
 
-Verifies the status of a donation after payment processing.
+Verifies the status of a donation and marks it as completed (demo version).
 
 **URL**: `/api/donations/verify/{session_id}/`  
 **Method**: `GET`  
 **Auth Required**: No
 
-**Success Response (Paid)**:
+**Success Response**:
 
 ```json
 {
@@ -73,17 +74,18 @@ Verifies the status of a donation after payment processing.
     "message": "Keep up the great work!",
     "donor_username": "johndoe"
   },
-  "payment_status": "paid"
+  "payment_status": "paid",
+  "demo_message": "DEMO MODE: Payment automatically marked as successful."
 }
 ```
 
-**Success Response (Not Paid)**:
+**Error Response (Not Found)**:
 
 ```json
 {
-  "success": true,
+  "success": false,
   "verified": false,
-  "payment_status": "unpaid"
+  "error": "Donation not found"
 }
 ```
 
@@ -162,7 +164,7 @@ Retrieves details for a specific donation.
 
 ### 5. Refund Donation
 
-Issues a refund for a specific donation.
+Simulates a refund for a donation (demo version, no actual refund is processed).
 
 **URL**: `/api/donations/{donation_id}/refund/`  
 **Method**: `DELETE`  
@@ -187,7 +189,8 @@ Issues a refund for a specific donation.
     "message": "Keep up the great work!",
     "donor_username": "johndoe"
   },
-  "refund_id": "re_test_..."
+  "refund_id": "demo_refund_abc123...",
+  "demo_message": "DEMO MODE: Refund processed without actual payment processing."
 }
 ```
 
@@ -227,11 +230,13 @@ Retrieves donation statistics.
 }
 ```
 
-## Webhook Integration
+## Payment Verification
 
-Stripe webhooks are used to asynchronously update donation statuses. Configure your Stripe webhook settings to point to:
+This implementation uses a simplified demo flow:
 
-**URL**: `/api/donations/webhook/`  
-**Events to listen for**: `checkout.session.completed`
+1. After clicking the checkout link, users are redirected to a demo payment page
+2. Upon completing the demo payment, users are redirected back to the success page
+3. The success page calls the verification endpoint (`/api/donations/verify/{session_id}/`)
+4. In demo mode, the verification endpoint automatically marks the payment as successful
 
-Ensure the webhook secret from your Stripe dashboard matches the `STRIPE_WEBHOOK_SECRET` in your environment settings.
+This is a demonstration-only implementation with no actual payment processing.
