@@ -435,7 +435,7 @@ curl -X GET "https://your-domain.com/api/api-keys/" \
     {
       "id": 1,
       "name": "My API Key",
-      "key": "abc123...",  (first 8 chars only)
+      "key": "3bce9e131b60dc7bcc7433228a69d46fdb086e8d03f8fa8976ffaae9e09441eb" (64 characters)
       "created_at": "2023-05-15T13:45:30Z",
       "expires_at": "2024-05-15T13:45:30Z",
       "daily_limit": 1000,
@@ -511,7 +511,7 @@ curl -X GET "https://your-domain.com/api/api-keys/1/" \
   "api_key": {
     "id": 1,
     "name": "My API Key",
-    "key": "abc123...",  (first 8 chars only)
+    "key": "3bce9e131b60dc7bcc7433228a69d46fdb086e8d03f8fa8976ffaae9e09441eb",  (first 64 chars only)
     "created_at": "2023-05-15T13:45:30Z",
     "expires_at": "2024-05-15T13:45:30Z",
     "daily_limit": 1000,
