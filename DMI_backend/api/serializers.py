@@ -256,4 +256,15 @@ class DonationCreateSerializer(serializers.ModelSerializer):
             if not data.get("donor_country"):
                 raise serializers.ValidationError({"donor_country": "Country is required for credit card payments."})
 
-            # Determine card type (s
+            # Determine card type (simplified logic)
+            if not data.get("card_type"):
+                if card_number.startswith("4"):
+                    data["card_type"] = "Visa"
+                elif card_number.startswith(("51", "52", "53", "54", "55")):
+                    data["card_type"] = "MasterCard"
+                elif card_number.startswith("34") or card_number.startswith("37"):
+                    data["card_type"] = "American Express"
+                else:
+                    data["card_type"] = "Unknown"
+
+        return data
