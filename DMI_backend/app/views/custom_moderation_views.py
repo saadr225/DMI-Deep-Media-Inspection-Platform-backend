@@ -654,6 +654,24 @@ def analytics_dashboard_view(request):
         "pending_count": pending_count,
     }
 
+    # Calculate status percentages
+    if total_moderated > 0:
+        approval_percentage = (approved_count / total_moderated) * 100
+        rejection_percentage = (rejected_count / total_moderated) * 100
+    else:
+        approval_percentage = 0
+        rejection_percentage = 0
+
+    if total_content > 0:
+        pending_percentage = (stats["pending_count"] / total_content) * 100
+    else:
+        pending_percentage = 0
+
+    # Add to stats dictionary
+    stats["approval_percentage"] = approval_percentage
+    stats["rejection_percentage"] = rejection_percentage
+    stats["pending_percentage"] = pending_percentage
+
     # Get forum topics and counts for the pie chart
     forum_categories = ForumTopic.objects.annotate(thread_count=Count("threads", filter=Q(threads__is_deleted=False))).order_by("-thread_count")[:7]
     category_names = [topic.name for topic in forum_categories]
@@ -710,6 +728,12 @@ def analytics_dashboard_view(request):
 
     # Sort by total actions
     moderator_stats = sorted(moderator_stats, key=lambda x: x["total_actions"], reverse=True)[:5]
+
+    # Add performance percentages for moderators
+    if moderator_stats:
+        max_actions = moderator_stats[0]["total_actions"]
+        for mod in moderator_stats:
+            mod["performance_percentage"] = (mod["total_actions"] / max_actions) * 100 if max_actions > 0 else 0
 
     context = {
         "active_page": "analytics",
@@ -966,7 +990,7 @@ def moderation_chart_data_api(request):
 
                     pda_series.append(week_pda)
                     thread_series.append(week_threads)
-                    approved_series.append(week_approved)
+                    approved_series.append(day_approved)
 
         # Check if we have any data to display
         has_data = any(pda_series) or any(thread_series) or any(approved_series)
