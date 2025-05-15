@@ -127,20 +127,20 @@
     <form method="get" action="{% url 'custom_admin_pda_list' %}">
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label for="status" class="form-label">Status</label>
-                <select class="form-select" id="status" name="status">
-                    <option value="">All Statuses</option>
-                    <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending Review</option>
-                    <option value="approved" {% if status == 'approved' %}selected{% endif %}>Approved</option>
-                    <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Rejected</option>
+                <label for="filter" class="form-label">Status</label>
+                <select class="form-select" id="filter" name="filter">
+                    <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All Statuses</option>
+                    <option value="pending" {% if filter_type == 'pending' %}selected{% endif %}>Pending Review</option>
+                    <option value="approved" {% if filter_type == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if filter_type == 'rejected' %}selected{% endif %}>Rejected</option>
                 </select>
             </div>
             <div class="col-md-3">
                 <label for="media_type" class="form-label">Media Type</label>
                 <select class="form-select" id="media_type" name="media_type">
                     <option value="">All Types</option>
-                    <option value="image" {% if media_type == 'image' %}selected{% endif %}>Image</option>
-                    <option value="video" {% if media_type == 'video' %}selected{% endif %}>Video</option>
+                    <option value="Image" {% if media_type == 'Image' %}selected{% endif %}>Image</option>
+                    <option value="Video" {% if media_type == 'Video' %}selected{% endif %}>Video</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -153,7 +153,7 @@
             </div>
             <div class="col-md-6">
                 <label for="search" class="form-label">Search</label>
-                <input type="text" class="form-control" id="search" name="search" placeholder="Search by title, description, or username" value="{{ search|default:'' }}">
+                <input type="text" class="form-control" id="search" name="search" placeholder="Search by title, description, or username" value="{{ search_query|default:'' }}">
             </div>
             <div class="col-md-6 text-end">
                 <button type="submit" class="btn btn-primary">
@@ -214,16 +214,16 @@
                 <tbody>
                     {% if pda_submissions %}
                         {% for submission in pda_submissions %}
-                        <tr class="submission-item submission-{{ submission.status }}">
+                        <tr class="submission-item submission-{% if submission.is_approved %}approved{% elif submission.review_date %}rejected{% else %}pending{% endif %}">
                             <td>
                                 <div class="form-check">
                                     <input class="form-check-input submission-checkbox" type="checkbox" value="{{ submission.id }}">
                                 </div>
                             </td>
                             <td>
-                                {% if submission.media_url %}
-                                    {% if submission.media_type == 'image' %}
-                                    <img src="{{ submission.media_url }}" alt="{{ submission.title }}" class="submission-thumbnail">
+                                {% if submission.file %}
+                                    {% if submission.file_type == 'Image' %}
+                                    <img src="{{ submission.file.url }}" alt="{{ submission.title }}" class="submission-thumbnail">
                                     {% else %}
                                     <div class="submission-thumbnail">
                                         <i class="fas fa-film"></i>
@@ -231,7 +231,7 @@
                                     {% endif %}
                                 {% else %}
                                     <div class="submission-thumbnail">
-                                        <i class="fas fa-{% if submission.media_type == 'image' %}image{% else %}video{% endif %}"></i>
+                                        <i class="fas fa-{% if submission.file_type == 'Image' %}image{% else %}video{% endif %}"></i>
                                     </div>
                                 {% endif %}
                             </td>
@@ -240,23 +240,23 @@
                                 <div class="small text-muted text-truncate" style="max-width: 200px;">{{ submission.description|truncatechars:60 }}</div>
                             </td>
                             <td>
-                                <a href="{% url 'custom_admin_user_detail' submission.user_id %}" class="text-decoration-none">
-                                    {{ submission.username }}
+                                <a href="{% url 'custom_admin_user_detail' submission.user.user.id %}" class="text-decoration-none">
+                                    {{ submission.user.user.username }}
                                 </a>
                             </td>
                             <td>
-                                <span class="badge bg-{% if submission.media_type == 'image' %}info{% else %}primary{% endif %} submission-type-badge">
-                                    {{ submission.media_type|title }}
+                                <span class="badge bg-{% if submission.file_type == 'Image' %}info{% else %}primary{% endif %} submission-type-badge">
+                                    {{ submission.file_type }}
                                 </span>
                             </td>
                             <td>
-                                <div>{{ submission.created_at|date:"M d, Y" }}</div>
-                                <small class="text-muted">{{ submission.created_at|time:"H:i" }}</small>
+                                <div>{{ submission.submission_date|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ submission.submission_date|time:"H:i" }}</small>
                             </td>
                             <td>
-                                <span class="submission-status status-{{ submission.status }}">
-                                    <i class="fas fa-{% if submission.status == 'pending' %}clock{% elif submission.status == 'approved' %}check{% else %}ban{% endif %}"></i>
-                                    {{ submission.status|title }}
+                                <span class="submission-status status-{% if submission.is_approved %}approved{% elif submission.review_date %}rejected{% else %}pending{% endif %}">
+                                    <i class="fas fa-{% if not submission.review_date %}clock{% elif submission.is_approved %}check{% else %}ban{% endif %}"></i>
+                                    {% if submission.is_approved %}Approved{% elif submission.review_date %}Rejected{% else %}Pending{% endif %}
                                 </span>
                             </td>
                             <td>
@@ -264,14 +264,17 @@
                                     <a href="{% url 'custom_admin_pda_detail' submission.id %}" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="tooltip" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    {% if submission.status == 'pending' %}
+                                    {% if not submission.review_date %}
                                     <a href="{% url 'custom_admin_pda_approve' submission.id %}" class="btn btn-sm btn-outline-success me-1" data-bs-toggle="tooltip" title="Approve">
                                         <i class="fas fa-check"></i>
                                     </a>
-                                    <a href="{% url 'custom_admin_pda_reject' submission.id %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Reject">
+                                    <a href="{% url 'custom_admin_pda_reject' submission.id %}" class="btn btn-sm btn-outline-danger me-1" data-bs-toggle="tooltip" title="Reject">
                                         <i class="fas fa-ban"></i>
                                     </a>
                                     {% endif %}
+                                    <a href="{% url 'custom_admin_pda_delete' submission.id %}" class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
                                 </div>
                             </td>
                         </tr>
@@ -283,7 +286,7 @@
                                     <i class="fas fa-photo-video fa-3x text-gray-300 mb-3"></i>
                                     <h5>No PDA Submissions Found</h5>
                                     <p class="text-muted">No submissions match your current filter criteria.</p>
-                                    {% if filtered %}
+                                    {% if filter_type != 'all' or media_type or search_query or date_from or date_to %}
                                     <a href="{% url 'custom_admin_pda_list' %}" class="btn btn-outline-primary btn-sm mt-2">
                                         <i class="fas fa-sync-alt me-1"></i> Clear Filters
                                     </a>
@@ -296,22 +299,22 @@
             </table>
         </div>
     </div>
-    {% if is_paginated %}
+    {% if pda_submissions.has_other_pages %}
     <div class="card-footer">
         <div class="d-flex justify-content-between align-items-center">
             <div class="text-muted small">
-                Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} submissions
+                Showing {{ pda_submissions.start_index }} to {{ pda_submissions.end_index }} of {{ paginator.count }} submissions
             </div>
             <nav aria-label="Page navigation">
                 <ul class="pagination pagination-sm mb-0">
-                    {% if page_obj.has_previous %}
+                    {% if pda_submissions.has_previous %}
                     <li class="page-item">
                         <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page=1" aria-label="First">
                             <span aria-hidden="true">&laquo;&laquo;</span>
                         </a>
                     </li>
                     <li class="page-item">
-                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ pda_submissions.previous_page_number }}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -324,17 +327,41 @@
                     </li>
                     {% endif %}
                     
-                    {% for i in paginator.page_range %}
-                        {% if i == page_obj.number %}
-                            <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-                        {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
-                            <li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ i }}">{{ i }}</a></li>
+                    {% if paginator.num_pages <= 7 %}
+                        {% for i in paginator.page_range %}
+                            <li class="page-item {% if i == pda_submissions.number %}active{% endif %}">
+                                <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ i }}">{{ i }}</a>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        {% if pda_submissions.number > 3 %}
+                            <li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page=1">1</a></li>
+                            {% if pda_submissions.number > 4 %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
                         {% endif %}
-                    {% endfor %}
+                        
+                        {% for i in paginator.page_range %}
+                            {% if i >= pda_submissions.number|add:"-2" and i <= pda_submissions.number|add:"2" %}
+                                <li class="page-item {% if i == pda_submissions.number %}active{% endif %}">
+                                    <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ i }}">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pda_submissions.number < paginator.num_pages|add:"-2" %}
+                            {% if pda_submissions.number < paginator.num_pages|add:"-3" %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ paginator.num_pages }}">{{ paginator.num_pages }}</a>
+                            </li>
+                        {% endif %}
+                    {% endif %}
                     
-                    {% if page_obj.has_next %}
+                    {% if pda_submissions.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
+                        <a class="page-link" href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ pda_submissions.next_page_number }}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
@@ -562,4 +589,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% endblock %} 
+{% endblock %}

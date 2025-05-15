@@ -22,6 +22,7 @@ urlpatterns = [
                 path("pda/<int:pda_id>/", custom_admin_views.custom_admin_pda_detail_view, name="custom_admin_pda_detail"),
                 path("pda/<int:pda_id>/approve/", custom_admin_views.custom_admin_pda_approve_view, name="custom_admin_pda_approve"),
                 path("pda/<int:pda_id>/reject/", custom_admin_views.custom_admin_pda_reject_view, name="custom_admin_pda_reject"),
+                path("pda/<int:pda_id>/delete/", custom_admin_views.custom_admin_pda_delete_view, name="custom_admin_pda_delete"),
                 path("forum/", custom_admin_views.custom_admin_forum_view, name="custom_admin_forum"),
                 path("forum/topics/", custom_admin_views.custom_admin_forum_topics_view, name="custom_admin_forum_topics"),
                 path("forum/tags/", custom_admin_views.custom_admin_forum_tags_view, name="custom_admin_forum_tags"),
