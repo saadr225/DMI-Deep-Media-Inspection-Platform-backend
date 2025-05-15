@@ -1,876 +1,785 @@
-{% extends "custom_admin/base.html" %}
-{% block title %}Analytics{% endblock %}
-
-{% block extrastyle %}
+{% extends "custom_admin/base.html" %} {% block title %}Analytics{% endblock %} {% block extrastyle %}
 <style>
-    :root {
-        --primary: #2ecc71;
-        --primary-light: rgba(46, 204, 113, 0.1);
-        --secondary: #27ae60;
-        --success: #3498db;
-        --info: #1abc9c;
-        --warning: #f39c12;
-        --danger: #e74c3c;
-        --light: #f8f9fa;
-        --dark: #212529;
-        --gray: #6c757d;
-        --gray-light: #f1f3f5;
-        --gray-dark: #343a40;
-        --text-primary: #212529;
-        --text-secondary: #6c757d;
-        --text-muted: #adb5bd;
-        --border-color: #e9ecef;
-        --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-        --shadow-hover: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
-        --border-radius: 0.5rem;
-        --chart-height: 300px;
+  :root {
+    --primary: #2ecc71;
+    --primary-light: rgba(46, 204, 113, 0.1);
+    --secondary: #27ae60;
+    --success: #3498db;
+    --info: #1abc9c;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray: #6c757d;
+    --gray-light: #f1f3f5;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --border-color: #e9ecef;
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    --chart-height: 350px;
+  }
+
+  /* Dashboard layout */
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: 1.5rem;
+  }
+
+  .analytics-header {
+    grid-column: span 12;
+  }
+
+  .analytics-stats {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .analytics-chart-row {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-col-12 {
+    grid-column: span 12;
+  }
+
+  .chart-col-6 {
+    grid-column: span 6;
+  }
+
+  /* Card styles */
+  .analytics-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  .analytics-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+  }
+
+  .analytics-card .card-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .analytics-card .card-title {
+    font-weight: 700;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+
+  .analytics-card .card-title i {
+    margin-right: 0.75rem;
+    color: var(--primary);
+  }
+
+  .analytics-card .card-body {
+    padding: 1.25rem;
+  }
+
+  /* Stats cards */
+  .stat-card {
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .stat-icon {
+    display: inline-flex;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    font-size: 1.75rem;
+  }
+
+  .stat-users {
+    background-color: var(--primary-light);
+    color: var(--primary);
+  }
+
+  .stat-pda {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--success);
+  }
+
+  .stat-forum {
+    background-color: rgba(26, 188, 156, 0.1);
+    color: var(--info);
+  }
+
+  .stat-replies {
+    background-color: rgba(243, 156, 18, 0.1);
+    color: var(--warning);
+  }
+
+  .stat-value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  /* Progress metrics */
+  .progress-metrics {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric-item {
+    text-align: center;
+    flex: 1;
+  }
+
+  .metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .metric-value.text-success {
+    color: var(--success);
+  }
+
+  .metric-value.text-warning {
+    color: var(--warning);
+  }
+
+  .metric-value.text-danger {
+    color: var(--danger);
+  }
+
+  .metric-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .progress-container {
+    height: 0.5rem;
+    background-color: var(--gray-light);
+    border-radius: 0.25rem;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: 0.25rem;
+  }
+
+  /* Topic list */
+  .topic-list {
+    margin-top: 1rem;
+  }
+
+  .topic-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .topic-item:last-child {
+    border-bottom: none;
+  }
+
+  .topic-name {
+    font-weight: 500;
+  }
+
+  .topic-count {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+  }
+
+  /* Time filters */
+  .time-filter {
+    display: flex;
+    background-color: var(--light);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .time-filter a {
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .time-filter a:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+  }
+
+  .time-filter a.active {
+    background-color: var(--primary);
+    color: white;
+  }
+
+  /* Chart containers */
+  .chart-container {
+    position: relative;
+    height: var(--chart-height);
+    margin-top: 1rem;
+  }
+
+  /* Data table */
+  .data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .data-table th {
+    background-color: var(--light);
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .data-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+
+  .data-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .data-table tr:hover td {
+    background-color: var(--light);
+  }
+
+  /* Insights panel */
+  .insights-panel {
+    background-color: var(--primary-light);
+    border-left: 4px solid var(--primary);
+    padding: 1.25rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .insights-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+  }
+
+  .insights-title i {
+    margin-right: 0.5rem;
+  }
+
+  .insights-content {
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .analytics-stats {
+      grid-template-columns: repeat(2, 1fr);
     }
-    
-    .analytics-card {
-        border-radius: var(--border-radius);
-        overflow: hidden;
-        transition: all 0.3s ease;
-        box-shadow: var(--shadow-sm);
-        border: none;
-        background-color: white;
-        height: 100%;
+
+    .chart-col-6 {
+      grid-column: span 12;
     }
-    
-    .analytics-card:hover {
-        box-shadow: var(--shadow-hover);
-        transform: translateY(-5px);
+  }
+
+  @media (max-width: 768px) {
+    .analytics-stats {
+      grid-template-columns: 1fr;
     }
-    
-    .analytics-card .card-header {
-        background-color: white;
-        border-bottom: 1px solid var(--border-color);
-        padding: 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+
+    .progress-metrics {
+      flex-direction: column;
     }
-    
-    .analytics-card .card-header h5 {
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 0;
-        display: flex;
-        align-items: center;
+
+    .metric-item {
+      margin-bottom: 1rem;
     }
-    
-    .analytics-card .card-header h5 i {
-        margin-right: 10px;
-        color: var(--primary);
-    }
-    
-    .analytics-card .card-header .badge {
-        padding: 0.5rem 1rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        border-radius: 20px;
-    }
-    
-    .filter-container {
-        background-color: white;
-        border-radius: var(--border-radius);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: var(--shadow-sm);
-    }
-    
-    .stats-card {
-        text-align: center;
-        padding: 1.5rem;
-        border-radius: var(--border-radius);
-        height: 100%;
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-    
-    .stats-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 70px;
-        height: 70px;
-        border-radius: 35px;
-        margin-bottom: 1rem;
-        font-size: 1.75rem;
-        box-shadow: var(--shadow-sm);
-    }
-    
-    .stats-users {
-        background-color: var(--primary-light);
-        color: var(--primary);
-    }
-    
-    .stats-pda {
-        background-color: rgba(52, 152, 219, 0.1);
-        color: var(--success);
-    }
-    
-    .stats-forum {
-        background-color: rgba(26, 188, 156, 0.1);
-        color: var(--info);
-    }
-    
-    .stats-comments {
-        background-color: rgba(243, 156, 18, 0.1);
-        color: var(--warning);
-    }
-    
-    .stats-number {
-        font-size: 2.25rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-        color: var(--text-primary);
-    }
-    
-    .stats-label {
-        color: var(--text-primary);
-        font-size: 1rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-    }
-    
-    .stats-meta {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-    }
-    
-    .chart-container {
-        position: relative;
-        min-height: var(--chart-height);
-        padding: 1rem 0;
-    }
-    
-    .topic-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        transition: background-color 0.2s ease;
-    }
-    
-    .topic-item:hover {
-        background-color: var(--light);
-    }
-    
-    .topic-item:last-child {
-        border-bottom: none;
-    }
-    
-    .topic-name {
-        font-weight: 500;
-        color: var(--text-primary);
-    }
-    
-    .topic-count {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 36px;
-        height: 36px;
-        border-radius: 18px;
-        background-color: var(--primary-light);
-        color: var(--primary);
-        font-weight: 700;
-        font-size: 0.9rem;
-        padding: 0 0.75rem;
-    }
-    
-    .progress-container {
-        margin-bottom: 1.5rem;
-    }
-    
-    .progress-title {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-    
-    .progress-bar-container {
-        height: 10px;
-        background-color: var(--gray-light);
-        border-radius: 5px;
-        overflow: hidden;
-    }
-    
-    .progress-bar {
-        height: 100%;
-        border-radius: 5px;
-        transition: width 0.6s ease;
-    }
-    
-    .insight-card {
-        padding: 1.5rem;
-        border-radius: var(--border-radius);
-        margin-bottom: 1.5rem;
-        background-color: var(--primary-light);
-        border-left: 5px solid var(--primary);
-    }
-    
-    .insight-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-    }
-    
-    .insight-title i {
-        margin-right: 10px;
-    }
-    
-    .insight-content {
-        color: var(--text-primary);
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    
-    .data-table {
-        width: 100%;
-    }
-    
-    .data-table th {
-        background-color: var(--light);
-        font-weight: 600;
-        padding: 1rem;
-        border-bottom: 2px solid white;
-    }
-    
-    .data-table td {
-        padding: 1rem;
-        border-bottom: 1px solid var(--light);
-        vertical-align: middle;
-    }
-    
-    .data-table tr:last-child td {
-        border-bottom: none;
-    }
-    
-    .data-table tr:hover td {
-        background-color: var(--light);
-    }
-    
-    .kpi-value {
-        font-size: 3rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        line-height: 1.2;
-        color: var(--text-primary);
-    }
-    
-    .kpi-label {
-        font-size: 1rem;
-        color: var(--text-secondary);
-        margin-bottom: 0;
-    }
-    
-    .bg-primary {
-        background-color: var(--primary) !important;
-    }
-    
-    .bg-success {
-        background-color: var(--success) !important;
-    }
-    
-    .bg-info {
-        background-color: var(--info) !important;
-    }
-    
-    .bg-warning {
-        background-color: var(--warning) !important;
-    }
-    
-    .bg-danger {
-        background-color: var(--danger) !important;
-    }
-    
-    .spinner-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: var(--chart-height);
-    }
-    
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        border-left-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    .chart-error {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: var(--chart-height);
-        color: var(--danger);
-    }
-    
-    .chart-error i {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-    }
+  }
 </style>
-{% endblock %}
-
-{% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <div>
-        <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
-        <p class="text-muted mb-0">Platform performance and user engagement metrics</p>
-    </div>
-    <div>
-        <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-light btn-sm me-2">
-            <i class="fas fa-arrow-left me-1"></i> Back to Dashboard
-        </a>
-        <button onclick="window.print();" class="btn btn-primary btn-sm">
-            <i class="fas fa-download me-1"></i> Export Report
-        </button>
-    </div>
+{% endblock %} {% block content %}
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-0 font-weight-bold">Analytics Dashboard</h1>
+    <p class="text-muted mb-0">Platform performance and engagement metrics</p>
+  </div>
+  <div class="d-flex">
+    <a href="{% url 'custom_admin_dashboard' %}" class="btn btn-light me-2"> <i class="fas fa-arrow-left me-1"></i> Back to Dashboard </a>
+    <button onclick="window.print();" class="btn btn-primary"><i class="fas fa-download me-1"></i> Export Report</button>
+  </div>
 </div>
-
-{% if messages %}
-<div class="row mb-4">
-    <div class="col-12">
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
 
 <!-- Time Range Filter -->
-<div class="filter-container mb-4">
-    <form method="get" action="{% url 'custom_admin_analytics' %}">
-        <div class="row align-items-center">
-            <div class="col-lg-5 col-md-6">
-                <label for="days" class="form-label fw-bold">Time Range</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-primary text-white">
-                        <i class="fas fa-calendar-alt"></i>
-                    </span>
-                    <select class="form-select" id="days" name="days" onchange="this.form.submit()">
-                        <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
-                        <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
-                        <option value="60" {% if days == 60 %}selected{% endif %}>Last 60 days</option>
-                        <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
-                        <option value="180" {% if days == 180 %}selected{% endif %}>Last 6 months</option>
-                        <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
-                    </select>
-                </div>
-            </div>
-            <div class="col-lg-7 col-md-6 text-end mt-3 mt-md-0">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-filter me-1"></i> Apply Filter
-                </button>
-                <a href="{% url 'custom_admin_analytics' %}" class="btn btn-outline-secondary ms-2">
-                    <i class="fas fa-sync-alt me-1"></i> Reset
-                </a>
-            </div>
-        </div>
-    </form>
+<div class="analytics-card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center">
+      <h6 class="mb-0 fw-bold"><i class="fas fa-calendar-alt me-2"></i> Time Range</h6>
+      <div class="time-filter">
+        <a href="{% url 'custom_admin_analytics' %}?days=7" class="{% if days == 7 %}active{% endif %}">7 Days</a>
+        <a href="{% url 'custom_admin_analytics' %}?days=30" class="{% if days == 30 %}active{% endif %}">30 Days</a>
+        <a href="{% url 'custom_admin_analytics' %}?days=90" class="{% if days == 90 %}active{% endif %}">90 Days</a>
+        <a href="{% url 'custom_admin_analytics' %}?days=365" class="{% if days == 365 %}active{% endif %}">1 Year</a>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Platform Overview Insight -->
-<div class="insight-card mb-4">
-    <div class="insight-title">
-        <i class="fas fa-lightbulb"></i> Platform Insights
-    </div>
-    <div class="insight-content">
-        {% if total_pda > 0 and total_threads > 0 %}
-            In the past {{ days }} days, the platform has seen {{ new_users|default:"0" }} new user registrations,
-            {{ new_pda|default:"0" }} PDA submissions, and {{ new_threads|default:"0" }} new forum threads.
-            {% if new_pda > 0 or new_threads > 0 %}
-                User engagement is growing, with activity increasing across key features.
-            {% endif %}
-        {% else %}
-            Not enough historical data is available yet. Continue monitoring as platform activity grows.
-        {% endif %}
-    </div>
+<!-- Insights -->
+<div class="insights-panel">
+  <div class="insights-title"><i class="fas fa-lightbulb"></i> Key Insights</div>
+  <div class="insights-content" id="insights-content">
+    In the last {{ days }} days, there have been {{ new_users }} new user registrations, {{ new_pda }} PDA submissions, and {{ new_threads
+    }} forum threads created. {% if new_users > 5 %}User activity is trending upward.{% elif new_users <= 0 %}User growth has stagnated.{%
+    else %}User activity is stable.{% endif %} {% if approved_pda_percent > 70 %}Content quality remains high with {{
+    approved_pda_percent|floatformat:1 }}% PDA approval rate.{% elif approved_pda_percent < 50 %}The PDA approval rate is low at {{
+    approved_pda_percent|floatformat:1 }}%, indicating potential quality issues.{% endif %}
+  </div>
 </div>
 
 <!-- Stats Cards -->
-<div class="row mb-4">
-    <!-- Users Stats -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="analytics-card h-100">
-            <div class="card-body">
-                <div class="stats-card">
-                    <div class="stats-icon stats-users">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stats-number">{{ total_users }}</div>
-                    <div class="stats-label">Total Users</div>
-                    <div class="stats-meta">{{ new_users }} new in last {{ days }} days</div>
-                </div>
-            </div>
-        </div>
+<div class="analytics-stats">
+  <!-- Users Card -->
+  <div class="analytics-card">
+    <div class="card-body stat-card">
+      <div class="stat-icon stat-users">
+        <i class="fas fa-users"></i>
+      </div>
+      <div class="stat-value">{{ total_users }}</div>
+      <div class="stat-label">Total Users</div>
+      <div class="stat-subtitle">{{ new_users }} new in last {{ days }} days</div>
     </div>
-    
-    <!-- PDA Stats -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="analytics-card h-100">
-            <div class="card-body">
-                <div class="stats-card">
-                    <div class="stats-icon stats-pda">
-                        <i class="fas fa-photo-video"></i>
-                    </div>
-                    <div class="stats-number">{{ total_pda }}</div>
-                    <div class="stats-label">PDA Submissions</div>
-                    <div class="stats-meta">{{ new_pda }} new in last {{ days }} days</div>
-                </div>
-            </div>
-        </div>
+  </div>
+
+  <!-- PDA Card -->
+  <div class="analytics-card">
+    <div class="card-body stat-card">
+      <div class="stat-icon stat-pda">
+        <i class="fas fa-photo-video"></i>
+      </div>
+      <div class="stat-value">{{ total_pda }}</div>
+      <div class="stat-label">PDA Submissions</div>
+      <div class="stat-subtitle">{{ new_pda }} new in last {{ days }} days</div>
     </div>
-    
-    <!-- Forum Stats -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="analytics-card h-100">
-            <div class="card-body">
-                <div class="stats-card">
-                    <div class="stats-icon stats-forum">
-                        <i class="fas fa-comments"></i>
-                    </div>
-                    <div class="stats-number">{{ total_threads }}</div>
-                    <div class="stats-label">Forum Threads</div>
-                    <div class="stats-meta">{{ new_threads }} new in last {{ days }} days</div>
-                </div>
-            </div>
-        </div>
+  </div>
+
+  <!-- Forum Card -->
+  <div class="analytics-card">
+    <div class="card-body stat-card">
+      <div class="stat-icon stat-forum">
+        <i class="fas fa-comments"></i>
+      </div>
+      <div class="stat-value">{{ total_threads }}</div>
+      <div class="stat-label">Forum Threads</div>
+      <div class="stat-subtitle">{{ new_threads }} new in last {{ days }} days</div>
     </div>
-    
-    <!-- Comments Stats -->
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="analytics-card h-100">
-            <div class="card-body">
-                <div class="stats-card">
-                    <div class="stats-icon stats-comments">
-                        <i class="fas fa-reply"></i>
-                    </div>
-                    <div class="stats-number">{{ total_replies }}</div>
-                    <div class="stats-label">Forum Replies</div>
-                    <div class="stats-meta">{{ new_replies }} new in last {{ days }} days</div>
-                </div>
-            </div>
-        </div>
+  </div>
+
+  <!-- Replies Card -->
+  <div class="analytics-card">
+    <div class="card-body stat-card">
+      <div class="stat-icon stat-replies">
+        <i class="fas fa-reply"></i>
+      </div>
+      <div class="stat-value">{{ total_replies }}</div>
+      <div class="stat-label">Forum Replies</div>
+      <div class="stat-subtitle">{{ new_replies }} new in last {{ days }} days</div>
     </div>
+  </div>
 </div>
 
-<!-- Main Charts -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="analytics-card">
-            <div class="card-header">
-                <h5 class="card-title">
-                    <i class="fas fa-chart-line"></i> Activity Timeline
-                </h5>
-                <div class="badge bg-primary">Last {{ days }} days</div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="activityChart"></canvas>
-                </div>
-            </div>
+<!-- Activity Timeline Chart -->
+<div class="analytics-chart-row">
+  <div class="chart-col-12">
+    <div class="analytics-card">
+      <div class="card-header">
+        <h5 class="card-title"><i class="fas fa-chart-line"></i> Activity Timeline</h5>
+        <span class="badge bg-primary rounded-pill">Last {{ days }} days</span>
+      </div>
+      <div class="card-body">
+        <div class="chart-container">
+          <canvas id="activityChart"></canvas>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- PDA Stats and Popular Topics -->
-<div class="row mb-4">
-    <!-- PDA Stats -->
-    <div class="col-lg-6 mb-4 mb-lg-0">
-        <div class="analytics-card h-100">
-            <div class="card-header">
-                <h5 class="card-title">
-                    <i class="fas fa-photo-video"></i> PDA Submission Status
-                </h5>
+<!-- PDA Status and Forum Topics -->
+<div class="analytics-chart-row">
+  <div class="chart-col-6">
+    <div class="analytics-card h-100">
+      <div class="card-header">
+        <h5 class="card-title"><i class="fas fa-photo-video"></i> PDA Submission Status</h5>
+      </div>
+      <div class="card-body">
+        <div class="progress-metrics">
+          <div class="metric-item">
+            <div class="metric-value text-success">{{ approved_pda }}</div>
+            <div class="metric-label">Approved</div>
+            <div class="progress-container">
+              <div class="progress-bar bg-success" style="width: {{ approved_pda_percent }}%"></div>
             </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-4 mb-4 mb-md-0">
-                        <div class="text-center">
-                            <div class="kpi-value text-success">{{ approved_pda }}</div>
-                            <p class="kpi-label">Approved</p>
-                        </div>
-                        <div class="progress-container">
-                            <div class="progress-bar-container">
-                                <div class="progress-bar bg-success" style="width: {{ approved_pda_percent }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-4 mb-md-0">
-                        <div class="text-center">
-                            <div class="kpi-value text-warning">{{ pending_pda }}</div>
-                            <p class="kpi-label">Pending</p>
-                        </div>
-                        <div class="progress-container">
-                            <div class="progress-bar-container">
-                                <div class="progress-bar bg-warning" style="width: {{ pending_pda_percent }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <div class="kpi-value text-danger">{{ rejected_pda }}</div>
-                            <p class="kpi-label">Rejected</p>
-                        </div>
-                        <div class="progress-container">
-                            <div class="progress-bar-container">
-                                <div class="progress-bar bg-danger" style="width: {{ rejected_pda_percent }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-center p-3 bg-light rounded">
-                    <h4 class="mb-0">
-                        {% if total_pda > 0 %}
-                            {{ approved_pda_percent|floatformat:1 }}% Approval Rate
-                        {% else %}
-                            No PDA submissions yet
-                        {% endif %}
-                    </h4>
-                </div>
-                <div class="chart-container mt-4">
-                    <canvas id="pdaDonutChart"></canvas>
-                </div>
+          </div>
+
+          <div class="metric-item">
+            <div class="metric-value text-warning">{{ pending_pda }}</div>
+            <div class="metric-label">Pending</div>
+            <div class="progress-container">
+              <div class="progress-bar bg-warning" style="width: {{ pending_pda_percent }}%"></div>
             </div>
+          </div>
+
+          <div class="metric-item">
+            <div class="metric-value text-danger">{{ rejected_pda }}</div>
+            <div class="metric-label">Rejected</div>
+            <div class="progress-container">
+              <div class="progress-bar bg-danger" style="width: {{ rejected_pda_percent }}%"></div>
+            </div>
+          </div>
         </div>
-    </div>
-    
-    <!-- Popular Topics -->
-    <div class="col-lg-6">
-        <div class="analytics-card h-100">
-            <div class="card-header">
-                <h5 class="card-title">
-                    <i class="fas fa-comments"></i> Popular Forum Topics
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if popular_topics %}
-                    <div class="chart-container mb-4">
-                        <canvas id="topicsBarChart"></canvas>
-                    </div>
-                    {% for topic in popular_topics|slice:":6" %}
-                    <div class="topic-item">
-                        <div class="topic-name">{{ topic.name }}</div>
-                        <div class="topic-count">{{ topic.thread_count }}</div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center py-5">
-                        <div class="text-muted">No forum topics found</div>
-                    </div>
-                {% endif %}
-            </div>
+
+        <div class="text-center p-3 bg-light rounded mb-3">
+          <h4 class="mb-0">
+            {% if total_pda > 0 %} {{ approved_pda_percent|floatformat:1 }}% Approval Rate {% else %} No PDA submissions yet {% endif %}
+          </h4>
         </div>
+
+        <div class="chart-container">
+          <canvas id="pdaDonutChart"></canvas>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <div class="chart-col-6">
+    <div class="analytics-card h-100">
+      <div class="card-header">
+        <h5 class="card-title"><i class="fas fa-comments"></i> Popular Forum Topics</h5>
+      </div>
+      <div class="card-body">
+        {% if popular_topics %}
+        <div class="chart-container">
+          <canvas id="topicsBarChart"></canvas>
+        </div>
+
+        <div class="topic-list">
+          {% for topic in popular_topics|slice:":6" %}
+          <div class="topic-item">
+            <div class="topic-name">{{ topic.name }}</div>
+            <div class="topic-count">{{ topic.thread_count }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <div class="text-muted">No forum topics found</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Timeline Data Table -->
-<div class="row">
-    <div class="col-12">
-        <div class="analytics-card">
-            <div class="card-header">
-                <h5 class="card-title">
-                    <i class="fas fa-table"></i> Detailed Activity Data
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="data-table table-striped" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>New Users</th>
-                                <th>PDA Submissions</th>
-                                <th>Forum Threads</th>
-                                <th>Forum Replies</th>
-                                <th>Total Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for data in timeline_data %}
-                            <tr>
-                                <td>{{ data.date }}</td>
-                                <td>{{ data.users }}</td>
-                                <td>{{ data.pda }}</td>
-                                <td>{{ data.threads }}</td>
-                                <td>{{ data.replies }}</td>
-                                <td>{{ data.users|add:data.pda|add:data.threads|add:data.replies }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<!-- Detailed Activity Data -->
+<div class="analytics-chart-row">
+  <div class="chart-col-12">
+    <div class="analytics-card">
+      <div class="card-header">
+        <h5 class="card-title"><i class="fas fa-table"></i> Daily Activity Data</h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>New Users</th>
+                <th>PDA Submissions</th>
+                <th>Forum Threads</th>
+                <th>Forum Replies</th>
+                <th>Total Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for data in timeline_data %}
+              <tr>
+                <td>{{ data.date }}</td>
+                <td>{{ data.users }}</td>
+                <td>{{ data.pda }}</td>
+                <td>{{ data.threads }}</td>
+                <td>{{ data.replies }}</td>
+                <td class="fw-bold">{{ data.users|add:data.pda|add:data.threads|add:data.replies }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
+      </div>
     </div>
+  </div>
 </div>
-
-<div class="bottom-spacer"></div>
-{% endblock %}
-
-{% block extrascripts %}
+{% endblock %} {% block extrascripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Set Chart.js defaults
-    Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  document.addEventListener('DOMContentLoaded', function() {
+    // Chart.js defaults
+    Chart.defaults.font.family = "'Inter', sans-serif";
     Chart.defaults.font.size = 12;
     Chart.defaults.color = "#6c757d";
-    Chart.defaults.plugins.tooltip.backgroundColor = "rgba(0, 0, 0, 0.7)";
-    Chart.defaults.plugins.tooltip.padding = 10;
-    Chart.defaults.plugins.tooltip.cornerRadius = 6;
-    
-    try {
-        // Activity Timeline Chart
-        const activityCtx = document.getElementById('activityChart').getContext('2d');
-        
-        const activityChart = new Chart(activityCtx, {
-            type: 'line',
-            data: {
-                labels: {{ chart_labels|safe }},
-                datasets: [
-                    {
-                        label: 'New Users',
-                        data: {{ users_data|safe }},
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#2ecc71',
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'PDA Submissions',
-                        data: {{ pda_data|safe }},
-                        borderColor: '#3498db',
-                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#3498db',
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'Forum Threads',
-                        data: {{ threads_data|safe }},
-                        borderColor: '#1abc9c',
-                        backgroundColor: 'rgba(26, 188, 156, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#1abc9c',
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'Forum Replies',
-                        data: {{ replies_data|safe }},
-                        borderColor: '#f39c12',
-                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#f39c12',
-                        pointRadius: 3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20,
-                            font: {
-                                weight: 600
-                            }
-                        }
-                    },
-                    tooltip: {
-                        enabled: true,
-                        usePointStyle: true,
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.raw;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45,
-                            autoSkipPadding: 20
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)',
-                            drawBorder: false
-                        },
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                }
-            }
-        });
 
-        // PDA Donut Chart
-        const pdaCtx = document.getElementById('pdaDonutChart').getContext('2d');
-        const pdaData = {
-            labels: ['Approved', 'Rejected', 'Pending'],
-            datasets: [{
-                data: [
-                    {{ approved_pda|default:0 }},
-                    {{ rejected_pda|default:0 }},
-                    {{ total_pda|default:0 }} - {{ approved_pda|default:0 }} - {{ rejected_pda|default:0 }}
-                ],
-                backgroundColor: [
-                    'rgba(46, 204, 113, 0.8)',
-                    'rgba(231, 76, 60, 0.8)',
-                    'rgba(243, 156, 18, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(46, 204, 113, 1)',
-                    'rgba(231, 76, 60, 1)',
-                    'rgba(243, 156, 18, 1)'
-                ],
-                borderWidth: 2
-            }]
-        };
-        
-        const pdaDonutChart = new Chart(pdaCtx, {
-            type: 'doughnut',
-            data: pdaData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '65%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 20,
-                            usePointStyle: true,
-                            font: {
-                                weight: 600
-                            }
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.raw || 0;
-                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percentage = Math.round((value / total) * 100);
-                                return label + ': ' + value + ' (' + percentage + '%)';
-                            }
-                        }
-                    }
+    try {
+      // Activity Timeline Chart
+      const activityCtx = document.getElementById('activityChart').getContext('2d');
+      const activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+          labels: {{ chart_labels|safe }},
+          datasets: [
+            {
+              label: 'New Users',
+              data: {{ users_data|safe }},
+              borderColor: '#2ecc71',
+              backgroundColor: 'rgba(46, 204, 113, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#2ecc71',
+              pointRadius: 3
+            },
+            {
+              label: 'PDA Submissions',
+              data: {{ pda_data|safe }},
+              borderColor: '#3498db',
+              backgroundColor: 'rgba(52, 152, 219, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#3498db',
+              pointRadius: 3
+            },
+            {
+              label: 'Forum Threads',
+              data: {{ threads_data|safe }},
+              borderColor: '#1abc9c',
+              backgroundColor: 'rgba(26, 188, 156, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#1abc9c',
+              pointRadius: 3
+            },
+            {
+              label: 'Forum Replies',
+              data: {{ replies_data|safe }},
+              borderColor: '#f39c12',
+              backgroundColor: 'rgba(243, 156, 18, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#f39c12',
+              pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 20,
+                font: {
+                  weight: 600
                 }
-            });
-            
-        // Topics Bar Chart
-        const topicsCtx = document.getElementById('topicsBarChart');
-        if (topicsCtx) {
-            const topicsBarChart = new Chart(topicsCtx, {
-                type: 'bar',
-                data: {
-                    labels: {{ topic_names|safe }},
-                    datasets: [{
-                        label: 'Thread Count',
-                        data: {{ topic_counts|safe }},
-                        backgroundColor: 'rgba(26, 188, 156, 0.7)',
-                        borderColor: 'rgba(26, 188, 156, 1)',
-                        borderWidth: 1,
-                        borderRadius: 4,
-                        barThickness: 'flex',
-                        maxBarThickness: 35
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.raw + ' threads';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                precision: 0
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    }
+              }
+            },
+            tooltip: {
+              padding: 12,
+              backgroundColor: 'rgba(33, 37, 41, 0.8)',
+              titleFont: {
+                weight: 600
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              }
+            },
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                precision: 0
+              }
+            }
+          }
+        }
+      });
+
+      // PDA Status Donut Chart
+      const pdaCtx = document.getElementById('pdaDonutChart').getContext('2d');
+      const pdaChart = new Chart(pdaCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Approved', 'Pending', 'Rejected'],
+          datasets: [{
+            data: [{{ approved_pda }}, {{ pending_pda }}, {{ rejected_pda }}],
+            backgroundColor: ['rgba(46, 204, 113, 0.8)', 'rgba(243, 156, 18, 0.8)', 'rgba(231, 76, 60, 0.8)'],
+            borderWidth: 1,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20,
+                usePointStyle: true,
+                font: {
+                  weight: 600
                 }
-            });
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return label + ': ' + value + ' (' + percentage + '%)';
+                }
+              }
+            }
+          },
+          cutout: '65%'
         }
-        
-        } catch (error) {
-            console.error('Chart initialization error:', error);
-            
-            // Handle chart initialization errors
-            document.querySelectorAll('.chart-container').forEach(container => {
-                container.innerHTML = `
-                    <div class="chart-error">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <p>Failed to load chart. Please refresh the page.</p>
-                    </div>
-                `;
-            });
+      });
+
+      // Topics Bar Chart
+      {% if popular_topics %}
+      const topicsCtx = document.getElementById('topicsBarChart').getContext('2d');
+      const topicsChart = new Chart(topicsCtx, {
+        type: 'bar',
+        data: {
+          labels: {{ topic_names|safe }},
+          datasets: [{
+            label: 'Thread Count',
+            data: {{ topic_counts|safe }},
+            backgroundColor: 'rgba(26, 188, 156, 0.7)',
+            borderColor: 'rgba(26, 188, 156, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+            barThickness: 'flex',
+            maxBarThickness: 35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.raw + ' threads';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: {
+                display: false
+              },
+              ticks: {
+                precision: 0
+              }
+            },
+            y: {
+              grid: {
+                display: false
+              }
+            }
+          }
         }
-    });
+      });
+      {% endif %}
+    } catch (error) {
+      console.error('Chart initialization error:', error);
+
+      document.querySelectorAll('.chart-container').forEach(container => {
+        container.innerHTML = `
+          <div class="text-center py-4">
+            <i class="fas fa-exclamation-circle text-danger mb-3" style="font-size: 2rem;"></i>
+            <p class="text-muted">Failed to load chart. Please refresh the page or contact support.</p>
+          </div>
+        `;
+      });
+    }
+  });
 </script>
 {% endblock %}
