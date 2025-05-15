@@ -61,6 +61,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "app.utils.middleware.RoleMiddleware",  # Role-based access middleware
+    "api.middleware.public_api_key_middleware.APIKeyAuthMiddleware",  # API key authentication middleware
 ]
 
 

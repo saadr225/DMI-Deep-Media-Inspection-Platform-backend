@@ -1,177 +1,219 @@
-"""
-Public API Services - Controllers
-This file contains controllers for both API Key management and API authentication
-"""
-
+import os
+import json
 import time
-from django.utils import timezone
-from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework import permissions
-from rest_framework.throttling import SimpleRateThrottle
+import logging
+from django.conf import settings
+from django.http import JsonResponse
+from django.core.files.storage import FileSystemStorage
+from rest_framework import status
 
 from api.models import APIKey, APIUsageLog
-from app.models import UserData
+from app.controllers.ResponseCodesController import get_response_code
+
+logger = logging.getLogger(__name__)
 
 
-class APIKeyController:
+class PublicAPIController:
     """
-    Controller for managing API keys
+    Controller for Public API functionality, providing authentication, rate limiting,
+    request validation, and response formatting functionality for the public API.
     """
 
-    @staticmethod
-    def create_key(
-        user_data, name, expires_days=None, daily_limit=1000, can_use_deepfake_detection=True, can_use_ai_text_detection=True, can_use_ai_media_detection=True
-    ):
-        """
-        Create a new API key for a user
-        """
-        expires_at = None
-        if expires_days:
-            expires_at = timezone.now() + timezone.timedelta(days=expires_days)
-
-        api_key = APIKey(
-            user=user_data,
-            name=name,
-            expires_at=expires_at,
-            daily_limit=daily_limit,
-            can_use_deepfake_detection=can_use_deepfake_detection,
-            can_use_ai_text_detection=can_use_ai_text_detection,
-            can_use_ai_media_detection=can_use_ai_media_detection,
-        )
-        api_key.save()
-        return api_key
+    def __init__(self):
+        pass
 
     @staticmethod
-    def revoke_key(key_id):
+    def authenticate_api_key(api_key_header):
         """
-        Revoke an API key
+        Authenticates an API key and checks if it's valid
+
+        Args:
+            api_key_header (str): The API key from the X-API-Key header
+
+        Returns:
+            tuple: (authenticated, api_key_obj, error_response)
+                - authenticated (bool): True if authentication successful
+                - api_key_obj (APIKey): The API key object if authenticated, None otherwise
+                - error_response (dict): Error response if authentication failed, None otherwise
         """
+        if not api_key_header:
+            error_response = {"success": False, "code": "AUT001", "message": "Missing API key. Please provide your API key in the X-API-Key header."}
+            return False, None, error_response
+
         try:
-            api_key = APIKey.objects.get(pk=key_id)
-            api_key.is_active = False
-            api_key.save(update_fields=["is_active"])
-            return True
+            api_key = APIKey.objects.get(key=api_key_header)
+
+            # Check if API key is valid (active and not expired)
+            if not api_key.is_valid():
+                error_response = {"success": False, "code": "AUT001", "message": "Invalid API key. The key is inactive or expired."}
+                return False, None, error_response
+
+            # Check if API key has reached its daily limit
+            if not api_key.update_usage():
+                error_response = {
+                    "success": False,
+                    "code": "AUT004",
+                    "message": f"API key usage limit reached. The limit is {api_key.daily_limit} requests per day.",
+                }
+                return False, None, error_response
+
+            return True, api_key, None
+
         except APIKey.DoesNotExist:
-            return False
+            error_response = {"success": False, "code": "AUT001", "message": "Invalid API key. Please check your API key and try again."}
+            return False, None, error_response
 
     @staticmethod
-    def validate_key(key):
+    def log_api_usage(api_key, endpoint, method, status_code, response_time, request):
         """
-        Check if an API key is valid and not expired
-        """
-        try:
-            api_key = APIKey.objects.get(key=key)
-            return api_key.is_valid()
-        except APIKey.DoesNotExist:
-            return False
+        Logs an API request to the database for analytics and monitoring
 
-    @staticmethod
-    def check_rate_limit(key):
-        """
-        Check if the API key has exceeded its daily limit
-        Returns False if limit exceeded, True otherwise
-        """
-        try:
-            api_key = APIKey.objects.get(key=key)
-            return api_key.update_usage()
-        except APIKey.DoesNotExist:
-            return False
+        Args:
+            api_key (APIKey): The API key object
+            endpoint (str): The API endpoint that was called
+            method (str): The HTTP method used
+            status_code (int): The HTTP status code of the response
+            response_time (float): The time taken to process the request in seconds
+            request (HttpRequest): The request object
 
-    @staticmethod
-    def get_keys_for_user(user_data):
+        Returns:
+            None
         """
-        Get all API keys for a user
-        """
-        return APIKey.objects.filter(user=user_data)
+        ip_address = request.META.get("HTTP_X_FORWARDED_FOR")
+        if not ip_address:
+            ip_address = request.META.get("REMOTE_ADDR")
 
-    @staticmethod
-    def log_api_usage(api_key, endpoint, method, status_code, response_time, ip_address=None, user_agent=None):
-        """
-        Log API usage for analytics
-        """
+        user_agent = request.META.get("HTTP_USER_AGENT")
+
         APIUsageLog.objects.create(
             api_key=api_key, endpoint=endpoint, method=method, status_code=status_code, response_time=response_time, ip_address=ip_address, user_agent=user_agent
         )
 
+    @staticmethod
+    def check_endpoint_permission(api_key, endpoint_type):
+        """
+        Checks if the API key has permission to access a specific endpoint
 
-class APIKeyAuthentication(BaseAuthentication):
-    """
-    Custom authentication class for API keys
-    """
+        Args:
+            api_key (APIKey): The API key object
+            endpoint_type (str): The type of endpoint being accessed
+                                ('deepfake', 'ai_text', 'ai_media')
 
-    def authenticate(self, request):
-        # Get API key from request header
-        api_key = request.META.get("HTTP_X_API_KEY") or request.query_params.get("api_key")
-        if not api_key:
-            return None  # Let other authentication methods handle this
+        Returns:
+            tuple: (has_permission, error_response)
+                - has_permission (bool): True if access is allowed
+                - error_response (dict): Error response if access is denied, None otherwise
+        """
+        if endpoint_type == "deepfake" and not api_key.can_use_deepfake_detection:
+            error_response = {"success": False, "code": "AUT004", "message": "This API key does not have permission to access the deepfake detection endpoint."}
+            return False, error_response
 
-        try:
-            # Get the API key object
-            key_obj = APIKey.objects.get(key=api_key)
+        elif endpoint_type == "ai_text" and not api_key.can_use_ai_text_detection:
+            error_response = {"success": False, "code": "AUT004", "message": "This API key does not have permission to access the AI text detection endpoint."}
+            return False, error_response
 
-            # Check if key is active and not expired
-            if not key_obj.is_valid():
-                raise AuthenticationFailed("API key is inactive or expired")
+        elif endpoint_type == "ai_media" and not api_key.can_use_ai_media_detection:
+            error_response = {"success": False, "code": "AUT004", "message": "This API key does not have permission to access the AI media detection endpoint."}
+            return False, error_response
 
-            # Check rate limit
-            if not key_obj.update_usage():
-                raise AuthenticationFailed("API rate limit exceeded")
+        return True, None
 
-            # Return the user and auth object
-            return (key_obj.user.user, key_obj)
-        except APIKey.DoesNotExist:
-            return None
+    @staticmethod
+    def validate_file(file, allowed_types=None):
+        """
+        Validates a file upload for size and type restrictions
 
-    def authenticate_header(self, request):
-        return "X-API-Key"
+        Args:
+            file: The uploaded file object
+            allowed_types (list): List of allowed MIME types
 
+        Returns:
+            tuple: (is_valid, error_response)
+                - is_valid (bool): True if file is valid
+                - error_response (dict): Error response if validation failed, None otherwise
+        """
+        if not file:
+            error_response = {"success": False, "code": "FIL001", "message": "No file was provided. Please upload a file."}
+            return False, error_response
 
-class HasAPIAccess(permissions.BasePermission):
-    """
-    Permission class to check if API key has access to a specific endpoint
-    """
+        # Check file size (max 25MB)
+        if file.size > 25 * 1024 * 1024:
+            error_response = {"success": False, "code": "FIL002", "message": "File too large. Maximum file size is 25MB."}
+            return False, error_response
 
-    def has_permission(self, request, view):
-        # Get authentication method
-        if not hasattr(request, "auth") or not isinstance(request.auth, APIKey):
-            # Not authenticated with API key
-            return False
+        # Check file type if specified
+        if allowed_types:
+            content_type = file.content_type
+            if content_type not in allowed_types:
+                error_response = {
+                    "success": False,
+                    "code": "FIL003",
+                    "message": f"Unsupported file type: {content_type}. Allowed types: {', '.join(allowed_types)}",
+                }
+                return False, error_response
 
-        api_key = request.auth
-        endpoint = request.resolver_match.url_name if request.resolver_match else "unknown"
+        return True, None
 
-        # Check endpoint-specific permissions
-        if endpoint.startswith("deepfake_detection") and not api_key.can_use_deepfake_detection:
-            return False
-        elif endpoint.startswith("ai_text_detection") and not api_key.can_use_ai_text_detection:
-            return False
-        elif endpoint.startswith("ai_media_detection") and not api_key.can_use_ai_media_detection:
-            return False
+    @staticmethod
+    def validate_text_input(text, min_length=50):
+        """
+        Validates text input for analysis
 
-        return True
+        Args:
+            text (str): The input text
+            min_length (int): Minimum required text length
 
+        Returns:
+            tuple: (is_valid, error_response)
+                - is_valid (bool): True if text is valid
+                - error_response (dict): Error response if validation failed, None otherwise
+        """
+        if not text:
+            error_response = {"success": False, "code": "TXT001", "message": "No text was provided. Please provide text for analysis."}
+            return False, error_response
 
-class APIRateLimitThrottle(SimpleRateThrottle):
-    """
-    Throttle class for API rate limiting
-    """
+        if len(text) < min_length:
+            error_response = {
+                "success": False,
+                "code": "TXT002",
+                "message": f"Text too short. Please provide at least {min_length} characters for reliable analysis.",
+            }
+            return False, error_response
 
-    scope = "api_key"
+        return True, None
 
-    def get_cache_key(self, request, view):
-        if not hasattr(request, "auth") or not isinstance(request.auth, APIKey):
-            return None  # No API key, no rate limiting
+    @staticmethod
+    def format_success_response(code_key, result, metadata=None):
+        """
+        Formats a successful API response
 
-        return f"api_throttle_{request.auth.key}"
+        Args:
+            code_key (str): The success code key
+            result (dict): The result data
+            metadata (dict): Optional metadata
 
-    def allow_request(self, request, view):
-        if not hasattr(request, "auth") or not isinstance(request.auth, APIKey):
-            return True  # No API key, no rate limiting
+        Returns:
+            dict: The formatted success response
+        """
+        response = {"success": True, "code": get_response_code(code_key)["code"], "result": result}
 
-        api_key = request.auth
+        if metadata:
+            response["metadata"] = metadata
 
-        # Use the API key's daily limit
-        self.rate = f"{api_key.daily_limit}/day"
+        return response
 
-        return super().allow_request(request, view)
+    @staticmethod
+    def format_error_response(error_code, message=None):
+        """
+        Formats an error API response
+
+        Args:
+            error_code (str): Error code key
+            message (str): Optional custom error message
+
+        Returns:
+            dict: The formatted error response
+        """
+        code_info = get_response_code(error_code)
+
+        return {"success": False, "code": code_info["code"], "message": message if message else code_info["message"]}

@@ -1,303 +1,25 @@
-"""
-Public API views for external API access
-"""
-
+import json
 import time
+import uuid
 import os
 from django.conf import settings
 from django.http import JsonResponse
 from django.core.files.storage import FileSystemStorage
-from django.utils import timezone
-
+from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.decorators import (
-    api_view,
-    permission_classes,
-    authentication_classes,
-    parser_classes,
-    throttle_classes,
-)
-from rest_framework.parsers import MultiPartParser, FormParser, FileUploadParser, JSONParser
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-# Import controllers
-from app.controllers.PublicAPIController import APIKeyAuthentication, HasAPIAccess, APIRateLimitThrottle, APIKeyController
-from app.controllers.ResponseCodesController import get_response_code
+from api.models import APIKey, UserData, MediaUpload, DeepfakeDetectionResult, AIGeneratedMediaResult, TextSubmission, AIGeneratedTextResult, MediaUploadMetadata
+from app.controllers.PublicAPIController import PublicAPIController
 from app.controllers.DeepfakeDetectionController import DeepfakeDetectionPipeline
-from app.controllers.AIGeneratedTextDetectionController import TextDetectionPipeline
 from app.controllers.AIGeneratedMediaDetectionController import AIGeneratedMediaDetectionPipeline
-from app.controllers.MetadataAnalysisController import MetadataAnalysisPipeline
-from app.controllers.HelpersController import URLHelper
+from app.controllers.AIGeneratedTextDetectionController import TextDetectionPipeline
+from app.controllers.ResponseCodesController import get_response_code
+from api.views.semantic_views import deepfake_detection_pipeline, ai_generated_media_detection_pipeline, text_detection_pipeline
 
-# Import models
-from api.models import MediaUpload, TextSubmission, DeepfakeDetectionResult, AIGeneratedMediaResult, AIGeneratedTextResult, MediaUploadMetadata, UserData
-from api.models import APIKey, APIUsageLog
-from api.serializers import FileUploadSerializer, APIKeySerializer, APIKeyCreateSerializer
-
-# Initialize controllers (this assumes they're already initialized in semantic_views.py)
-from api.views.semantic_views import deepfake_detection_pipeline, text_detection_pipeline, ai_generated_media_detection_pipeline, metadata_analysis_pipeline
-
-
-def log_api_request(api_key, endpoint, start_time, status_code, request=None):
-    """Helper function to log API usage"""
-    end_time = time.time()
-    response_time = end_time - start_time
-
-    # Get IP address and user agent if request is available
-    ip_address = None
-    user_agent = None
-    if request:
-        ip_address = request.META.get("REMOTE_ADDR")
-        user_agent = request.META.get("HTTP_USER_AGENT")
-
-    # Create log entry
-    APIUsageLog.objects.create(
-        api_key=api_key,
-        endpoint=endpoint,
-        method=request.method if request else "UNKNOWN",
-        status_code=status_code,
-        response_time=response_time,
-        ip_address=ip_address,
-        user_agent=user_agent,
-    )
-
-
-@api_view(["POST"])
-@authentication_classes([APIKeyAuthentication])
-@permission_classes([HasAPIAccess])
-@parser_classes([MultiPartParser, FormParser, FileUploadParser])
-def deepfake_detection_api(request):
-    """
-    API endpoint for deepfake detection
-
-    Accepts a media file (image or video) and returns detection results.
-    """
-    start_time = time.time()
-
-    # Check permissions for this specific endpoint
-    if not request.auth.can_use_deepfake_detection:
-        return JsonResponse(
-            {"success": False, "error": "Your API key does not have access to the Deepfake Detection API", "code": "API_PERMISSION_DENIED"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
-    file_upload_serializer = FileUploadSerializer(data=request.FILES)
-    if file_upload_serializer.is_valid():
-        try:
-            # Extract the uploaded file
-            media_file = file_upload_serializer.validated_data["file"]
-
-            # Save file to temporary location
-            fs = FileSystemStorage(location=settings.MEDIA_ROOT)
-            filename = fs.save(f"api_uploads/{media_file.name}", media_file)
-            file_path = fs.path(filename)
-
-            # Check media type
-            file_type = deepfake_detection_pipeline.media_processor.check_media_type(file_path)
-            if file_type not in ["Image", "Video"]:
-                return JsonResponse(
-                    {"success": False, "error": f"Unsupported file type: {file_type}", "code": "UNSUPPORTED_MEDIA_TYPE"},
-                    status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                )
-
-            # Process metadata
-            metadata = metadata_analysis_pipeline.extract_metadata(file_path)
-
-            # Run deepfake detection
-            results = deepfake_detection_pipeline.process_media(
-                media_path=file_path,
-                frame_rate=2,
-            )
-
-            if results is False:
-                # No faces detected
-                response_data = {
-                    "success": True,
-                    "code": "MEDIA_CONTAINS_NO_FACES",
-                    "result": {
-                        "is_deepfake": False,
-                        "confidence_score": 0.0,
-                        "frames_analyzed": 0,
-                        "fake_frames": 0,
-                        "file_type": file_type,
-                    },
-                    "metadata": metadata,
-                }
-                status_code = status.HTTP_200_OK
-            else:
-                # Successful detection with faces
-                response_data = {
-                    "success": True,
-                    "code": "SUCCESS",
-                    "result": {
-                        "is_deepfake": results["statistics"]["is_deepfake"],
-                        "confidence_score": results["statistics"]["confidence"],
-                        "frames_analyzed": results["statistics"]["total_frames"],
-                        "fake_frames": results["statistics"]["fake_frames"],
-                        "fake_frames_percentage": results["statistics"]["fake_frames_percentage"],
-                        "file_type": file_type,
-                    },
-                    "metadata": metadata,
-                }
-                status_code = status.HTTP_200_OK
-
-            # Log the API request
-            log_api_request(request.auth, "deepfake_detection_api", start_time, status_code, request)
-
-            return JsonResponse(response_data, status=status_code)
-
-        except Exception as e:
-            # Log the API request with error status
-            log_api_request(request.auth, "deepfake_detection_api", start_time, status.HTTP_500_INTERNAL_SERVER_ERROR, request)
-
-            return JsonResponse({"success": False, "error": str(e), "code": "MEDIA_PROCESSING_ERROR"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
-        # Log the API request with error status
-        log_api_request(request.auth, "deepfake_detection_api", start_time, status.HTTP_400_BAD_REQUEST, request)
-
-        return JsonResponse({"success": False, "error": file_upload_serializer.errors, "code": "FILE_UPLOAD_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["POST"])
-@authentication_classes([APIKeyAuthentication])
-@permission_classes([HasAPIAccess])
-@parser_classes([JSONParser])
-def ai_text_detection_api(request):
-    """
-    API endpoint for AI-generated text detection
-
-    Accepts text content and returns detection results.
-    """
-    start_time = time.time()
-
-    # Check permissions for this specific endpoint
-    if not request.auth.can_use_ai_text_detection:
-        return JsonResponse(
-            {"success": False, "error": "Your API key does not have access to the AI Text Detection API", "code": "API_PERMISSION_DENIED"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
-    # Validate input
-    if not request.data or "text" not in request.data:
-        # Log the API request with error status
-        log_api_request(request.auth, "ai_text_detection_api", start_time, status.HTTP_400_BAD_REQUEST, request)
-
-        return JsonResponse({"success": False, "error": "Text parameter missing", "code": "TEXT_MISSING"}, status=status.HTTP_400_BAD_REQUEST)
-
-    text = request.data["text"]
-    highlight = request.data.get("highlight", False)
-
-    if len(text.strip()) < 50:  # Minimum text length for reliable analysis : 50 characters
-        # Log the API request with error status
-        log_api_request(request.auth, "ai_text_detection_api", start_time, status.HTTP_400_BAD_REQUEST, request)
-
-        return JsonResponse(
-            {"success": False, "error": "Text is too short for reliable analysis (minimum 50 characters)", "code": "TEXT_TOO_SHORT"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    try:
-        # Process the text
-        results = text_detection_pipeline.process_text(text, highlight=highlight)
-
-        # Prepare response
-        response_data = {
-            "success": True,
-            "code": "SUCCESS",
-            "result": {
-                "is_ai_generated": results["prediction"] != "Human",
-                "source_prediction": results["prediction"],
-                "confidence_scores": results["confidence"],
-            },
-        }
-
-        # Add highlighted text if requested
-        if highlight and "highlighted_text" in results:
-            response_data["result"]["highlighted_text"] = results["highlighted_text"]
-
-        # Log the API request
-        log_api_request(request.auth, "ai_text_detection_api", start_time, status.HTTP_200_OK, request)
-
-        return JsonResponse(response_data, status=status.HTTP_200_OK)
-
-    except Exception as e:
-        # Log the API request with error status
-        log_api_request(request.auth, "ai_text_detection_api", start_time, status.HTTP_500_INTERNAL_SERVER_ERROR, request)
-
-        return JsonResponse({"success": False, "error": str(e), "code": "TEXT_PROCESSING_ERROR"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["POST"])
-@authentication_classes([APIKeyAuthentication])
-@permission_classes([HasAPIAccess])
-@parser_classes([MultiPartParser, FormParser, FileUploadParser])
-def ai_media_detection_api(request):
-    """
-    API endpoint for AI-generated media detection
-
-    Accepts an image file and returns detection results.
-    """
-    start_time = time.time()
-
-    # Check permissions for this specific endpoint
-    if not request.auth.can_use_ai_media_detection:
-        return JsonResponse(
-            {"success": False, "error": "Your API key does not have access to the AI Media Detection API", "code": "API_PERMISSION_DENIED"},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
-    file_upload_serializer = FileUploadSerializer(data=request.FILES)
-    if file_upload_serializer.is_valid():
-        try:
-            # Extract the uploaded file
-            media_file = file_upload_serializer.validated_data["file"]
-
-            # Save file to temporary location
-            fs = FileSystemStorage(location=settings.MEDIA_ROOT)
-            filename = fs.save(f"api_uploads/{media_file.name}", media_file)
-            file_path = fs.path(filename)
-
-            # Check media type - only image is supported for AI media detection
-            file_type = deepfake_detection_pipeline.media_processor.check_media_type(file_path)
-            if file_type != "Image":
-                return JsonResponse(
-                    {"success": False, "error": "Only image files are supported for AI media detection", "code": "UNSUPPORTED_MEDIA_TYPE"},
-                    status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                )
-
-            # Process metadata
-            metadata = metadata_analysis_pipeline.extract_metadata(file_path)
-
-            # Run AI media detection
-            results = ai_generated_media_detection_pipeline.process_media(file_path)
-
-            response_data = {
-                "success": True,
-                "code": "SUCCESS",
-                "result": {
-                    "is_ai_generated": results["prediction"] == "fake",
-                    "prediction": results["prediction"],
-                    "confidence_scores": {"ai_generated": results["fake_probability"], "real": results["real_probability"]},
-                },
-                "metadata": metadata,
-            }
-
-            # Log the API request
-            log_api_request(request.auth, "ai_media_detection_api", start_time, status.HTTP_200_OK, request)
-
-            return JsonResponse(response_data, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            # Log the API request with error status
-            log_api_request(request.auth, "ai_media_detection_api", start_time, status.HTTP_500_INTERNAL_SERVER_ERROR, request)
-
-            return JsonResponse({"success": False, "error": str(e), "code": "MEDIA_PROCESSING_ERROR"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
-        # Log the API request with error status
-        log_api_request(request.auth, "ai_media_detection_api", start_time, status.HTTP_400_BAD_REQUEST, request)
-
-        return JsonResponse({"success": False, "error": file_upload_serializer.errors, "code": "FILE_UPLOAD_ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+# API Key Management Endpoints
 
 
 @api_view(["GET", "POST"])
@@ -307,57 +29,84 @@ def api_key_management(request):
     GET: List all API keys for the authenticated user
     POST: Create a new API key for the authenticated user
     """
-    try:
-        # Get user data
-        user_data = UserData.objects.get(user=request.user)
+    user_data = UserData.objects.get(user=request.user)
 
-        if request.method == "GET":
-            # Get all API keys for this user
-            api_keys = APIKey.objects.filter(user=user_data)
-            serializer = APIKeySerializer(api_keys, many=True)
+    if request.method == "GET":
+        # List all API keys for the user
+        api_keys = APIKey.objects.filter(user=user_data, is_active=True)
+        keys_data = []
 
-            return JsonResponse({**get_response_code("SUCCESS"), "data": serializer.data}, status=status.HTTP_200_OK)
+        for key in api_keys:
+            keys_data.append(
+                {
+                    "id": key.id,
+                    "name": key.name,
+                    "key": key.key[:8] + "...",  # Show only first 8 chars for security
+                    "created_at": key.created_at,
+                    "expires_at": key.expires_at,
+                    "daily_limit": key.daily_limit,
+                    "daily_usage": key.daily_usage,
+                    "can_use_deepfake_detection": key.can_use_deepfake_detection,
+                    "can_use_ai_text_detection": key.can_use_ai_text_detection,
+                    "can_use_ai_media_detection": key.can_use_ai_media_detection,
+                }
+            )
 
-        elif request.method == "POST":
-            # Create a new API key
-            serializer = APIKeyCreateSerializer(data=request.data)
-            if serializer.is_valid():
-                # Use controller to create the key
-                validated_data = serializer.validated_data
+        return JsonResponse({"success": True, "code": get_response_code("SUCCESS")["code"], "api_keys": keys_data})
 
-                # Fix the expires_days calculation
-                expires_days = None
-                expires_at = validated_data.get("expires_at")
-                if expires_at:
-                    # Make sure expires_at is a datetime object before using date()
-                    if hasattr(expires_at, "date"):
-                        delta = expires_at.date() - timezone.now().date()
-                        expires_days = delta.days
+    elif request.method == "POST":
+        # Create a new API key
+        try:
+            data = json.loads(request.body)
+            name = data.get("name")
 
-                api_key = APIKeyController.create_key(
-                    user_data=user_data,
-                    name=validated_data.get("name"),
-                    expires_days=expires_days,
-                    daily_limit=validated_data.get("daily_limit", 1000),
-                    can_use_deepfake_detection=validated_data.get("can_use_deepfake_detection", True),
-                    can_use_ai_text_detection=validated_data.get("can_use_ai_text_detection", True),
-                    can_use_ai_media_detection=validated_data.get("can_use_ai_media_detection", True),
+            if not name:
+                return JsonResponse(
+                    {"success": False, "code": get_response_code("INVALID_INPUT")["code"], "message": "API key name is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
-                # Return the created key
-                response_serializer = APIKeySerializer(api_key)
-                return JsonResponse({**get_response_code("SUCCESS"), "data": response_serializer.data}, status=status.HTTP_201_CREATED)
-            else:
-                return JsonResponse({**get_response_code("GENERAL_ERROR"), "error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-    except UserData.DoesNotExist:
-        return JsonResponse(get_response_code("USER_DATA_NOT_FOUND"), status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        # Add more detailed error info for debugging
-        import traceback
+            # Get optional parameters with defaults
+            expires_at = data.get("expires_at")
+            daily_limit = data.get("daily_limit", 1000)
+            can_use_deepfake_detection = data.get("can_use_deepfake_detection", True)
+            can_use_ai_text_detection = data.get("can_use_ai_text_detection", True)
+            can_use_ai_media_detection = data.get("can_use_ai_media_detection", True)
 
-        error_info = traceback.format_exc()
-        print(f"API key creation error: {error_info}")
-        return JsonResponse({**get_response_code("GENERAL_ERROR"), "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Create new API key
+            api_key = APIKey.objects.create(
+                user=user_data,
+                name=name,
+                expires_at=expires_at,
+                daily_limit=daily_limit,
+                can_use_deepfake_detection=can_use_deepfake_detection,
+                can_use_ai_text_detection=can_use_ai_text_detection,
+                can_use_ai_media_detection=can_use_ai_media_detection,
+            )
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "code": get_response_code("SUCCESS")["code"],
+                    "api_key": {
+                        "id": api_key.id,
+                        "name": api_key.name,
+                        "key": api_key.key,  # Send full key only once when created
+                        "created_at": api_key.created_at,
+                        "expires_at": api_key.expires_at,
+                        "daily_limit": api_key.daily_limit,
+                        "can_use_deepfake_detection": api_key.can_use_deepfake_detection,
+                        "can_use_ai_text_detection": api_key.can_use_ai_text_detection,
+                        "can_use_ai_media_detection": api_key.can_use_ai_media_detection,
+                    },
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "code": get_response_code("INVALID_INPUT")["code"], "message": "Invalid JSON data"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 @api_view(["GET", "DELETE"])
@@ -365,30 +114,340 @@ def api_key_management(request):
 def api_key_detail(request, key_id):
     """
     GET: Get details of a specific API key
-    DELETE: Revoke (deactivate) a specific API key
+    DELETE: Revoke (deactivate) an API key
     """
+    user_data = UserData.objects.get(user=request.user)
+
     try:
-        # Get user data
-        user_data = UserData.objects.get(user=request.user)
+        api_key = APIKey.objects.get(id=key_id, user=user_data)
+    except APIKey.DoesNotExist:
+        return JsonResponse({"success": False, "code": get_response_code("NOT_FOUND")["code"], "message": "API key not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get the API key and ensure it belongs to this user
+    if request.method == "GET":
+        # Get API key details
+        return JsonResponse(
+            {
+                "success": True,
+                "code": get_response_code("SUCCESS")["code"],
+                "api_key": {
+                    "id": api_key.id,
+                    "name": api_key.name,
+                    "key": api_key.key[:8] + "...",  # Show only first 8 chars for security
+                    "created_at": api_key.created_at,
+                    "expires_at": api_key.expires_at,
+                    "daily_limit": api_key.daily_limit,
+                    "daily_usage": api_key.daily_usage,
+                    "last_used_at": api_key.last_used_at,
+                    "can_use_deepfake_detection": api_key.can_use_deepfake_detection,
+                    "can_use_ai_text_detection": api_key.can_use_ai_text_detection,
+                    "can_use_ai_media_detection": api_key.can_use_ai_media_detection,
+                },
+            }
+        )
+
+    elif request.method == "DELETE":
+        # Revoke the API key (deactivate it)
+        api_key.is_active = False
+        api_key.save()
+
+        return JsonResponse({"success": True, "code": get_response_code("SUCCESS")["code"], "message": f'API key "{api_key.name}" has been revoked'})
+
+
+# Public API Endpoints
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+def deepfake_detection_api(request):
+    """
+    API endpoint for deepfake detection
+    Accepts image or video files and analyzes them for potential deepfake manipulation
+    """
+    start_time = time.time()
+
+    # Get API key from header
+    api_key_header = request.META.get("HTTP_X_API_KEY")
+
+    # Authenticate API key
+    authenticated, api_key, auth_error = PublicAPIController.authenticate_api_key(api_key_header)
+    if not authenticated:
+        return JsonResponse(auth_error, status=status.HTTP_403_FORBIDDEN)
+
+    # Check endpoint permission
+    has_permission, perm_error = PublicAPIController.check_endpoint_permission(api_key, "deepfake")
+    if not has_permission:
+        return JsonResponse(perm_error, status=status.HTTP_403_FORBIDDEN)
+
+    # Get file from request
+    file = request.FILES.get("file")
+
+    # Validate file
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/bmp", "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-ms-wmv"]
+    is_valid, error = PublicAPIController.validate_file(file, allowed_types)
+    if not is_valid:
+        # Log the failed API usage
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "deepfake-detection", "POST", status.HTTP_400_BAD_REQUEST, response_time, request)
+        return JsonResponse(error, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Generate a unique identifier for this submission
+        submission_identifier = str(uuid.uuid4())
+
+        # Save the file to a temporary location
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "temp"))
+        filename = fs.save(submission_identifier, file)
+        file_path = fs.path(filename)
+
+        # Determine file type (image or video)
+        content_type = file.content_type
+        is_video = content_type.startswith("video/")
+
+        # Create a MediaUpload object
+        media_upload = MediaUpload.objects.create(
+            file=file_path,
+            file_type="Video" if is_video else "Image",
+            file_name=file.name,
+            file_size=file.size,
+            content_type=content_type,
+            submission_identifier=submission_identifier,
+            purpose="Deepfake-Analysis",
+        )
+
+        # Process the file for deepfake detection
+        result = deepfake_detection_pipeline.analyze(file_path, is_video=is_video)
+
+        # Create DeepfakeDetectionResult object
+        detection_result = DeepfakeDetectionResult.objects.create(
+            media_upload=media_upload,
+            is_deepfake=result["is_deepfake"],
+            confidence_score=result["confidence_score"],
+            frames_analyzed=result.get("frames_analyzed", 1),
+            fake_frames=result.get("fake_frames", 1 if result["is_deepfake"] else 0),
+            fake_frames_percentage=result.get("fake_frames_percentage", 100 if result["is_deepfake"] else 0),
+        )
+
+        # Format the response data
+        response_data = {"is_deepfake": detection_result.is_deepfake, "confidence_score": detection_result.confidence_score, "file_type": media_upload.file_type}
+
+        # Add video specific data if applicable
+        if is_video:
+            response_data.update(
+                {
+                    "frames_analyzed": detection_result.frames_analyzed,
+                    "fake_frames": detection_result.fake_frames,
+                    "fake_frames_percentage": detection_result.fake_frames_percentage,
+                }
+            )
+
+        # Get metadata
+        metadata = {}
         try:
-            api_key = APIKey.objects.get(pk=key_id, user=user_data)
-        except APIKey.DoesNotExist:
-            return JsonResponse({**get_response_code("NOT_FOUND"), "error": "API key not found or does not belong to you."}, status=status.HTTP_404_NOT_FOUND)
+            media_metadata = MediaUploadMetadata.objects.get(media_upload=media_upload)
+            metadata = {
+                "width": media_metadata.width,
+                "height": media_metadata.height,
+                "format": media_metadata.format,
+                "duration": media_metadata.duration,
+                "codec": media_metadata.codec,
+            }
+        except MediaUploadMetadata.DoesNotExist:
+            # Metadata might not be available for all submissions
+            pass
 
-        if request.method == "GET":
-            # Return the API key details
-            serializer = APIKeySerializer(api_key)
-            return JsonResponse({**get_response_code("SUCCESS"), "data": serializer.data}, status=status.HTTP_200_OK)
+        # Log successful API usage
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "deepfake-detection", "POST", status.HTTP_200_OK, response_time, request)
 
-        elif request.method == "DELETE":
-            # Revoke the API key
-            success = APIKeyController.revoke_key(key_id)
-            if success:
-                return JsonResponse({**get_response_code("SUCCESS"), "message": "API key revoked successfully."}, status=status.HTTP_200_OK)
-            else:
-                return JsonResponse({**get_response_code("GENERAL_ERROR"), "error": "Failed to revoke API key."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Return the formatted success response
+        return JsonResponse(PublicAPIController.format_success_response("SUCCESS", response_data, metadata), status=status.HTTP_200_OK)
 
-    except UserData.DoesNotExist:
-        return JsonResponse(get_response_code("USER_DATA_NOT_FOUND"), status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        # Log the error
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "deepfake-detection", "POST", status.HTTP_500_INTERNAL_SERVER_ERROR, response_time, request)
+
+        return JsonResponse({"success": False, "code": "SYS001", "message": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+@parser_classes([JSONParser])
+def ai_text_detection_api(request):
+    """
+    API endpoint for AI-generated text detection
+    Analyzes text to determine if it was written by AI or a human
+    """
+    start_time = time.time()
+
+    # Get API key from header
+    api_key_header = request.META.get("HTTP_X_API_KEY")
+
+    # Authenticate API key
+    authenticated, api_key, auth_error = PublicAPIController.authenticate_api_key(api_key_header)
+    if not authenticated:
+        return JsonResponse(auth_error, status=status.HTTP_403_FORBIDDEN)
+
+    # Check endpoint permission
+    has_permission, perm_error = PublicAPIController.check_endpoint_permission(api_key, "ai_text")
+    if not has_permission:
+        return JsonResponse(perm_error, status=status.HTTP_403_FORBIDDEN)
+
+    # Extract data from request
+    try:
+        data = request.data
+        text = data.get("text")
+        highlight = data.get("highlight", False)
+    except:
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-text-detection", "POST", status.HTTP_400_BAD_REQUEST, response_time, request)
+        return JsonResponse({"success": False, "code": "SYS003", "message": "Invalid JSON data"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validate text input
+    is_valid, error = PublicAPIController.validate_text_input(text)
+    if not is_valid:
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-text-detection", "POST", status.HTTP_400_BAD_REQUEST, response_time, request)
+        return JsonResponse(error, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Generate a unique identifier for this submission
+        submission_identifier = str(uuid.uuid4())
+
+        # Create a TextSubmission object
+        text_submission = TextSubmission.objects.create(text=text, submission_identifier=submission_identifier)
+
+        # Analyze the text
+        result = text_detection_pipeline.analyze_text(text)
+
+        # Create AIGeneratedTextResult object
+        text_result = AIGeneratedTextResult.objects.create(
+            text_submission=text_submission,
+            is_ai_generated=result["is_ai_generated"],
+            human_probability=result["scores"].get("Human", 0),
+            ai_probability=max([result["scores"].get("GPT-3", 0), result["scores"].get("Claude", 0)]),
+            source_prediction=result["source"],
+            confidence_scores=json.dumps(result["scores"]),
+        )
+
+        # Format the response data
+        response_data = {
+            "is_ai_generated": text_result.is_ai_generated,
+            "source_prediction": text_result.source_prediction,
+            "confidence_scores": {"Human": text_result.human_probability, "AI": text_result.ai_probability},
+        }
+
+        # Add highlighted text if requested
+        if highlight:
+            # This is a placeholder - in a real implementation you would
+            # have a method to highlight text passages that appear AI-generated
+            highlighted_text = text  # Replace with actual highlighting logic
+            response_data["highlighted_text"] = highlighted_text
+
+        # Log successful API usage
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-text-detection", "POST", status.HTTP_200_OK, response_time, request)
+
+        # Return the formatted success response
+        return JsonResponse(PublicAPIController.format_success_response("SUCCESS", response_data), status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Log the error
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-text-detection", "POST", status.HTTP_500_INTERNAL_SERVER_ERROR, response_time, request)
+
+        return JsonResponse({"success": False, "code": "SYS001", "message": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+def ai_media_detection_api(request):
+    """
+    API endpoint for AI-generated media detection
+    Detects if an image was generated by AI tools (e.g., DALL-E, Midjourney)
+    """
+    start_time = time.time()
+
+    # Get API key from header
+    api_key_header = request.META.get("HTTP_X_API_KEY")
+
+    # Authenticate API key
+    authenticated, api_key, auth_error = PublicAPIController.authenticate_api_key(api_key_header)
+    if not authenticated:
+        return JsonResponse(auth_error, status=status.HTTP_403_FORBIDDEN)
+
+    # Check endpoint permission
+    has_permission, perm_error = PublicAPIController.check_endpoint_permission(api_key, "ai_media")
+    if not has_permission:
+        return JsonResponse(perm_error, status=status.HTTP_403_FORBIDDEN)
+
+    # Get file from request
+    file = request.FILES.get("file")
+
+    # Validate file
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/bmp"]
+    is_valid, error = PublicAPIController.validate_file(file, allowed_types)
+    if not is_valid:
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-media-detection", "POST", status.HTTP_400_BAD_REQUEST, response_time, request)
+        return JsonResponse(error, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Generate a unique identifier for this submission
+        submission_identifier = str(uuid.uuid4())
+
+        # Save the file to a temporary location
+        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "temp"))
+        filename = fs.save(submission_identifier, file)
+        file_path = fs.path(filename)
+
+        # Create a MediaUpload object
+        media_upload = MediaUpload.objects.create(
+            file=file_path,
+            file_type="Image",
+            file_name=file.name,
+            file_size=file.size,
+            content_type=file.content_type,
+            submission_identifier=submission_identifier,
+            purpose="AI-Media-Analysis",
+        )
+
+        # Process the file for AI media detection
+        result = ai_generated_media_detection_pipeline.analyze_image(file_path)
+
+        # Create AIGeneratedMediaResult object
+        ai_media_result = AIGeneratedMediaResult.objects.create(
+            media_upload=media_upload,
+            is_ai_generated=result["is_ai_generated"],
+            real_probability=result["scores"].get("real", 0),
+            ai_probability=result["scores"].get("fake", 0),
+        )
+
+        # Format the response data
+        response_data = {
+            "is_ai_generated": ai_media_result.is_ai_generated,
+            "prediction": "fake" if ai_media_result.is_ai_generated else "real",
+            "confidence_scores": {"ai_generated": ai_media_result.ai_probability, "real": ai_media_result.real_probability},
+        }
+
+        # Get metadata
+        metadata = {}
+        try:
+            media_metadata = MediaUploadMetadata.objects.get(media_upload=media_upload)
+            metadata = {"width": media_metadata.width, "height": media_metadata.height, "format": media_metadata.format}
+        except MediaUploadMetadata.DoesNotExist:
+            # Metadata might not be available for all submissions
+            pass
+
+        # Log successful API usage
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-media-detection", "POST", status.HTTP_200_OK, response_time, request)
+
+        # Return the formatted success response
+        return JsonResponse(PublicAPIController.format_success_response("SUCCESS", response_data, metadata), status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Log the error
+        response_time = time.time() - start_time
+        PublicAPIController.log_api_usage(api_key, "ai-media-detection", "POST", status.HTTP_500_INTERNAL_SERVER_ERROR, response_time, request)
+
+        return JsonResponse({"success": False, "code": "SYS001", "message": f"An error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

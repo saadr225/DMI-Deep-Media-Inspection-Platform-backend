@@ -242,6 +242,29 @@ KNOWLEDGE_BASE_ERROR_CODES = {
     "KNOWLEDGE_USER_DATA_NOT_FOUND": {"code": "KNB018", "message": "User data not found for knowledge base operation."},
 }
 
+# API Success Codes
+API_SUCCESS_CODES = {
+    "API_KEY_CREATED": {"code": "API101", "message": "API key created successfully."},
+    "API_KEY_DELETED": {"code": "API102", "message": "API key deleted successfully."},
+    "API_KEY_FETCHED": {"code": "API103", "message": "API key details fetched successfully."},
+    "API_KEYS_FETCHED": {"code": "API104", "message": "API keys fetched successfully."},
+}
+
+# API Error Codes
+API_ERROR_CODES = {
+    "API_KEY_MISSING": {"code": "API001", "message": "API key is missing from request headers."},
+    "API_KEY_INVALID": {"code": "API002", "message": "Invalid API key provided."},
+    "API_KEY_EXPIRED": {"code": "API003", "message": "API key has expired."},
+    "API_RATE_LIMIT_EXCEEDED": {"code": "API004", "message": "API rate limit exceeded."},
+    "API_PERMISSION_DENIED": {"code": "API005", "message": "API key doesn't have permission for this operation."},
+    "API_VALIDATION_ERROR": {"code": "API006", "message": "Invalid request parameters."},
+    "API_UNSUPPORTED_MEDIA_TYPE": {"code": "API007", "message": "Unsupported media type."},
+    "API_KEY_NOT_FOUND": {"code": "API008", "message": "API key not found."},
+    "API_KEY_CREATE_ERROR": {"code": "API009", "message": "Error creating API key."},
+    "API_KEY_DELETE_ERROR": {"code": "API010", "message": "Error deleting API key."},
+    "API_TEXT_TOO_SHORT": {"code": "API011", "message": "Text too short for analysis."},
+}
+
 # Combine all response codes into one dictionary for lookup
 RESPONSE_CODES = {
     **SUCCESS_CODES,
