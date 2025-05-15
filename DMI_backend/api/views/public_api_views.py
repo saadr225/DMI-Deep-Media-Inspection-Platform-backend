@@ -41,7 +41,7 @@ def api_key_management(request):
                 {
                     "id": key.id,
                     "name": key.name,
-                    "key": key.key[:8] + "...",  # Show only first 8 chars for security
+                    "key": key.key,
                     "created_at": key.created_at,
                     "expires_at": key.expires_at,
                     "daily_limit": key.daily_limit,

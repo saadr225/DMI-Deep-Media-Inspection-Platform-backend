@@ -1,5 +1,3 @@
-I'll create a comprehensive documentation for your public API service module in simple text format, including URLs, payload structures, inputs, and view responses.
-
 # DMI Public API Documentation
 
 This documentation covers the public API endpoints offered by the Deep Media Inspection (DMI) platform, which allow external applications to integrate DMI's AI detection capabilities.
