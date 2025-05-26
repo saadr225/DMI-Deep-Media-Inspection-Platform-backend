@@ -45,9 +45,20 @@ def is_admin(user):
 
 
 def custom_admin_required(view_func):
-    """Decorator for views that checks if the user is admin, redirecting to login if not."""
-    decorated_view = login_required(user_passes_test(is_admin, login_url="custom_admin_login")(view_func))
-    return decorated_view
+    """Decorator for views that checks if the user is admin"""
+
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.info(request, "Please log in to access the admin panel.")
+            return redirect("custom_admin_login")
+
+        if not is_admin(request.user):
+            messages.error(request, "You do not have admin privileges to access this page.")
+            return redirect("home")  # Redirect to home instead of login to avoid loop
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
 
 
 # Login / Logout Views
@@ -931,8 +942,12 @@ def custom_admin_profile_view(request):
 @custom_admin_required
 def custom_admin_moderators_view(request):
     """View to manage moderators"""
+    # Get or create the moderator group
+    moderator_group, created = Group.objects.get_or_create(name="PDA_Moderator")
+    if created:
+        logger.info("Created new PDA_Moderator group")
+
     # Get users with moderator privileges
-    moderator_group = Group.objects.get(name="PDA_Moderator")
     moderators = User.objects.filter(Q(groups=moderator_group) | Q(is_staff=True)).distinct().order_by("username")
 
     # Handle form submissions
@@ -1086,10 +1101,14 @@ def custom_admin_knowledge_base_create_view(request):
             attachments = []
             for file_name in request.FILES:
                 if file_name != "banner_image_file":  # Skip banner image if it was uploaded as a file
-                    attachments.append(request.FILES[file_name])
-
-            # Use admin user as author
-            author_id = request.user.userdata.id
+                    attachments.append(request.FILES[file_name])  # Use admin user as author - create UserData if it doesn't exist
+            try:
+                user_data = request.user.userdata
+                author_id = user_data.id
+            except UserData.DoesNotExist:
+                # Create UserData for admin user if it doesn't exist
+                user_data = UserData.objects.create(user=request.user)
+                author_id = user_data.id
 
             # Create article
             result = kb_controller.create_article(
