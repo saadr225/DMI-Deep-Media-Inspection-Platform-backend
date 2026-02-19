@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">DMI — Digital Media Integrity Platform</h1>
+  <h1 align="center">DMI — Deep Media Inspection Platform</h1>
   <p align="center">
     <b>AI-Powered Deepfake Detection, AI-Generated Content Analysis & Digital Media Forensics</b>
   </p>
@@ -36,7 +36,7 @@
 
 ## About
 
-**DMI (Digital Media Integrity)** is a comprehensive full-stack platform designed to combat misinformation by detecting deepfakes, AI-generated images, and AI-generated text. Built as a **Final Year Project (FYP)**, it provides a suite of AI-powered forensic analysis tools wrapped in a modern REST API, along with community-driven features like a public deepfake archive, discussion forum, and knowledge base.
+**DMI (Deep Media Inspection)** is a comprehensive full-stack platform designed to combat misinformation by detecting deepfakes, AI-generated images, and AI-generated text. Built as a **Final Year Project (FYP)**, it provides a suite of AI-powered forensic analysis tools wrapped in a modern REST API, along with community-driven features like a public deepfake archive, discussion forum, and knowledge base.
 
 The backend is built with **Django 5.1** and **Django REST Framework**, leveraging state-of-the-art deep learning models including **ResNeXt** for deepfake detection, **Vision Transformer (ViT)** for AI-generated image detection, and **BERT-based transformers** for AI-generated text detection. It also integrates a **facial recognition watch system** powered by DeepFace to alert users when their face appears in a deepfake submission.
 
@@ -384,7 +384,7 @@ Both panels feature secure login, role-based access, and audit logging of all mo
 
 | Repository                                                                                                   | Description                                                  |
 | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| [DMI Next.js Frontend](https://github.com/Spectrewolf8/DMI-Digital-Media-Integrity-Platform-NextJS-Frontend) | The frontend client for the DMI platform, built with Next.js |
+| [DMI Next.js Frontend](https://github.com/Spectrewolf8/DMI-Deep-Media-Inspection-Platform-NextJS-Frontend) | The frontend client for the DMI platform, built with Next.js |
 
 ## Contributing
 
