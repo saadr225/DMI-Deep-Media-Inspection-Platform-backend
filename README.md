@@ -410,5 +410,3 @@ Both panels feature secure login, role-based access, and audit logging of all mo
 ## License
 
 This project is developed as a **Final Year Project (FYP)** and is released under the [MIT License](LICENSE).
-
----
