@@ -15,8 +15,6 @@
   </p>
 </p>
 
----
-
 ## Table of Contents
 
 - [About](#about)
@@ -35,15 +33,11 @@
 - [Contributing](#contributing)
 - [License](#license)
 
----
-
 ## About
 
 **DMI (Digital Media Integrity)** is a comprehensive full-stack platform designed to combat misinformation by detecting deepfakes, AI-generated images, and AI-generated text. Built as a **Final Year Project (FYP)**, it provides a suite of AI-powered forensic analysis tools wrapped in a modern REST API, along with community-driven features like a public deepfake archive, discussion forum, and knowledge base.
 
 The backend is built with **Django 5.1** and **Django REST Framework**, leveraging state-of-the-art deep learning models including **ResNeXt** for deepfake detection, **Vision Transformer (ViT)** for AI-generated image detection, and **BERT-based transformers** for AI-generated text detection. It also integrates a **facial recognition watch system** powered by DeepFace to alert users when their face appears in a deepfake submission.
-
----
 
 ## Features
 
@@ -113,8 +107,6 @@ The backend is built with **Django 5.1** and **Django REST Framework**, leveragi
 
 - **Custom Admin Panel** — Full dashboard with user management, PDA management, forum moderation, analytics, donation management, knowledge base CRUD, and moderator management
 - **Moderation Panel** — Dedicated panel for moderators with content review queues, reported content, analytics, and search
-
----
 
 ## Tech Stack
 
@@ -220,8 +212,6 @@ DMI_FYP_dj_primary-backend/
     └── ai-vs-human-generated-images-prediction-vit.ipynb  # ViT image classification training
 ```
 
----
-
 ## Getting Started
 
 ### Prerequisites
@@ -298,8 +288,6 @@ python manage.py runserver
 ```
 
 The API will be available at `http://localhost:8000/api/`
-
----
 
 ## API Overview
 
@@ -384,8 +372,6 @@ The `Model Notebooks/` directory contains Jupyter notebooks used for training an
 
 Trained models are downloaded at runtime via **HuggingFace Hub** and cached locally in `DMI_backend/ML_Models/`.
 
----
-
 ## Admin & Moderation Panels
 
 The platform includes two server-rendered management panels:
@@ -395,8 +381,6 @@ The platform includes two server-rendered management panels:
 
 Both panels feature secure login, role-based access, and audit logging of all moderator actions.
 
----
-
 ## Contributing
 
 1. Fork the repository
@@ -404,8 +388,6 @@ Both panels feature secure login, role-based access, and audit logging of all mo
 3. Commit your changes (`git commit -m 'Add my feature'`)
 4. Push to the branch (`git push origin feature/my-feature`)
 5. Open a Pull Request
-
----
 
 ## License
 
