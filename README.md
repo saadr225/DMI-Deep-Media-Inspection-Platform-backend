@@ -30,6 +30,7 @@
 - [API Overview](#api-overview)
 - [ML Models & Notebooks](#ml-models--notebooks)
 - [Admin & Moderation Panels](#admin--moderation-panels)
+- [Related Repositories (Frontend)](#related-repositories)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -123,8 +124,6 @@ The backend is built with **Django 5.1** and **Django REST Framework**, leveragi
 | **Email**           | Brevo (Sendinblue) via django-anymail                       |
 | **WSGI Server**     | Gunicorn                                                    |
 | **CORS**            | django-cors-headers                                         |
-
----
 
 ## Project Structure
 
@@ -380,6 +379,12 @@ The platform includes two server-rendered management panels:
 - **Moderation Panel** (`/moderation/`) — Content review queues, PDA and forum moderation, reported content, analytics dashboard, and search.
 
 Both panels feature secure login, role-based access, and audit logging of all moderator actions.
+
+## Related Repositories
+
+| Repository                                                                                                   | Description                                                  |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| [DMI Next.js Frontend](https://github.com/Spectrewolf8/DMI-Digital-Media-Integrity-Platform-NextJS-Frontend) | The frontend client for the DMI platform, built with Next.js |
 
 ## Contributing
 
