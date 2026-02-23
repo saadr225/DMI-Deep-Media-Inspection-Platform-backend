@@ -384,7 +384,7 @@ Both panels feature secure login, role-based access, and audit logging of all mo
 
 | Repository                                                                                                   | Description                                                  |
 | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| [DMI Next.js Frontend](https://github.com/Spectrewolf8/DMI-Deep-Media-Inspection-Platform-NextJS-Frontend) | The frontend client for the DMI platform, built with Next.js |
+| [DMI Next.js Frontend](https://github.com/saadr225/deepfake-detection-platform) | The frontend client for the DMI platform, built with Next.js |
 
 ## Contributing
 
